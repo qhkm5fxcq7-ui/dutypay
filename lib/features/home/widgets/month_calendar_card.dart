@@ -6,6 +6,7 @@ class MonthCalendarDayData {
   final double amount;
   final bool isSelected;
   final bool isToday;
+  final String? absenceBadge;
 
   const MonthCalendarDayData({
     required this.date,
@@ -13,7 +14,15 @@ class MonthCalendarDayData {
     required this.amount,
     required this.isSelected,
     required this.isToday,
+    this.absenceBadge,
   });
+
+  bool get hasAmount => amount > 0;
+
+  bool get hasAbsence =>
+      absenceBadge != null && absenceBadge!.trim().isNotEmpty;
+
+  bool get hasContent => hasAmount || hasAbsence;
 }
 
 class MonthCalendarCard extends StatelessWidget {
@@ -46,139 +55,182 @@ class MonthCalendarCard extends StatelessWidget {
     return '${months[date.month - 1]} ${date.year}';
   }
 
-  String _amountLabel(double amount) {
-    if (amount <= 0) return '';
-    if (amount >= 100) return '€ ${amount.toStringAsFixed(0)}';
-    if (amount >= 10) return '€ ${amount.toStringAsFixed(1)}';
-    return '€ ${amount.toStringAsFixed(2)}';
+  double _monthlyTotal() {
+    return days
+        .where((d) => d.isInCurrentMonth)
+        .fold<double>(0, (sum, d) => sum + d.amount);
   }
 
-  _AmountStyle _amountStyle(double amount) {
-    if (amount <= 0) {
-      return const _AmountStyle(
-        background: Colors.transparent,
-        text: Colors.transparent,
-        border: Colors.transparent,
-      );
-    }
+  int _workedDaysCount() {
+    return days.where((d) => d.isInCurrentMonth && d.hasContent).length;
+  }
 
-    if (amount < 15) {
-      return const _AmountStyle(
-        background: Color(0xFF2A2F3A),
-        text: Color(0xFFD1D5DB),
-        border: Color(0xFF3A4150),
-      );
-    }
+  String _normalizedAbsenceLabel(String? badge) {
+    final value = (badge ?? '').trim().toUpperCase();
 
-    if (amount < 30) {
-      return const _AmountStyle(
-        background: Color(0xFF0F3A2A),
-        text: Color(0xFF4ADE80),
-        border: Color(0xFF166534),
-      );
+    switch (value) {
+      case 'FERIE':
+      case 'C.O':
+      case 'C.O.':
+        return 'C.O.';
+      case 'MAL':
+      case 'MALATTIA':
+      case 'C.S':
+      case 'C.S.':
+        return 'C.S.';
+      case 'RIP':
+      case 'RIPOSO':
+        return 'RIP';
+      default:
+        return value;
     }
+  }
 
-    if (amount < 70) {
-      return const _AmountStyle(
-        background: Color(0xFF0B3B4F),
-        text: Color(0xFF38BDF8),
-        border: Color(0xFF0EA5E9),
-      );
+  _BadgeStyle? _badgeStyle(String? badge) {
+    final value = _normalizedAbsenceLabel(badge);
+    if (value.isEmpty) return null;
+
+    switch (value) {
+      case 'C.O.':
+        return const _BadgeStyle(
+          background: Color(0xFF3A1717),
+          text: Color(0xFFFFB3B3),
+          border: Color(0xFFE35D5D),
+        );
+      case 'C.S.':
+        return const _BadgeStyle(
+          background: Color(0xFF311846),
+          text: Color(0xFFE8C7FF),
+          border: Color(0xFFB26AF8),
+        );
+      case 'RIP':
+        return const _BadgeStyle(
+          background: Color(0xFF1E2E16),
+          text: Color(0xFFDDF7A5),
+          border: Color(0xFF9ACF38),
+        );
+      default:
+        return const _BadgeStyle(
+          background: Color(0xFF202834),
+          text: Color(0xFFD3DBE6),
+          border: Color(0xFF334152),
+        );
     }
-
-    return const _AmountStyle(
-      background: Color(0xFF4A3410),
-      text: Color(0xFFFBBF24),
-      border: Color(0xFFF59E0B),
-    );
   }
 
   Color _cellBackground(MonthCalendarDayData day) {
-    if (day.isSelected) {
-      return const Color(0xFF0F3A2A);
-    }
-
-    if (!day.isInCurrentMonth) {
-      return const Color(0xFF151922);
-    }
-
-    if (day.amount >= 70) {
-      return const Color(0xFF1B2430);
-    }
-
-    if (day.amount >= 30) {
-      return const Color(0xFF18212C);
-    }
-
-    return const Color(0xFF171C26);
+    if (day.isSelected) return const Color(0xFF132A22);
+    if (!day.isInCurrentMonth) return const Color(0xFF111720);
+    if (day.hasAbsence) return const Color(0xFF161D27);
+    return const Color(0xFF141C26);
   }
 
   Color _cellBorder(MonthCalendarDayData day) {
-    if (day.isSelected) {
-      return const Color(0xFF22C55E);
-    }
-
-    if (day.isToday) {
-      return const Color(0xFF3B82F6);
-    }
-
-    if (!day.isInCurrentMonth) {
-      return Colors.white10;
-    }
-
-    return const Color(0xFF2A3140);
+    if (day.isSelected) return const Color(0xFF5CE1A8);
+    if (day.isToday) return const Color(0xFF67B7FF);
+    if (!day.isInCurrentMonth) return const Color(0xFF202A37);
+    if (day.hasAbsence) return const Color(0xFF324050);
+    if (day.hasAmount) return const Color(0xFF2A5A47);
+    return const Color(0xFF253140);
   }
 
   Color _dayTextColor(MonthCalendarDayData day) {
-    if (!day.isInCurrentMonth) {
-      return Colors.white30;
-    }
-
-    if (day.isSelected) {
-      return Colors.white;
-    }
-
-    return Colors.white.withOpacity(0.92);
+    if (!day.isInCurrentMonth) return const Color(0xFF556274);
+    return Colors.white;
   }
 
   @override
   Widget build(BuildContext context) {
     const weekdayLabels = ['L', 'M', 'M', 'G', 'V', 'S', 'D'];
+    final monthTotal = _monthlyTotal();
+    final workedDays = _workedDaysCount();
 
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFF171A21),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            _monthLabel(month),
-            style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w700,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(
+              Icons.grid_view_rounded,
+              size: 18,
+              color: _CalendarPalette.info,
             ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                _monthLabel(month),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.2,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Tocca un giorno per vedere subito i turni inseriti e il totale maturato.',
+          style: TextStyle(
+            fontSize: 13.4,
+            color: _CalendarPalette.textSecondary,
+            height: 1.45,
+            fontWeight: FontWeight.w500,
           ),
-          const SizedBox(height: 14),
-          Row(
+        ),
+        const SizedBox(height: 14),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: _CalendarPalette.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: _CalendarPalette.cardBorder),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: _TopInfoBlock(
+                  label: 'Totale mese',
+                  value: '€ ${_formatMoney(monthTotal)}',
+                  valueColor: const Color(0xFF5CE1A8),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _TopInfoBlock(
+                  label: 'Giorni con attività',
+                  value: '$workedDays',
+                  valueColor: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          decoration: BoxDecoration(
+            color: _CalendarPalette.surface,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: _CalendarPalette.cardBorder),
+          ),
+          child: Row(
             children: List.generate(7, (index) {
               final isSaturday = index == 5;
               final isSunday = index == 6;
 
-              Color color = Colors.white54;
-              if (isSaturday) color = const Color(0xFF60A5FA);
-              if (isSunday) color = const Color(0xFFF87171);
+              Color color = _CalendarPalette.textSecondary;
+              if (isSaturday) color = const Color(0xFF7DBFFF);
+              if (isSunday) color = const Color(0xFFFF9C9C);
 
               return Expanded(
                 child: Center(
                   child: Text(
                     weekdayLabels[index],
                     style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 12.2,
+                      fontWeight: FontWeight.w800,
                       color: color,
                     ),
                   ),
@@ -186,129 +238,183 @@ class MonthCalendarCard extends StatelessWidget {
               );
             }),
           ),
-          const SizedBox(height: 10),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: days.length,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 7,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
-              childAspectRatio: 0.65,
-            ),
-            itemBuilder: (context, index) {
-              final day = days[index];
-              final amountStyle = _amountStyle(day.amount);
-              final amountLabel = _amountLabel(day.amount);
+        ),
+        const SizedBox(height: 12),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: days.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 7,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+            childAspectRatio: 0.68,
+          ),
+          itemBuilder: (context, index) {
+            final day = days[index];
+            final normalizedBadge = _normalizedAbsenceLabel(day.absenceBadge);
+            final badgeStyle = _badgeStyle(day.absenceBadge);
 
-              return GestureDetector(
-                onTap: () => onDayTap(day.date),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 8,
+            return InkWell(
+              onTap: () => onDayTap(day.date),
+              borderRadius: BorderRadius.circular(18),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.fromLTRB(6, 8, 6, 8),
+                decoration: BoxDecoration(
+                  color: _cellBackground(day),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: _cellBorder(day),
+                    width: day.isSelected ? 1.8 : 1.1,
                   ),
-                  decoration: BoxDecoration(
-                    color: _cellBackground(day),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: _cellBorder(day),
-                      width: day.isSelected ? 1.4 : 1,
-                    ),
-                    boxShadow: day.isSelected
-                        ? [
-                            BoxShadow(
-                              color: const Color(0xFF22C55E).withOpacity(0.18),
-                              blurRadius: 12,
-                              spreadRadius: 1,
-                            ),
-                          ]
-                        : null,
-                  ),
-                  child: Column(
-                    children: [
-                      Align(
-                        alignment: Alignment.topCenter,
-                        child: Text(
-                          '${day.date.day}',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: _dayTextColor(day),
+                  boxShadow: day.isSelected
+                      ? [
+                          BoxShadow(
+                            color: const Color(0xFF5CE1A8).withOpacity(0.18),
+                            blurRadius: 14,
+                            offset: const Offset(0, 5),
                           ),
-                        ),
+                        ]
+                      : null,
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      '${day.date.day}',
+                      style: TextStyle(
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w900,
+                        color: _dayTextColor(day),
                       ),
-                      const Spacer(),
-                      if (amountLabel.isNotEmpty)
-                        Container(
-                          constraints: const BoxConstraints(
-                            minHeight: 18,
-                            minWidth: 26,
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: amountStyle.background,
-                            borderRadius: BorderRadius.circular(999),
-                            border: Border.all(
-                              color: amountStyle.border,
+                    ),
+                    const Spacer(),
+                    if (day.hasAbsence && badgeStyle != null)
+                      SizedBox(
+                        width: double.infinity,
+                        height: 24,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
                             ),
-                          ),
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
+                            decoration: BoxDecoration(
+                              color: badgeStyle.background,
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(
+                                color: badgeStyle.border,
+                                width: 1.1,
+                              ),
+                            ),
                             child: Text(
-                              amountLabel,
+                              normalizedBadge,
                               maxLines: 1,
                               style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                color: amountStyle.text,
+                                fontSize: 9.2,
+                                fontWeight: FontWeight.w900,
+                                color: badgeStyle.text,
+                                height: 1,
                               ),
                             ),
                           ),
-                        )
-                      else
-                        const SizedBox(height: 18),
-                    ],
-                  ),
+                        ),
+                      )
+                    else if (day.hasAmount)
+                      Container(
+                        width: 26,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF5CE1A8),
+                          borderRadius: BorderRadius.circular(999),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF5CE1A8).withOpacity(0.28),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      const SizedBox(height: 16),
+                  ],
                 ),
-              );
-            },
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  static String _formatMoney(double value) {
+    final fixed = value.toStringAsFixed(2);
+    final parts = fixed.split('.');
+    final integer = parts[0];
+    final decimal = parts[1];
+
+    final isNegative = integer.startsWith('-');
+    final digits = isNegative ? integer.substring(1) : integer;
+
+    final chars = digits.split('').reversed.toList();
+    final buffer = StringBuffer();
+
+    for (int i = 0; i < chars.length; i++) {
+      if (i > 0 && i % 3 == 0) {
+        buffer.write('.');
+      }
+      buffer.write(chars[i]);
+    }
+
+    final formattedInt = buffer.toString().split('').reversed.join();
+    return '${isNegative ? '-' : ''}$formattedInt,$decimal';
+  }
+}
+
+class _TopInfoBlock extends StatelessWidget {
+  const _TopInfoBlock({
+    required this.label,
+    required this.value,
+    required this.valueColor,
+  });
+
+  final String label;
+  final String value;
+  final Color valueColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF111827),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF253140)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11.5,
+              color: _CalendarPalette.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: const [
-              _LegendChip(
-                label: '0€',
-                background: Color(0xFF2A2F3A),
-                text: Color(0xFFD1D5DB),
-                border: Color(0xFF3A4150),
-              ),
-              _LegendChip(
-                label: '15€+',
-                background: Color(0xFF0F3A2A),
-                text: Color(0xFF4ADE80),
-                border: Color(0xFF166534),
-              ),
-              _LegendChip(
-                label: '30€+',
-                background: Color(0xFF0B3B4F),
-                text: Color(0xFF38BDF8),
-                border: Color(0xFF0EA5E9),
-              ),
-              _LegendChip(
-                label: '70€+',
-                background: Color(0xFF4A3410),
-                text: Color(0xFFFBBF24),
-                border: Color(0xFFF59E0B),
-              ),
-            ],
+          const SizedBox(height: 6),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 15.5,
+              fontWeight: FontWeight.w900,
+              color: valueColor,
+              letterSpacing: -0.15,
+            ),
           ),
         ],
       ),
@@ -316,48 +422,21 @@ class MonthCalendarCard extends StatelessWidget {
   }
 }
 
-class _LegendChip extends StatelessWidget {
-  final String label;
+class _BadgeStyle {
   final Color background;
   final Color text;
   final Color border;
 
-  const _LegendChip({
-    required this.label,
+  const _BadgeStyle({
     required this.background,
     required this.text,
     required this.border,
   });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: border),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: text,
-        ),
-      ),
-    );
-  }
 }
 
-class _AmountStyle {
-  final Color background;
-  final Color text;
-  final Color border;
-
-  const _AmountStyle({
-    required this.background,
-    required this.text,
-    required this.border,
-  });
+class _CalendarPalette {
+  static const surface = Color(0xFF18212C);
+  static const cardBorder = Color(0xFF253140);
+  static const textSecondary = Color(0xFF9AA8B7);
+  static const info = Color(0xFF67B7FF);
 }

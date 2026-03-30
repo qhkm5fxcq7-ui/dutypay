@@ -4,7 +4,7 @@ import 'models/shift.dart';
 import 'models/user_pay_profile.dart';
 
 class QuickAddShiftPage extends StatefulWidget {
-  final ValueChanged<Shift> onAdd;
+  final ValueChanged<dynamic> onAdd;
   final UserPayProfile? rates;
   final Shift? initialShift;
   final DateTime? initialDate;
@@ -22,6 +22,24 @@ class QuickAddShiftPage extends StatefulWidget {
 }
 
 class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
+  String _normalizedAbsenceForSave(String value) {
+  switch (value.trim().toLowerCase()) {
+    case 'malattia':
+    case 'mal':
+    case 'c.s.':
+    case 'c.s':
+      return 'C.S.';
+    case 'ferie':
+    case 'c.o.':
+    case 'c.o':
+      return 'C.O.';
+    case 'riposo':
+    case 'rip':
+      return 'RIP';
+    default:
+      return value;
+  }
+}
   static const List<String> _orderPublicOptions = [
     'Nessuno',
     'In sede',
@@ -46,6 +64,7 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
     TimeOfDay(hour: 14, minute: 0),
     TimeOfDay(hour: 18, minute: 0),
     TimeOfDay(hour: 19, minute: 0),
+    TimeOfDay(hour: 23, minute: 0),
   ];
 
   late final TextEditingController _descriptionController;
@@ -53,7 +72,11 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
   late final TextEditingController _manualExtraLabelController;
   late final TextEditingController _noteController;
 
-  late DateTime _selectedDate;
+  late DateTime _serviceDate;
+  late DateTime _realStartDate;
+  late DateTime _absenceEndDate;
+
+  bool _multiDayAbsence = false;
   late String _selectedOrderPublic;
   late String _selectedAbsence;
   late bool _externalService;
@@ -62,55 +85,101 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
   late TimeOfDay _startTime;
   late TimeOfDay _endTime;
 
+  bool _isSaving = false;
+
+  bool _includeGenereDiConforto = false;
+  bool _includeTicketPasto = false;
+
   bool get _isEditing => widget.initialShift != null;
+  bool get _hasAbsence => _selectedAbsence != 'Nessuna';
+  bool get _startIsPreviousDay => !_isSameDay(_realStartDate, _serviceDate);
+
+  bool get _absenceNeedsCustomDescription =>
+      _selectedAbsence == 'Permesso' || _selectedAbsence == 'Altro';
+
+  UserPayProfile get _profile => widget.rates ?? UserPayProfile.defaultProfile();
+
+  double get _genereDiConfortoRate => _profile.genereDiConfortoRate;
+  double get _ticketPastoRate => _profile.ticketPastoRate;
 
   @override
   void initState() {
     super.initState();
 
-    final baseStart = widget.initialShift?.start ?? widget.initialDate ?? DateTime.now();
-    final baseEnd = widget.initialShift?.end ??
-        baseStart.add(const Duration(hours: 6));
+    final baseServiceDate =
+        widget.initialShift?.serviceDate ?? widget.initialDate ?? DateTime.now();
+
+    final baseStart = widget.initialShift?.start ?? baseServiceDate;
+    final baseEnd =
+        widget.initialShift?.end ?? baseStart.add(const Duration(hours: 6));
+
+    final initialShift = widget.initialShift;
+    final initialManualLabel = initialShift?.manualExtraLabel ?? '';
+    final initialManualAmount = initialShift?.manualExtraAmount ?? 0.0;
+
+    final hadGenere = _containsGenereDiConforto(initialManualLabel);
+    final hadTicket = _containsTicketPasto(initialManualLabel);
+
+    final extractedAutoAmount =
+        (hadGenere ? _genereDiConfortoRate : 0.0) +
+            (hadTicket ? _ticketPastoRate : 0.0);
+
+    final cleanedManualAmount = (initialManualAmount - extractedAutoAmount) < 0
+        ? 0.0
+        : (initialManualAmount - extractedAutoAmount);
+
+    final cleanedManualLabel = _stripAutoLabels(initialManualLabel);
 
     _descriptionController = TextEditingController(
-      text: widget.initialShift?.description ?? '',
+      text: initialShift?.description ?? '',
     );
 
     _manualExtraAmountController = TextEditingController(
-      text: widget.initialShift != null &&
-              widget.initialShift!.manualExtraAmount > 0
-          ? widget.initialShift!.manualExtraAmount.toStringAsFixed(2)
-          : '',
+      text: cleanedManualAmount > 0 ? cleanedManualAmount.toStringAsFixed(2) : '',
     );
 
     _manualExtraLabelController = TextEditingController(
-      text: widget.initialShift?.manualExtraLabel ?? '',
+      text: cleanedManualLabel,
     );
 
     _noteController = TextEditingController(
-      text: widget.initialShift?.note ?? '',
+      text: initialShift?.note ?? '',
     );
 
-    _selectedDate = DateTime(baseStart.year, baseStart.month, baseStart.day);
+    _serviceDate = _normalizeDate(baseServiceDate);
+    _realStartDate = _normalizeDate(baseStart);
+    _absenceEndDate = _serviceDate;
+
     _startTime = TimeOfDay(hour: baseStart.hour, minute: baseStart.minute);
     _endTime = TimeOfDay(hour: baseEnd.hour, minute: baseEnd.minute);
 
-    _selectedOrderPublic = widget.initialShift?.orderPublic ?? 'Nessuno';
+    _selectedOrderPublic = initialShift?.orderPublic ?? 'Nessuno';
     if (!_orderPublicOptions.contains(_selectedOrderPublic)) {
       _selectedOrderPublic = 'Nessuno';
     }
 
-    _selectedAbsence = widget.initialShift?.absence ?? 'Nessuna';
+    _selectedAbsence = initialShift?.absence ?? 'Nessuna';
     if (!_absenceOptions.contains(_selectedAbsence)) {
       _selectedAbsence = 'Altro';
     }
 
-    _externalService = widget.initialShift?.externalService ?? false;
+    _externalService = initialShift?.externalService ?? false;
 
-    _showAdvanced = widget.initialShift != null &&
-        (widget.initialShift!.manualExtraAmount > 0 ||
-            widget.initialShift!.manualExtraLabel.trim().isNotEmpty ||
-            widget.initialShift!.note.trim().isNotEmpty);
+    _includeGenereDiConforto = hadGenere;
+    _includeTicketPasto = hadTicket;
+
+    _showAdvanced = initialShift != null &&
+        (cleanedManualAmount > 0 ||
+            cleanedManualLabel.trim().isNotEmpty ||
+            initialShift.note.trim().isNotEmpty);
+
+    if (_hasAbsence) {
+      _applyAbsenceConstraints();
+      if (!_absenceNeedsCustomDescription &&
+          _descriptionController.text.trim().isEmpty) {
+        _descriptionController.text = _defaultAbsenceDescription(_selectedAbsence);
+      }
+    }
   }
 
   @override
@@ -122,8 +191,41 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
     super.dispose();
   }
 
+  bool _containsGenereDiConforto(String label) {
+    return label.toLowerCase().contains('genere di conforto');
+  }
+
+  bool _containsTicketPasto(String label) {
+    return label.toLowerCase().contains('ticket pasto');
+  }
+
+  String _stripAutoLabels(String label) {
+    if (label.trim().isEmpty) return '';
+
+    final parts = label
+        .split('•')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .where(
+          (e) =>
+              e.toLowerCase() != 'genere di conforto' &&
+              e.toLowerCase() != 'ticket pasto',
+        )
+        .toList();
+
+    return parts.join(' • ');
+  }
+
   double _parseDouble(String value) {
     return double.tryParse(value.trim().replaceAll(',', '.')) ?? 0.0;
+  }
+
+  DateTime _normalizeDate(DateTime date) {
+    return DateTime(date.year, date.month, date.day);
+  }
+
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
   String _formatDate(DateTime date) {
@@ -139,16 +241,16 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
     return '$hh:$mm';
   }
 
-  String _formatTimeRange() {
-    return '${_formatTimeOfDay(_startTime)} - ${_formatTimeOfDay(_endTime)}';
-  }
-
   String _formatDuration(double hours) {
     final totalMinutes = (hours * 60).round();
     final h = totalMinutes ~/ 60;
     final m = totalMinutes % 60;
     if (m == 0) return '${h}h';
     return '${h}h ${m}m';
+  }
+
+  String _formatCurrency(double value) {
+    return '€ ${value.toStringAsFixed(2)}';
   }
 
   DateTime _combine(DateTime date, TimeOfDay time) {
@@ -170,9 +272,108 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
     );
   }
 
+  String _defaultAbsenceDescription(String absence) {
+    switch (absence) {
+      case 'Ferie':
+        return 'Ferie';
+      case 'Malattia':
+        return 'Malattia';
+      case 'Riposo':
+        return 'Riposo';
+      case 'Permesso':
+        return 'Permesso';
+      case 'Altro':
+        return 'Altro';
+      default:
+        return '';
+    }
+  }
+
+  void _applyAbsenceConstraints() {
+    _selectedOrderPublic = 'Nessuno';
+    _externalService = false;
+    _manualExtraAmountController.text = '';
+    _manualExtraLabelController.text = '';
+    _includeGenereDiConforto = false;
+    _includeTicketPasto = false;
+
+    if (_absenceEndDate.isBefore(_serviceDate)) {
+      _absenceEndDate = _serviceDate;
+    }
+
+    _realStartDate = _serviceDate;
+    _startTime = const TimeOfDay(hour: 0, minute: 0);
+    _endTime = const TimeOfDay(hour: 0, minute: 0);
+
+    if (!_absenceNeedsCustomDescription) {
+      _descriptionController.text = _defaultAbsenceDescription(_selectedAbsence);
+    }
+  }
+
+  double _autoMealAndComfortAmount() {
+    if (_hasAbsence) return 0.0;
+
+    double total = 0.0;
+
+    if (_includeGenereDiConforto) {
+      total += _genereDiConfortoRate;
+    }
+
+    if (_includeTicketPasto) {
+      total += _ticketPastoRate;
+    }
+
+    return total;
+  }
+
+  String _autoMealAndComfortLabel() {
+    final labels = <String>[];
+
+    if (_includeGenereDiConforto) {
+      labels.add('Genere di conforto');
+    }
+
+    if (_includeTicketPasto) {
+      labels.add('Ticket pasto');
+    }
+
+    return labels.join(' • ');
+  }
+
   Shift _buildShiftPreview() {
-    final start = _combine(_selectedDate, _startTime);
-    var end = _combine(_selectedDate, _endTime);
+    final autoAmount = _autoMealAndComfortAmount();
+    final manualAmount = _parseDouble(_manualExtraAmountController.text);
+    final totalManual = manualAmount + autoAmount;
+
+    final autoLabel = _autoMealAndComfortLabel();
+    final manualLabel = _manualExtraLabelController.text.trim();
+
+    final finalLabel = [
+      if (autoLabel.isNotEmpty) autoLabel,
+      if (manualLabel.isNotEmpty) manualLabel,
+    ].join(' • ');
+
+    if (_hasAbsence) {
+      final description = _descriptionController.text.trim().isEmpty
+          ? _defaultAbsenceDescription(_selectedAbsence)
+          : _descriptionController.text.trim();
+
+      return Shift(
+        description: description,
+        start: DateTime(_serviceDate.year, _serviceDate.month, _serviceDate.day),
+        end: DateTime(_serviceDate.year, _serviceDate.month, _serviceDate.day),
+        serviceDate: _serviceDate,
+        orderPublic: 'Nessuno',
+        externalService: false,
+        absence: _normalizedAbsenceForSave(_selectedAbsence),
+        manualExtraAmount: 0,
+        manualExtraLabel: '',
+        note: _noteController.text.trim(),
+      );
+    }
+
+    final start = _combine(_realStartDate, _startTime);
+    var end = _combine(_serviceDate, _endTime);
 
     if (!end.isAfter(start)) {
       end = end.add(const Duration(days: 1));
@@ -182,28 +383,123 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
       description: _descriptionController.text.trim(),
       start: start,
       end: end,
+      serviceDate: _serviceDate,
       orderPublic: _selectedOrderPublic,
       externalService: _externalService,
-      absence: _selectedAbsence,
-      manualExtraAmount: _parseDouble(_manualExtraAmountController.text),
-      manualExtraLabel: _manualExtraLabelController.text.trim(),
+      absence: _normalizedAbsenceForSave(_selectedAbsence),
+      manualExtraAmount: totalManual,
+      manualExtraLabel: finalLabel,
       note: _noteController.text.trim(),
     );
   }
 
-  Future<void> _pickDate() async {
+  Future<void> _pickServiceDate() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: _selectedDate,
+      initialDate: _serviceDate,
       firstDate: DateTime(DateTime.now().year - 2),
       lastDate: DateTime(DateTime.now().year + 3),
       locale: const Locale('it'),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: _QuickAddPalette.primary,
+              secondary: _QuickAddPalette.info,
+              surface: _QuickAddPalette.card,
+            ),
+            dialogTheme: DialogThemeData(
+              backgroundColor: _QuickAddPalette.card,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
 
     if (picked == null) return;
 
     setState(() {
-      _selectedDate = DateTime(picked.year, picked.month, picked.day);
+      _serviceDate = _normalizeDate(picked);
+
+      if (!_startIsPreviousDay || _hasAbsence) {
+        _realStartDate = _serviceDate;
+      }
+
+      if (_absenceEndDate.isBefore(_serviceDate)) {
+        _absenceEndDate = _serviceDate;
+      }
+    });
+  }
+
+  Future<void> _pickRealStartDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _realStartDate,
+      firstDate: DateTime(DateTime.now().year - 2),
+      lastDate: DateTime(DateTime.now().year + 3),
+      locale: const Locale('it'),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: _QuickAddPalette.primary,
+              secondary: _QuickAddPalette.info,
+              surface: _QuickAddPalette.card,
+            ),
+            dialogTheme: DialogThemeData(
+              backgroundColor: _QuickAddPalette.card,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked == null) return;
+
+    setState(() {
+      _realStartDate = _normalizeDate(picked);
+    });
+  }
+
+  Future<void> _pickAbsenceEndDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _absenceEndDate,
+      firstDate: _serviceDate,
+      lastDate: DateTime(DateTime.now().year + 3),
+      locale: const Locale('it'),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: _QuickAddPalette.primary,
+              secondary: _QuickAddPalette.info,
+              surface: _QuickAddPalette.card,
+            ),
+            dialogTheme: DialogThemeData(
+              backgroundColor: _QuickAddPalette.card,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked == null) return;
+
+    setState(() {
+      _absenceEndDate = _normalizeDate(picked);
     });
   }
 
@@ -218,6 +514,27 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
     final picked = await showTimePicker(
       context: context,
       initialTime: _startTime,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: _QuickAddPalette.primary,
+              secondary: _QuickAddPalette.info,
+              surface: _QuickAddPalette.card,
+            ),
+            timePickerTheme: TimePickerThemeData(
+              backgroundColor: _QuickAddPalette.card,
+              hourMinuteShape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+              dayPeriodShape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
 
     if (picked == null) return;
@@ -228,6 +545,27 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
     final picked = await showTimePicker(
       context: context,
       initialTime: _endTime,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: _QuickAddPalette.primary,
+              secondary: _QuickAddPalette.info,
+              surface: _QuickAddPalette.card,
+            ),
+            timePickerTheme: TimePickerThemeData(
+              backgroundColor: _QuickAddPalette.card,
+              hourMinuteShape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+              dayPeriodShape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
 
     if (picked == null) return;
@@ -240,57 +578,84 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
   Future<void> _openStartTimeSheet() async {
     await showModalBottomSheet<void>(
       context: context,
-      backgroundColor: const Color(0xFF131820),
+      backgroundColor: _QuickAddPalette.card,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder: (context) {
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                Container(
+                  width: 42,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+                const SizedBox(height: 18),
                 const Text(
                   'Seleziona ora inizio',
                   style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 18),
                 Wrap(
                   spacing: 10,
                   runSpacing: 10,
                   children: _quickTimes.map((time) {
-                    final isSelected =
-                        time.hour == _startTime.hour &&
+                    final isSelected = time.hour == _startTime.hour &&
                         time.minute == _startTime.minute;
 
-                    return ElevatedButton(
-                      onPressed: () {
+                    return InkWell(
+                      onTap: () {
                         _setStartTime(time);
                         Navigator.pop(context);
                       },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: isSelected
-                            ? const Color(0xFF22C55E)
-                            : const Color(0xFF1A1F2B),
-                        foregroundColor: isSelected ? Colors.black : Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? _QuickAddPalette.primary
+                              : _QuickAddPalette.surface,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isSelected
+                                ? _QuickAddPalette.primary
+                                : _QuickAddPalette.cardBorder,
+                          ),
+                        ),
+                        child: Text(
+                          _formatTimeOfDay(time),
+                          style: TextStyle(
+                            color: isSelected ? Colors.black : Colors.white,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
                       ),
-                      child: Text(_formatTimeOfDay(time)),
                     );
                   }).toList(),
                 ),
                 const SizedBox(height: 18),
                 SizedBox(
                   width: double.infinity,
-                  child: OutlinedButton(
+                  child: OutlinedButton.icon(
                     onPressed: () async {
                       Navigator.pop(context);
                       await _pickCustomStartTime();
                     },
-                    child: const Text('Orario personalizzato'),
+                    icon: const Icon(Icons.schedule_rounded),
+                    label: const Text('Orario personalizzato'),
                   ),
                 ),
               ],
@@ -301,26 +666,76 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
     );
   }
 
-  Widget _card(Widget child) {
+  Widget _sectionCard(Widget child) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFF131820),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white10),
+        color: _QuickAddPalette.card,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: _QuickAddPalette.cardBorder),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.16),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: child,
     );
   }
 
-  Widget _sectionTitle(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 15,
-        fontWeight: FontWeight.w700,
-        color: Colors.white,
-      ),
+  Widget _sectionHeader({
+    required String title,
+    required String subtitle,
+    IconData? icon,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (icon != null) ...[
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: _QuickAddPalette.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: _QuickAddPalette.cardBorder),
+            ),
+            child: Icon(
+              icon,
+              size: 20,
+              color: _QuickAddPalette.info,
+            ),
+          ),
+          const SizedBox(width: 12),
+        ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.2,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  fontSize: 13.2,
+                  color: _QuickAddPalette.textSecondary,
+                  height: 1.45,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -329,43 +744,48 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
     required String value,
     required VoidCallback onTap,
     IconData icon = Icons.chevron_right_rounded,
+    bool enabled = true,
   }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1A1F2B),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white10),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      color: Colors.white54,
-                      fontSize: 12,
+    return Opacity(
+      opacity: enabled ? 1 : 0.46,
+      child: InkWell(
+        onTap: enabled ? onTap : null,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+          decoration: BoxDecoration(
+            color: _QuickAddPalette.surface,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: _QuickAddPalette.cardBorder),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: const TextStyle(
+                        color: _QuickAddPalette.textSecondary,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    value,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
+                    const SizedBox(height: 5),
+                    Text(
+                      value,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            Icon(icon, color: Colors.white54),
-          ],
+              Icon(icon, color: _QuickAddPalette.textSecondary),
+            ],
+          ),
         ),
       ),
     );
@@ -373,7 +793,7 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
 
   Widget _buildBreakdownRow(String label, double amount) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -381,18 +801,19 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
             child: Text(
               label,
               style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 13,
+                color: _QuickAddPalette.textSecondary,
+                fontSize: 13.4,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
           const SizedBox(width: 12),
           Text(
-            '€ ${amount.toStringAsFixed(2)}',
+            _formatCurrency(amount),
             style: const TextStyle(
-              color: Color(0xFF22C55E),
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
+              color: _QuickAddPalette.primary,
+              fontSize: 13.4,
+              fontWeight: FontWeight.w800,
             ),
           ),
         ],
@@ -400,19 +821,101 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
     );
   }
 
-  void _save() {
-    final shift = _buildShiftPreview();
+  String? _validateBeforeSave() {
+    final description = _descriptionController.text.trim();
+    final manualExtra = _parseDouble(_manualExtraAmountController.text);
 
-    if (shift.description.trim().isEmpty && shift.absence == 'Nessuna') {
+    if (manualExtra < 0) {
+      return 'L’importo extra non può essere negativo';
+    }
+
+    if (_hasAbsence) {
+      if (_absenceNeedsCustomDescription && description.isEmpty) {
+        return 'Inserisci una descrizione per l’assenza';
+      }
+      if (_multiDayAbsence && _absenceEndDate.isBefore(_serviceDate)) {
+        return 'La data finale dell’assenza non può essere prima di quella iniziale';
+      }
+      return null;
+    }
+
+    if (description.isEmpty) {
+      return 'Inserisci una descrizione del servizio';
+    }
+
+    final start = _combine(_realStartDate, _startTime);
+    var end = _combine(_serviceDate, _endTime);
+    if (!end.isAfter(start)) {
+      end = end.add(const Duration(days: 1));
+    }
+
+    final duration = end.difference(start).inMinutes / 60.0;
+
+    if (duration <= 0) {
+      return 'La durata del turno non è valida';
+    }
+
+    if (duration > 24) {
+      return 'Il turno supera 24 ore: controlla date e orari';
+    }
+
+    return null;
+  }
+
+  Future<void> _save() async {
+    if (_isSaving) return;
+
+    final error = _validateBeforeSave();
+    if (error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Inserisci una descrizione del servizio'),
-        ),
+        SnackBar(content: Text(error)),
       );
       return;
     }
 
-    widget.onAdd(shift);
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      final shift = _buildShiftPreview();
+
+      if (_multiDayAbsence && _hasAbsence) {
+        final shifts = <Shift>[];
+        DateTime current = _serviceDate;
+
+        while (!current.isAfter(_absenceEndDate)) {
+          shifts.add(
+            Shift(
+              description: shift.description,
+              start: DateTime(current.year, current.month, current.day, 0, 0),
+              end: DateTime(current.year, current.month, current.day, 0, 0),
+              serviceDate: current,
+              orderPublic: 'Nessuno',
+              externalService: false,
+              absence: _selectedAbsence,
+              manualExtraAmount: 0,
+              manualExtraLabel: '',
+              note: shift.note,
+            ),
+          );
+
+          current = current.add(const Duration(days: 1));
+        }
+
+        if (!mounted) return;
+        Navigator.of(context).pop(shifts);
+        return;
+      }
+
+      widget.onAdd(shift);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
   }
 
   @override
@@ -422,259 +925,648 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
     final total = previewShift.getTotalAmount(widget.rates);
     final workedHours = previewShift.workedHours;
     final overtimeHours = previewShift.overtimeHours;
+    final autoExtra = _autoMealAndComfortAmount();
 
     return Scaffold(
       appBar: AppBar(
         title: Text(_isEditing ? 'Modifica turno' : 'Aggiungi turno'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
       ),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _card(
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Totale stimato turno',
-                    style: TextStyle(color: Colors.white70),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    '€ ${total.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF22C55E),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Durata: ${_formatDuration(workedHours)}',
-                    style: const TextStyle(
-                      color: Colors.white60,
-                      fontSize: 13,
-                    ),
-                  ),
-                  if (overtimeHours > 0) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      'Straordinario stimato: ${overtimeHours.toStringAsFixed(1)}h',
-                      style: const TextStyle(
-                        color: Colors.white60,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            _card(
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _sectionTitle('Dettagli servizio'),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: _descriptionController,
-                    textCapitalization: TextCapitalization.sentences,
-                    decoration: const InputDecoration(
-                      labelText: 'Descrizione lavoro / servizio',
-                      hintText: 'Es. Volante, Ordine Pubblico, Ufficio',
-                    ),
-                    onChanged: (_) => setState(() {}),
-                  ),
-                  const SizedBox(height: 12),
-                  _pickerTile(
-                    label: 'Data',
-                    value: _formatDate(_selectedDate),
-                    onTap: _pickDate,
-                    icon: Icons.calendar_month_rounded,
-                  ),
-                  const SizedBox(height: 12),
-                  _pickerTile(
-                    label: 'Ora inizio',
-                    value: _formatTimeOfDay(_startTime),
-                    onTap: _openStartTimeSheet,
-                    icon: Icons.flash_on_rounded,
-                  ),
-                  const SizedBox(height: 12),
-                  _pickerTile(
-                    label: 'Ora fine',
-                    value: _formatTimeOfDay(_endTime),
-                    onTap: _pickEndTime,
-                    icon: Icons.access_time_rounded,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            _card(
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _sectionTitle('Indennità e condizioni'),
-                  const SizedBox(height: 14),
-                  DropdownButtonFormField<String>(
-                    value: _selectedOrderPublic,
-                    decoration: const InputDecoration(
-                      labelText: 'Ordine pubblico',
-                    ),
-                    items: _orderPublicOptions
-                        .map(
-                          (item) => DropdownMenuItem<String>(
-                            value: item,
-                            child: Text(item),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setState(() {
-                        _selectedOrderPublic = value;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  SwitchListTile.adaptive(
-                    value: _externalService,
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Servizio esterno'),
-                    subtitle: const Text(
-                      'Applica l’indennità servizi esterni quando prevista',
-                      style: TextStyle(color: Colors.white60),
-                    ),
-                    onChanged: (value) {
-                      setState(() {
-                        _externalService = value;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 8),
-                  DropdownButtonFormField<String>(
-                    value: _selectedAbsence,
-                    decoration: const InputDecoration(
-                      labelText: 'Assenza',
-                    ),
-                    items: _absenceOptions
-                        .map(
-                          (item) => DropdownMenuItem<String>(
-                            value: item,
-                            child: Text(item),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setState(() {
-                        _selectedAbsence = value;
-                      });
-                    },
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            GestureDetector(
-              onTap: () {
-                setState(() {
-                  _showAdvanced = !_showAdvanced;
-                });
-              },
-              child: Text(
-                _showAdvanced ? '− Opzioni avanzate' : '+ Opzioni avanzate',
-                style: const TextStyle(
-                  color: Colors.white60,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            if (_showAdvanced) ...[
-              const SizedBox(height: 12),
-              _card(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              _QuickAddPalette.background,
+              _QuickAddPalette.backgroundSoft,
+            ],
+          ),
+        ),
+        child: SafeArea(
+          top: false,
+          bottom: false,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(18, 10, 18, 28),
+            children: [
+              _sectionCard(
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _sectionTitle('Extra manuali'),
-                    const SizedBox(height: 14),
-                    TextField(
-                      controller: _manualExtraAmountController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
+                    const Text(
+                      'Totale stimato turno',
+                      style: TextStyle(
+                        color: _QuickAddPalette.textSecondary,
+                        fontSize: 13.2,
+                        fontWeight: FontWeight.w600,
                       ),
-                      decoration: const InputDecoration(
-                        labelText: 'Importo extra manuale',
-                        hintText: 'Es. 12,50',
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _formatCurrency(total),
+                      style: const TextStyle(
+                        fontSize: 34,
+                        height: 1,
+                        fontWeight: FontWeight.w900,
+                        color: _QuickAddPalette.primary,
+                        letterSpacing: -1.0,
                       ),
-                      onChanged: (_) => setState(() {}),
                     ),
                     const SizedBox(height: 12),
-                    TextField(
-                      controller: _manualExtraLabelController,
-                      textCapitalization: TextCapitalization.sentences,
-                      decoration: const InputDecoration(
-                        labelText: 'Etichetta extra',
-                        hintText: 'Es. Reperibilità, Missione, Recupero',
-                      ),
-                      onChanged: (_) => setState(() {}),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _noteController,
-                      minLines: 2,
-                      maxLines: 4,
-                      textCapitalization: TextCapitalization.sentences,
-                      decoration: const InputDecoration(
-                        labelText: 'Note',
-                        hintText: 'Annotazioni interne sul turno',
-                      ),
-                      onChanged: (_) => setState(() {}),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        _TopStatPill(
+                          icon: Icons.event_rounded,
+                          label: 'Giorno servizio',
+                          value: _formatDate(_serviceDate),
+                        ),
+                        _TopStatPill(
+                          icon: _hasAbsence
+                              ? Icons.hotel_rounded
+                              : Icons.schedule_rounded,
+                          label: _hasAbsence ? 'Stato' : 'Durata',
+                          value: _hasAbsence
+                              ? 'Assenza registrata'
+                              : _formatDuration(workedHours),
+                        ),
+                        if (!_hasAbsence && overtimeHours > 0)
+                          _TopStatPill(
+                            icon: Icons.timelapse_rounded,
+                            label: 'Straordinario',
+                            value: '${overtimeHours.toStringAsFixed(1)}h',
+                          ),
+                        if (!_hasAbsence && autoExtra > 0)
+                          _TopStatPill(
+                            icon: Icons.add_card_rounded,
+                            label: 'Extra selezionati',
+                            value: _formatCurrency(autoExtra),
+                          ),
+                      ],
                     ),
                   ],
                 ),
               ),
-            ],
-            const SizedBox(height: 16),
-            _card(
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _sectionTitle('Anteprima calcolo'),
-                  const SizedBox(height: 12),
-                  if (breakdown.isEmpty)
-                    const Text(
-                      'Nessun importo rilevato per questo turno.',
-                      style: TextStyle(
-                        color: Colors.white54,
-                        fontSize: 13,
+              const SizedBox(height: 16),
+
+              _sectionCard(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _sectionHeader(
+                      title: 'Dettagli servizio',
+                      subtitle: 'Compila i dati principali del turno in modo semplice e veloce.',
+                      icon: Icons.badge_outlined,
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _descriptionController,
+                      textCapitalization: TextCapitalization.sentences,
+                      enabled: !_hasAbsence || _absenceNeedsCustomDescription,
+                      decoration: InputDecoration(
+                        labelText: _hasAbsence
+                            ? (_absenceNeedsCustomDescription
+                                ? 'Descrizione assenza'
+                                : 'Descrizione assenza automatica')
+                            : 'Descrizione lavoro / servizio',
+                        hintText: _hasAbsence
+                            ? (_absenceNeedsCustomDescription
+                                ? 'Es. Permesso visite, Altro'
+                                : 'Compilata automaticamente')
+                            : 'Es. Volante, Ordine Pubblico, Ufficio',
                       ),
-                    )
-                  else
-                    ...breakdown.map((item) {
-                      final label = item['label'] as String? ?? '';
-                      final amount =
-                          (item['amount'] as num?)?.toDouble() ?? 0.0;
-                      return _buildBreakdownRow(label, amount);
-                    }),
-                ],
+                      onChanged: (_) => setState(() {}),
+                    ),
+                    const SizedBox(height: 14),
+                    _pickerTile(
+                      label: 'Giorno servizio',
+                      value: _formatDate(_serviceDate),
+                      onTap: _pickServiceDate,
+                      icon: Icons.calendar_month_rounded,
+                    ),
+                    const SizedBox(height: 12),
+                    _pickerTile(
+                      label: 'Data inizio reale',
+                      value: _formatDate(_realStartDate),
+                      onTap: _pickRealStartDate,
+                      icon: Icons.event_rounded,
+                      enabled: !_hasAbsence,
+                    ),
+                    const SizedBox(height: 12),
+                    _pickerTile(
+                      label: 'Ora inizio',
+                      value: _formatTimeOfDay(_startTime),
+                      onTap: _openStartTimeSheet,
+                      icon: Icons.flash_on_rounded,
+                      enabled: !_hasAbsence,
+                    ),
+                    const SizedBox(height: 12),
+                    _pickerTile(
+                      label: 'Ora fine',
+                      value: _formatTimeOfDay(_endTime),
+                      onTap: _pickEndTime,
+                      icon: Icons.access_time_rounded,
+                      enabled: !_hasAbsence,
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 28),
-            ElevatedButton(
-              onPressed: _save,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF22C55E),
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(vertical: 16),
+              const SizedBox(height: 16),
+
+              _sectionCard(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _sectionHeader(
+                      title: 'Indennità e condizioni',
+                      subtitle: 'Attiva solo ciò che spetta davvero per questo servizio.',
+                      icon: Icons.tune_rounded,
+                    ),
+                    const SizedBox(height: 16),
+                    IgnorePointer(
+                      ignoring: _hasAbsence,
+                      child: Opacity(
+                        opacity: _hasAbsence ? 0.46 : 1,
+                        child: DropdownButtonFormField<String>(
+                          value: _selectedOrderPublic,
+                          dropdownColor: _QuickAddPalette.card,
+                          decoration: const InputDecoration(
+                            labelText: 'Ordine pubblico',
+                          ),
+                          items: _orderPublicOptions
+                              .map(
+                                (item) => DropdownMenuItem<String>(
+                                  value: item,
+                                  child: Text(item),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) {
+                            if (value == null) return;
+                            setState(() {
+                              _selectedOrderPublic = value;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    IgnorePointer(
+                      ignoring: _hasAbsence,
+                      child: Opacity(
+                        opacity: _hasAbsence ? 0.46 : 1,
+                        child: _ModernSwitchTile(
+                          value: _externalService,
+                          title: 'Servizio esterno',
+                          subtitle:
+                              'Applica l’indennità servizi esterni quando prevista.',
+                          onChanged: (value) {
+                            setState(() {
+                              _externalService = value;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    IgnorePointer(
+                      ignoring: _hasAbsence,
+                      child: Opacity(
+                        opacity: _hasAbsence ? 0.46 : 1,
+                        child: _ModernSwitchTile(
+                          value: _includeGenereDiConforto,
+                          title:
+                              'Genere di conforto (${_formatCurrency(_genereDiConfortoRate)})',
+                          subtitle: 'Attivalo solo quando spetta davvero.',
+                          onChanged: (value) {
+                            setState(() {
+                              _includeGenereDiConforto = value;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    IgnorePointer(
+                      ignoring: _hasAbsence,
+                      child: Opacity(
+                        opacity: _hasAbsence ? 0.46 : 1,
+                        child: _ModernSwitchTile(
+                          value: _includeTicketPasto,
+                          title:
+                              'Ticket pasto (${_formatCurrency(_ticketPastoRate)})',
+                          subtitle:
+                              'Attivalo solo nei servizi in cui spetta davvero.',
+                          onChanged: (value) {
+                            setState(() {
+                              _includeTicketPasto = value;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    DropdownButtonFormField<String>(
+                      value: _selectedAbsence,
+                      dropdownColor: _QuickAddPalette.card,
+                      decoration: const InputDecoration(
+                        labelText: 'Assenza',
+                      ),
+                      items: _absenceOptions
+                          .map(
+                            (item) => DropdownMenuItem<String>(
+                              value: item,
+                              child: Text(item),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() {
+                          _selectedAbsence = value;
+                          if (_hasAbsence) {
+                            _applyAbsenceConstraints();
+                          } else {
+                            _multiDayAbsence = false;
+                            _absenceEndDate = _serviceDate;
+                            _realStartDate = _serviceDate;
+                            _startTime = const TimeOfDay(hour: 7, minute: 0);
+                            _endTime = const TimeOfDay(hour: 13, minute: 0);
+                            _includeGenereDiConforto = false;
+                            _includeTicketPasto = false;
+                            _descriptionController.text = '';
+                          }
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    if (_hasAbsence) ...[
+                      _ModernSwitchTile(
+                        value: _multiDayAbsence,
+                        title: 'Assenza su più giorni',
+                        subtitle:
+                            'Inserisci un intervallo per ferie, malattia, riposi o permessi.',
+                        onChanged: (value) {
+                          setState(() {
+                            _multiDayAbsence = value;
+                            if (_absenceEndDate.isBefore(_serviceDate)) {
+                              _absenceEndDate = _serviceDate;
+                            }
+                          });
+                        },
+                      ),
+                      if (_multiDayAbsence) ...[
+                        const SizedBox(height: 12),
+                        _pickerTile(
+                          label: 'Data fine assenza',
+                          value: _formatDate(_absenceEndDate),
+                          onTap: _pickAbsenceEndDate,
+                          icon: Icons.event_repeat_rounded,
+                        ),
+                      ],
+                    ],
+                  ],
+                ),
               ),
-              child: Text(_isEditing ? 'Salva modifiche' : 'Salva turno'),
-            ),
-          ],
+              const SizedBox(height: 16),
+
+              InkWell(
+                onTap: () {
+                  setState(() {
+                    _showAdvanced = !_showAdvanced;
+                  });
+                },
+                borderRadius: BorderRadius.circular(18),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _QuickAddPalette.card,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: _QuickAddPalette.cardBorder),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _showAdvanced
+                            ? Icons.remove_circle_outline_rounded
+                            : Icons.add_circle_outline_rounded,
+                        color: _QuickAddPalette.info,
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        _showAdvanced
+                            ? 'Nascondi opzioni avanzate'
+                            : 'Mostra opzioni avanzate',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              if (_showAdvanced) ...[
+                const SizedBox(height: 16),
+                _sectionCard(
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _sectionHeader(
+                        title: 'Extra manuali e note',
+                        subtitle:
+                            'Usa questa sezione solo quando devi aggiungere qualcosa di specifico.',
+                        icon: Icons.edit_note_rounded,
+                      ),
+                      const SizedBox(height: 16),
+                      IgnorePointer(
+                        ignoring: _hasAbsence,
+                        child: Opacity(
+                          opacity: _hasAbsence ? 0.46 : 1,
+                          child: TextField(
+                            controller: _manualExtraAmountController,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            decoration: const InputDecoration(
+                              labelText: 'Importo extra manuale',
+                              hintText: 'Es. 12,50',
+                            ),
+                            onChanged: (_) => setState(() {}),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      IgnorePointer(
+                        ignoring: _hasAbsence,
+                        child: Opacity(
+                          opacity: _hasAbsence ? 0.46 : 1,
+                          child: TextField(
+                            controller: _manualExtraLabelController,
+                            textCapitalization: TextCapitalization.sentences,
+                            decoration: const InputDecoration(
+                              labelText: 'Etichetta extra',
+                              hintText: 'Es. Reperibilità, Missione, Recupero',
+                            ),
+                            onChanged: (_) => setState(() {}),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _noteController,
+                        minLines: 2,
+                        maxLines: 4,
+                        textCapitalization: TextCapitalization.sentences,
+                        decoration: const InputDecoration(
+                          labelText: 'Note',
+                          hintText: 'Annotazioni interne sul turno',
+                        ),
+                        onChanged: (_) => setState(() {}),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 16),
+
+              _sectionCard(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _sectionHeader(
+                      title: 'Anteprima calcolo',
+                      subtitle:
+                          'Qui vedi subito come DutyPay sta leggendo questo turno.',
+                      icon: Icons.analytics_outlined,
+                    ),
+                    const SizedBox(height: 14),
+                    if (breakdown.isEmpty)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: _QuickAddPalette.surface,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: _QuickAddPalette.cardBorder),
+                        ),
+                        child: Text(
+                          _hasAbsence
+                              ? 'Per le assenze non viene calcolato alcun importo extra.'
+                              : 'Nessun importo rilevato per questo turno.',
+                          style: const TextStyle(
+                            color: _QuickAddPalette.textSecondary,
+                            fontSize: 13.4,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      )
+                    else ...[
+                      ...breakdown.map((item) {
+                        final label = item['label'] as String? ?? '';
+                        final amount =
+                            (item['amount'] as num?)?.toDouble() ?? 0.0;
+                        return _buildBreakdownRow(label, amount);
+                      }),
+                      const SizedBox(height: 10),
+                      const Divider(color: _QuickAddPalette.divider, height: 1),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'Totale turno',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            _formatCurrency(total),
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              color: _QuickAddPalette.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 22),
+
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _isSaving ? null : _save,
+                  icon: _isSaving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.black,
+                          ),
+                        )
+                      : Icon(
+                          _isEditing
+                              ? Icons.save_rounded
+                              : Icons.add_task_rounded,
+                        ),
+                  label: Text(
+                    _isSaving
+                        ? 'Salvataggio...'
+                        : (_isEditing ? 'Salva modifiche' : 'Salva turno'),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
+}
+
+class _TopStatPill extends StatelessWidget {
+  const _TopStatPill({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+      decoration: BoxDecoration(
+        color: _QuickAddPalette.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _QuickAddPalette.cardBorder),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 16,
+            color: _QuickAddPalette.info,
+          ),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  color: _QuickAddPalette.textSecondary,
+                  fontSize: 11.8,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 12.8,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ModernSwitchTile extends StatelessWidget {
+  const _ModernSwitchTile({
+    required this.value,
+    required this.title,
+    required this.subtitle,
+    required this.onChanged,
+  });
+
+  final bool value;
+  final String title;
+  final String subtitle;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: _QuickAddPalette.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _QuickAddPalette.cardBorder),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      child: Row(
+        children: [
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(right: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 14.2,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: _QuickAddPalette.textSecondary,
+                      fontSize: 12.8,
+                      height: 1.4,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Switch.adaptive(
+            value: value,
+            onChanged: onChanged,
+            activeColor: _QuickAddPalette.primary,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuickAddPalette {
+  static const background = Color(0xFF0B0F14);
+  static const backgroundSoft = Color(0xFF11161E);
+
+  static const card = Color(0xFF121922);
+  static const surface = Color(0xFF18212C);
+
+  static const cardBorder = Color(0xFF253140);
+  static const divider = Color(0xFF24303E);
+
+  static const textSecondary = Color(0xFF9AA8B7);
+
+  static const primary = Color(0xFF5CE1A8);
+  static const info = Color(0xFF67B7FF);
 }

@@ -12,12 +12,18 @@ class Shift {
   final DateTime start;
   final DateTime end;
 
+  /// Giorno operativo/di competenza da usare per calendario, conteggi e filtri.
+  final DateTime serviceDate;
+
   final String orderPublic;
   final bool externalService;
   final String absence;
 
   final double manualExtraAmount;
   final String manualExtraLabel;
+
+  final bool genereDiConforto;
+  final bool ticketPasto;
 
   final double straordinarioDiurnoHours;
   final double straordinarioNotturnoFestivoHours;
@@ -31,7 +37,6 @@ class Shift {
 
   static const double standardHours = 6.0;
 
-  // Fallback reali osservati dai cedolini
   static const double fallbackOvertimeDayRate = 12.80;
   static const double fallbackOvertimeNightOrHolidayRate = 14.49;
   static const double fallbackOvertimeNightAndHolidayRate = 16.71;
@@ -50,11 +55,14 @@ class Shift {
     String description = '',
     DateTime? start,
     DateTime? end,
+    DateTime? serviceDate,
     String orderPublic = 'Nessuno',
     bool externalService = false,
     String absence = 'Nessuna',
     double manualExtraAmount = 0.0,
     String manualExtraLabel = '',
+    bool genereDiConforto = false,
+    bool ticketPasto = false,
     DateTime? date,
     double? workedHours,
     double straordinarioDiurnoHours = 0.0,
@@ -73,13 +81,16 @@ class Shift {
           Duration(minutes: (resolvedWorkedHours * 60).round()),
         );
 
+    final resolvedServiceDate = _normalizeDate(
+      serviceDate ?? _deriveServiceDate(resolvedStart, resolvedEnd),
+    );
+
     final resolvedOrderPublic = _normalizeOrderPublic(
       orderPublic: orderPublic,
       opServiceType: opServiceType,
     );
 
-    final resolvedExternalService =
-        externalService || servizioEsternoCount > 0;
+    final resolvedExternalService = externalService || servizioEsternoCount > 0;
 
     final resolvedManualExtraAmount =
         manualExtraAmount > 0 ? manualExtraAmount : manualAmount;
@@ -91,11 +102,14 @@ class Shift {
       description: description,
       start: resolvedStart,
       end: resolvedEnd,
+      serviceDate: resolvedServiceDate,
       orderPublic: resolvedOrderPublic,
       externalService: resolvedExternalService,
       absence: absence,
       manualExtraAmount: resolvedManualExtraAmount,
       manualExtraLabel: resolvedManualExtraLabel,
+      genereDiConforto: genereDiConforto,
+      ticketPasto: ticketPasto,
       straordinarioDiurnoHours: straordinarioDiurnoHours,
       straordinarioNotturnoFestivoHours: straordinarioNotturnoFestivoHours,
       notturnoCount: notturnoCount,
@@ -112,11 +126,14 @@ class Shift {
     required this.description,
     required this.start,
     required this.end,
+    required this.serviceDate,
     required this.orderPublic,
     required this.externalService,
     required this.absence,
     required this.manualExtraAmount,
     required this.manualExtraLabel,
+    required this.genereDiConforto,
+    required this.ticketPasto,
     required this.straordinarioDiurnoHours,
     required this.straordinarioNotturnoFestivoHours,
     required this.notturnoCount,
@@ -132,11 +149,14 @@ class Shift {
     String? description,
     DateTime? start,
     DateTime? end,
+    DateTime? serviceDate,
     String? orderPublic,
     bool? externalService,
     String? absence,
     double? manualExtraAmount,
     String? manualExtraLabel,
+    bool? genereDiConforto,
+    bool? ticketPasto,
     double? straordinarioDiurnoHours,
     double? straordinarioNotturnoFestivoHours,
     int? notturnoCount,
@@ -147,15 +167,21 @@ class Shift {
     String? note,
     double? workedHoursOverride,
   }) {
+    final nextStart = start ?? this.start;
+    final nextEnd = end ?? this.end;
+
     return Shift._internal(
       description: description ?? this.description,
-      start: start ?? this.start,
-      end: end ?? this.end,
+      start: nextStart,
+      end: nextEnd,
+      serviceDate: _normalizeDate(serviceDate ?? this.serviceDate),
       orderPublic: orderPublic ?? this.orderPublic,
       externalService: externalService ?? this.externalService,
       absence: absence ?? this.absence,
       manualExtraAmount: manualExtraAmount ?? this.manualExtraAmount,
       manualExtraLabel: manualExtraLabel ?? this.manualExtraLabel,
+      genereDiConforto: genereDiConforto ?? this.genereDiConforto,
+      ticketPasto: ticketPasto ?? this.ticketPasto,
       straordinarioDiurnoHours:
           straordinarioDiurnoHours ?? this.straordinarioDiurnoHours,
       straordinarioNotturnoFestivoHours:
@@ -172,7 +198,7 @@ class Shift {
     );
   }
 
-  DateTime get date => start;
+  DateTime get date => serviceDate;
 
   double get hours {
     final diffMinutes = end.difference(start).inMinutes;
@@ -205,12 +231,12 @@ class Shift {
     return false;
   }
 
-  bool get isSunday => start.weekday == DateTime.sunday;
+  bool get isSunday => serviceDate.weekday == DateTime.sunday;
 
   bool get isSuperHoliday {
     return _matchesAnyDate(
-      start,
-      _superHolidayDates(start.year),
+      serviceDate,
+      _superHolidayDates(serviceDate.year),
     );
   }
 
@@ -295,10 +321,7 @@ class Shift {
   }
 
   double _resolvedOrderPublicInSede(UserPayProfile p) {
-    final raw = _sanitizeRate(
-      p.orderPublicInSede,
-      fallbackOrderPublicInSede,
-    );
+    final raw = _sanitizeRate(p.orderPublicInSede, fallbackOrderPublicInSede);
     if (_isApprox(raw, 6.0)) return fallbackOrderPublicInSede;
     return raw;
   }
@@ -322,11 +345,15 @@ class Shift {
   }
 
   double _resolvedExternalServiceRate(UserPayProfile p) {
-    final raw = _sanitizeRate(
-      p.externalServiceRate,
-      fallbackExternalServiceRate,
-    );
-    return raw;
+    return _sanitizeRate(p.externalServiceRate, fallbackExternalServiceRate);
+  }
+
+  double _resolvedGenereDiConfortoRate(UserPayProfile p) {
+    return _sanitizeRate(p.genereDiConfortoRate, 1.02);
+  }
+
+  double _resolvedTicketPastoRate(UserPayProfile p) {
+    return _sanitizeRate(p.ticketPastoRate, 7.00);
   }
 
   double getOvertimeRate([UserPayProfile? profile]) {
@@ -445,6 +472,18 @@ class Shift {
     return notturnoCount * fallbackNightAllowance;
   }
 
+  double getGenereDiConfortoAmount([UserPayProfile? profile]) {
+    if (hasAbsence || !genereDiConforto) return 0.0;
+    final p = _effectiveProfile(profile);
+    return _resolvedGenereDiConfortoRate(p);
+  }
+
+  double getTicketPastoAmount([UserPayProfile? profile]) {
+    if (hasAbsence || !ticketPasto) return 0.0;
+    final p = _effectiveProfile(profile);
+    return _resolvedTicketPastoRate(p);
+  }
+
   double getManualExtraAmount() {
     if (hasAbsence) return 0.0;
 
@@ -523,6 +562,8 @@ class Shift {
     final specialHolidayAmount = getSpecialHolidayAmount(profile);
     final externalServiceAmount = getExternalServiceAmount(profile);
     final nightAmount = getNightAllowanceAmount(profile);
+    final comfortAmount = getGenereDiConfortoAmount(profile);
+    final mealAmount = getTicketPastoAmount(profile);
     final manual = getManualExtraAmount();
 
     if (orderPublicAmount > 0) {
@@ -574,6 +615,20 @@ class Shift {
         });
       }
 
+      if (comfortAmount > 0) {
+        items.add({
+          'label': 'Genere di conforto',
+          'amount': comfortAmount,
+        });
+      }
+
+      if (mealAmount > 0) {
+        items.add({
+          'label': 'Ticket pasto',
+          'amount': mealAmount,
+        });
+      }
+
       if (manual > 0) {
         items.add({
           'label': effectiveManualExtraLabel,
@@ -620,6 +675,20 @@ class Shift {
       });
     }
 
+    if (comfortAmount > 0) {
+      items.add({
+        'label': 'Genere di conforto',
+        'amount': comfortAmount,
+      });
+    }
+
+    if (mealAmount > 0) {
+      items.add({
+        'label': 'Ticket pasto',
+        'amount': mealAmount,
+      });
+    }
+
     if (manual > 0) {
       items.add({
         'label': effectiveManualExtraLabel,
@@ -653,11 +722,14 @@ class Shift {
       'description': description,
       'start': start.toIso8601String(),
       'end': end.toIso8601String(),
+      'serviceDate': serviceDate.toIso8601String(),
       'orderPublic': orderPublic,
       'externalService': externalService,
       'absence': absence,
       'manualExtraAmount': manualExtraAmount,
       'manualExtraLabel': manualExtraLabel,
+      'genereDiConforto': genereDiConforto,
+      'ticketPasto': ticketPasto,
       'straordinarioDiurnoHours': straordinarioDiurnoHours,
       'straordinarioNotturnoFestivoHours': straordinarioNotturnoFestivoHours,
       'notturnoCount': notturnoCount,
@@ -686,10 +758,15 @@ class Shift {
             ),
           );
 
+    final parsedServiceDate = json['serviceDate'] != null
+        ? _normalizeDate(DateTime.parse(json['serviceDate'] as String))
+        : _normalizeDate(_deriveServiceDate(parsedStart, parsedEnd));
+
     return Shift._internal(
       description: json['description'] as String? ?? '',
       start: parsedStart,
       end: parsedEnd,
+      serviceDate: parsedServiceDate,
       orderPublic: json['orderPublic'] as String? ??
           _normalizeOrderPublic(
             orderPublic: null,
@@ -702,6 +779,8 @@ class Shift {
       absence: json['absence'] as String? ?? 'Nessuna',
       manualExtraAmount: _toDouble(json['manualExtraAmount']),
       manualExtraLabel: json['manualExtraLabel'] as String? ?? '',
+      genereDiConforto: json['genereDiConforto'] as bool? ?? false,
+      ticketPasto: json['ticketPasto'] as bool? ?? false,
       straordinarioDiurnoHours: _toDouble(json['straordinarioDiurnoHours']),
       straordinarioNotturnoFestivoHours:
           _toDouble(json['straordinarioNotturnoFestivoHours']),
@@ -733,6 +812,24 @@ class Shift {
       case OpServiceType.fuoriSedeIntera:
         return 'Pernotto';
     }
+  }
+
+  static DateTime _deriveServiceDate(DateTime start, DateTime end) {
+    final normalizedStart = _normalizeDate(start);
+    final normalizedEnd = _normalizeDate(end);
+
+    final isNightShift =
+        start.hour >= 22 && normalizedEnd.isAfter(normalizedStart);
+
+    if (isNightShift) {
+      return normalizedEnd;
+    }
+
+    return normalizedStart;
+  }
+
+  static DateTime _normalizeDate(DateTime value) {
+    return DateTime(value.year, value.month, value.day);
   }
 
   static double _toDouble(dynamic value) {
@@ -778,6 +875,7 @@ class Shift {
 
     return [
       DateTime(year, 1, 1),
+      DateTime(year, 1, 6),
       easter,
       easterMonday,
       DateTime(year, 5, 1),

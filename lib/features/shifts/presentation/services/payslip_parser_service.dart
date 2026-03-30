@@ -49,10 +49,28 @@ class PayslipParserService {
     _printLongText(text);
     print('================ PDF TEXT END =================');
 
-    return parsePayslipText(
+    final parsed = parsePayslipText(
       filePath: filePath,
       rawText: text,
     );
+
+    print('================ ACCESSORY ENTRIES START =================');
+    for (final e in parsed.accessoryEntries) {
+      print(
+        '[ACC] code=${e.code} | desc=${e.description} | qty=${e.quantity} | unit=${e.unitAmount} | amount=${e.amount} | ref=${e.reference}',
+      );
+    }
+    print('================ ACCESSORY ENTRIES END =================');
+
+    print('================ OPERATIONAL ACCESSORY ENTRIES START =================');
+    for (final e in parsed.operationalAccessoryEntries) {
+      print(
+        '[OP] code=${e.code} | desc=${e.description} | qty=${e.quantity} | unit=${e.unitAmount} | amount=${e.amount} | ref=${e.reference}',
+      );
+    }
+    print('================ OPERATIONAL ACCESSORY ENTRIES END =================');
+
+    return parsed;
   }
 
   PayslipParsedData parsePayslipText({
@@ -68,8 +86,7 @@ class PayslipParserService {
     final lines = _toCleanLines(normalizedText);
     final flatText = _flattenText(normalizedText);
 
-    final monthLabel =
-        _extractMonthLabel(
+    final monthLabel = _extractMonthLabel(
           normalizedText,
           flatText,
           lines,
@@ -79,8 +96,7 @@ class PayslipParserService {
 
     final year = _extractYearFromLabel(monthLabel);
 
-    final cedolinoId =
-        _extractFirstGroup(
+    final cedolinoId = _extractFirstGroup(
           normalizedText,
           [
             RegExp(r'ID\s+CEDOLINO[:\s]+([A-Z0-9]+)', caseSensitive: false),
@@ -96,8 +112,7 @@ class PayslipParserService {
       const ['Parametro:', 'Parametro'],
     );
 
-    final totaleNetto =
-        _extractEuroValueAfterLabels(
+    final totaleNetto = _extractEuroValueAfterLabels(
           normalizedText,
           const ['Totale netto:', 'Totale netto'],
         ) ??
@@ -108,43 +123,37 @@ class PayslipParserService {
       const ['Quinto cedibile:', 'Quinto cedibile'],
     );
 
-    final imponibileAc =
-        _extractEuroValueAfterLabels(
+    final imponibileAc = _extractEuroValueAfterLabels(
           normalizedText,
           const ['Imponibile AC:', 'Imponibile AC'],
         ) ??
         0;
 
-    final irpefAc =
-        _extractEuroValueAfterLabels(
+    final irpefAc = _extractEuroValueAfterLabels(
           normalizedText,
           const ['IRPEF AC:', 'IRPEF AC'],
         ) ??
         0;
 
-    final aliquotaMassima =
-        _extractEuroValueAfterLabels(
+    final aliquotaMassima = _extractEuroValueAfterLabels(
           normalizedText,
           const ['Aliquota massima:', 'Aliquota massima'],
         ) ??
         0;
 
-    final imponibileAp =
-        _extractEuroValueAfterLabels(
+    final imponibileAp = _extractEuroValueAfterLabels(
           normalizedText,
           const ['Imponibile AP:', 'Imponibile AP'],
         ) ??
         0;
 
-    final irpefAp =
-        _extractEuroValueAfterLabels(
+    final irpefAp = _extractEuroValueAfterLabels(
           normalizedText,
           const ['IRPEF AP:', 'IRPEF AP'],
         ) ??
         0;
 
-    final aliquotaMedia =
-        _extractEuroValueAfterLabels(
+    final aliquotaMedia = _extractEuroValueAfterLabels(
           normalizedText,
           const ['Aliquota media:', 'Aliquota media'],
         ) ??
@@ -199,8 +208,9 @@ class PayslipParserService {
     );
 
     final fixedEntries = _extractFixedEntries(flatText);
-    final accessoryEntries = _extractAccessoryEntries(flatText);
-    final deductionEntries = _extractDeductionEntries(flatText);
+    final accessoryBlock = _extractAccessoryBlock(flatText);
+    final accessoryEntries = _extractAccessoryEntries(accessoryBlock);
+    final deductionEntries = _extractDeductionEntries(lines, flatText);
 
     final cleanedInquadramento = _cleanInlineText(inquadramento);
     final cleanedQualifica = _cleanInlineText(qualifica);
@@ -283,6 +293,7 @@ class PayslipParserService {
         effectiveSource.map((item) => item.monthLabel).join(' • ');
 
     return UserPayProfile(
+      monthlyOvertimePayableHoursLimit: 55.0,
       rank: latest.detectedGradeLabel == 'Non rilevato'
           ? defaultProfile.rank
           : latest.detectedGradeLabel,
@@ -301,11 +312,17 @@ class PayslipParserService {
       detectedGradeLabel: latest.detectedGradeLabel,
       detectedBaseSalary: baseSalary,
       averageAccessoryPay: accessoryAverage,
+      historicalAccessoryAvg: null,
+      historicalHoursAvg: null,
+      historicalMonths: effectiveSource.length,
       recurringDeductionsTotal: recurringDeductionsAverage,
       effectiveTaxRate: taxRateAverage > 0
           ? taxRateAverage
           : defaultProfile.effectiveTaxRate,
       sourcePayslips: effectiveSource,
+      annualProductionBonus: defaultProfile.annualProductionBonus,
+      genereDiConfortoRate: defaultProfile.genereDiConfortoRate,
+      ticketPastoRate: defaultProfile.ticketPastoRate,
     );
   }
 
@@ -368,49 +385,155 @@ class PayslipParserService {
     return _dedupeEntries(results);
   }
 
+  String _extractAccessoryBlock(String text) {
+  final marker = 'Assegniaccessori';
+  final markerIndex = text.indexOf(marker);
+
+  if (markerIndex == -1) {
+    return '';
+  }
+
+  final start = markerIndex + marker.length;
+
+  final endMatch = RegExp(
+    r'Ritenute',
+    caseSensitive: false,
+  ).firstMatch(text.substring(start));
+
+  final end = endMatch != null ? start + endMatch.start : text.length;
+
+  return text.substring(start, end).trim();
+}
+
   List<PayslipEntry> _extractAccessoryEntries(String flatText) {
+  final results = <PayslipEntry>[];
+
+  final normalized = flatText.replaceAll('\n', ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+
+  final separated = normalized.replaceAllMapped(
+    RegExp(
+      r'([0-9]{1,3}(?:\.[0-9]{3})*,[0-9]{2})(?=(A01B/[0-9]{4}|[A-Z0-9]{3,6}/[A-Z0-9]{2,4}))',
+      caseSensitive: false,
+    ),
+    (m) => '${m.group(1)}|||',
+  );
+
+  final chunks = separated
+      .split('|||')
+      .map((e) => e.trim())
+      .where((e) => e.isNotEmpty)
+      .toList();
+
+  final rowRegex = RegExp(
+    r'^(A01B/[0-9]{4}|[A-Z0-9]{3,6}/[A-Z0-9]{2,4})'
+    r'(.+?)'
+    r'-Qta\.([0-9.,]+)'
+    r'-Imp\.([0-9.,]+)'
+    r'-Rif\.([0-9]{2}/[0-9]{4})'
+    r'([0-9]{1,3}(?:\.[0-9]{3})*,[0-9]{2})$',
+    caseSensitive: false,
+    dotAll: true,
+  );
+
+  for (final chunk in chunks) {
+    final match = rowRegex.firstMatch(chunk);
+    if (match == null) continue;
+
+    final code = (match.group(1) ?? '').trim();
+    final rawDescription = (match.group(2) ?? '').trim();
+    final quantity = _parseLooseNumber(match.group(3) ?? '');
+    final unitAmount = _parseLooseNumber(match.group(4) ?? '');
+    final reference = (match.group(5) ?? '').trim();
+    final totalAmount = _parseEuro(match.group(6) ?? '');
+
+    if (code.isEmpty || rawDescription.isEmpty) continue;
+    if (quantity <= 0 || unitAmount <= 0 || totalAmount <= 0) continue;
+
+    results.add(
+      PayslipEntry(
+        code: code,
+        description: _normalizeAccessoryDescription(rawDescription),
+        amount: totalAmount,
+        quantity: quantity,
+        unitAmount: unitAmount,
+        reference: reference,
+        sectionType: PayslipSectionType.accessoryCompensation,
+      ),
+    );
+  }
+
+  return _dedupeEntries(results);
+}
+
+  List<PayslipEntry> _extractDeductionEntries(
+    List<String> lines,
+    String flatText,
+  ) {
     final results = <PayslipEntry>[];
 
-    final regex = RegExp(
-      r'([A-Z0-9]{3,6}/[A-Z0-9]{2,4}|A01B/[0-9]{4})'
-      r'(.+?)'
-      r'-Qta\.([0-9.,]+)'
-      r'-Imp\.([0-9.,]+)'
-      r'-Rif\.([0-9/]+)',
+    final buffers = <String>[];
+    String current = '';
+
+    final deductionCodeRegex = RegExp(
+      r'^(800/[A-Z0-9]{2,4})\b',
+      caseSensitive: false,
+    );
+
+    for (final rawLine in lines) {
+      final line = _cleanInlineText(rawLine);
+      if (line.isEmpty) continue;
+
+      final isNewRow = deductionCodeRegex.hasMatch(line);
+
+      if (isNewRow) {
+        if (current.isNotEmpty) {
+          buffers.add(current);
+        }
+        current = line;
+      } else if (current.isNotEmpty) {
+        current = '$current $line';
+      }
+    }
+
+    if (current.isNotEmpty) {
+      buffers.add(current);
+    }
+
+    final lineRegex = RegExp(
+      r'^(800/[A-Z0-9]{2,4})\s+(.+?)\s+([0-9]{1,3}(?:\.[0-9]{3})*,[0-9]{2})$',
       caseSensitive: false,
       dotAll: true,
     );
 
-    for (final match in regex.allMatches(flatText)) {
-      final code = (match.group(1) ?? '').trim();
-      final rawDescription = (match.group(2) ?? '').trim();
-      final quantity = _parseLooseNumber(match.group(3) ?? '');
-      final unitAmount = _parseLooseNumber(match.group(4) ?? '');
-      final reference = (match.group(5) ?? '').trim();
+    for (final buffer in buffers) {
+      final compact = _cleanInlineText(buffer);
+      final match = lineRegex.firstMatch(compact);
+      if (match == null) continue;
 
-      if (code.isEmpty || rawDescription.isEmpty) continue;
-      if (quantity <= 0 || unitAmount <= 0) continue;
+      final code = (match.group(1) ?? '').trim();
+      var description = (match.group(2) ?? '').trim();
+      final amount = _parseEuro(match.group(3) ?? '');
+
+      if (code.isEmpty || description.isEmpty || amount <= 0) continue;
+
+      description = _normalizeDeductionDescription(description);
 
       results.add(
         PayslipEntry(
           code: code,
-          description: _normalizeAccessoryDescription(rawDescription),
-          amount: quantity * unitAmount,
-          quantity: quantity,
-          unitAmount: unitAmount,
-          reference: reference.isEmpty ? null : reference,
-          sectionType: PayslipSectionType.accessoryCompensation,
+          description: description,
+          amount: amount,
+          sectionType: PayslipSectionType.deduction,
+          isRecurring: _isRecurringDescription(description),
         ),
       );
     }
 
-    return _dedupeEntries(results);
-  }
+    if (results.isNotEmpty) {
+      return _dedupeEntries(results);
+    }
 
-  List<PayslipEntry> _extractDeductionEntries(String flatText) {
-    final results = <PayslipEntry>[];
-
-    final regex = RegExp(
+    final fallbackRegex = RegExp(
       r'(800/[A-Z0-9]{2,4})'
       r'(.+?)'
       r'([0-9]{1,3}(?:\.[0-9]{3})*,[0-9]{2})',
@@ -418,7 +541,7 @@ class PayslipParserService {
       dotAll: true,
     );
 
-    for (final match in regex.allMatches(flatText)) {
+    for (final match in fallbackRegex.allMatches(flatText)) {
       final code = (match.group(1) ?? '').trim();
       var description = (match.group(2) ?? '').trim();
       final amount = _parseEuro(match.group(3) ?? '');
@@ -505,10 +628,7 @@ class PayslipParserService {
   }
 
   String _flattenText(String text) {
-    return text
-        .replaceAll('\n', ' ')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
+    return text.replaceAll('\n', ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 
   String _prepareTextForParsing(String rawText) {
@@ -729,13 +849,37 @@ class PayslipParserService {
   }
 
   double _parseEuro(String raw) {
-    final normalized = raw.replaceAll('.', '').replaceAll(',', '.').trim();
-    return double.tryParse(normalized) ?? 0;
+    final value = raw.trim();
+
+    if (value.contains(',') && value.contains('.')) {
+      return double.tryParse(
+            value.replaceAll('.', '').replaceAll(',', '.'),
+          ) ??
+          0;
+    }
+
+    if (value.contains(',')) {
+      return double.tryParse(value.replaceAll(',', '.')) ?? 0;
+    }
+
+    return double.tryParse(value) ?? 0;
   }
 
   double _parseLooseNumber(String raw) {
-    final normalized = raw.replaceAll('.', '').replaceAll(',', '.').trim();
-    return double.tryParse(normalized) ?? 0;
+    final value = raw.trim();
+
+    if (value.contains(',') && value.contains('.')) {
+      return double.tryParse(
+            value.replaceAll('.', '').replaceAll(',', '.'),
+          ) ??
+          0;
+    }
+
+    if (value.contains(',')) {
+      return double.tryParse(value.replaceAll(',', '.')) ?? 0;
+    }
+
+    return double.tryParse(value) ?? 0;
   }
 
   double _average(List<double> values) {

@@ -26,35 +26,52 @@ class ShiftDerivedRates {
     this.isEsternoReal = false,
   });
 
-  Map<String, double> toMap() {
+  Map<String, dynamic> toMap() {
     return {
       'straordinario': straordinarioDiurnoOrario,
       'notturno': indennitaNotturnaPerTurno,
       'festivo': indennitaFestivaPerTurno,
       'ordine_pubblico': ordinePubblicoInSedePerTurno,
       'esterno': servizioEsternoPerTurno,
+      'is_straordinario_real': isStraordinarioReal,
+      'is_notturno_real': isNotturnoReal,
+      'is_festivo_real': isFestivoReal,
+      'is_op_real': isOPReal,
+      'is_esterno_real': isEsternoReal,
     };
   }
 
-  factory ShiftDerivedRates.fromMap(Map<String, double> map) {
-    final hasStraordinario = map.containsKey('straordinario');
-    final hasNotturno = map.containsKey('notturno');
-    final hasFestivo = map.containsKey('festivo');
-    final hasOP = map.containsKey('ordine_pubblico');
-    final hasEsterno = map.containsKey('esterno');
-
+  factory ShiftDerivedRates.fromMap(Map<String, dynamic> map) {
     return ShiftDerivedRates(
-      straordinarioDiurnoOrario: map['straordinario'] ?? 12.0,
-      indennitaNotturnaPerTurno: map['notturno'] ?? 6.0,
-      indennitaFestivaPerTurno: map['festivo'] ?? 8.0,
-      ordinePubblicoInSedePerTurno: map['ordine_pubblico'] ?? 6.0,
-      servizioEsternoPerTurno: map['esterno'] ?? 6.0,
-      isStraordinarioReal: hasStraordinario,
-      isNotturnoReal: hasNotturno,
-      isFestivoReal: hasFestivo,
-      isOPReal: hasOP,
-      isEsternoReal: hasEsterno,
+      straordinarioDiurnoOrario: _readDouble(map['straordinario'], 12.0),
+      indennitaNotturnaPerTurno: _readDouble(map['notturno'], 4.3),
+      indennitaFestivaPerTurno: _readDouble(map['festivo'], 8.0),
+      ordinePubblicoInSedePerTurno: _readDouble(map['ordine_pubblico'], 6.0),
+      servizioEsternoPerTurno: _readDouble(map['esterno'], 6.0),
+      isStraordinarioReal:
+          _readBool(map['is_straordinario_real'], map.containsKey('straordinario')),
+      isNotturnoReal:
+          _readBool(map['is_notturno_real'], map.containsKey('notturno')),
+      isFestivoReal:
+          _readBool(map['is_festivo_real'], map.containsKey('festivo')),
+      isOPReal: _readBool(map['is_op_real'], map.containsKey('ordine_pubblico')),
+      isEsternoReal:
+          _readBool(map['is_esterno_real'], map.containsKey('esterno')),
     );
+  }
+
+  static double _readDouble(dynamic value, double fallback) {
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? '') ?? fallback;
+  }
+
+  static bool _readBool(dynamic value, bool fallback) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    final raw = value?.toString().trim().toLowerCase();
+    if (raw == 'true') return true;
+    if (raw == 'false') return false;
+    return fallback;
   }
 }
 
@@ -85,8 +102,7 @@ class ShiftRateCalculator {
         straordinarioRate ?? profile.overtimeDayRate,
       ),
       indennitaNotturnaPerTurno: _round2(
-        notturnoRate ??
-            (profile.overtimeNightOrHolidayRate - profile.overtimeDayRate),
+        notturnoRate ?? 4.3,
       ),
       indennitaFestivaPerTurno: _round2(
         festivoRate ?? profile.holidayAllowance,
@@ -105,102 +121,90 @@ class ShiftRateCalculator {
     );
   }
 
-  bool _isStraordinarioDiurnoPuro(PayslipEntry entry) {
-    final t = _norm(entry.normalizedDescription);
-    final code = entry.code.toUpperCase();
+  bool _isStraordinarioDiurnoPuro(PayslipEntry e) {
+    final t = _norm(e.description);
+    final code = e.code.toUpperCase().trim();
 
     final positive =
-        code == 'STS0/ST01' ||
-        code == 'AA01/ST01' ||
+        code.contains('ST01') ||
         t.contains('STRAORDINARIODIURNO') ||
         t.contains('STRORESUPERODIURNO');
 
     final excluded =
-        t.contains('NOTT') ||
-        t.contains('FEST') ||
         t.contains('COMPENSAZIONE') ||
-        t.contains('REP.MOBILI') ||
-        t.contains('REPMOBILI') ||
-        t.contains('LIMITEMAX') ||
-        t.contains('ENTROLIMITE');
+        t.contains('SERVIZIONOTTURNO') ||
+        t.contains('SERVIZIOFESTIVO');
 
     return positive && !excluded;
   }
 
-  bool _isNotturnoPuro(PayslipEntry entry) {
-    final t = _norm(entry.normalizedDescription);
-    final code = entry.code.toUpperCase();
+  bool _isNotturnoPuro(PayslipEntry e) {
+    final t = _norm(e.description);
+    final code = e.code.toUpperCase().trim();
 
     final positive =
         code == 'AA06/E1BL' ||
-        t.contains('INDENNITASERVIZIONOTTURNO');
+        t.contains('INDENNITASERVIZIONOTTURNO') ||
+        t.contains('SERVIZIONOTTURNO');
 
     final excluded =
-        t.contains('FEST') ||
-        t.contains('STRAORD') ||
         t.contains('COMPENSAZIONE') ||
-        t.contains('REPMOBILI') ||
-        t.contains('REP.MOBILI') ||
-        t.contains('LIMITEMAX') ||
-        t.contains('ENTROLIMITE');
+        t.contains('STRAORD');
 
     return positive && !excluded;
   }
 
-  bool _isFestivoPuro(PayslipEntry entry) {
-    final t = _norm(entry.normalizedDescription);
-    final code = entry.code.toUpperCase();
+  bool _isFestivoPuro(PayslipEntry e) {
+    final t = _norm(e.description);
+    final code = e.code.toUpperCase().trim();
 
     final positive =
         code == 'AA06/E1BJ' ||
-        t.contains('INDENNITASERVIZIOFESTIVO');
+        t.contains('INDENNITASERVIZIOFESTIVO') ||
+        t.contains('SERVIZIOFESTIVO');
 
     final excluded =
-        t.contains('NOTT') ||
-        t.contains('STRAORD') ||
+        t.contains('FESTIVITAPARTICOLARI') ||
         t.contains('COMPENSAZIONE') ||
-        t.contains('REPMOBILI') ||
-        t.contains('REP.MOBILI') ||
-        t.contains('LIMITEMAX') ||
-        t.contains('ENTROLIMITE');
+        t.contains('STRAORD') ||
+        t.contains('NOTT');
 
     return positive && !excluded;
   }
 
-  bool _isOrdinePubblicoInSedePuro(PayslipEntry entry) {
-    final t = _norm(entry.normalizedDescription);
-    final code = entry.code.toUpperCase();
+  bool _isOrdinePubblicoInSedePuro(PayslipEntry e) {
+    final t = _norm(e.description);
+    final code = e.code.toUpperCase().trim();
 
     final positive =
         code == 'B003/0001' ||
-        t.contains('ORD.PUBBL.INSEDE');
+        t.contains('ORDPUBBLINSEDE');
 
     final excluded =
-        t.contains('1TURNO') ||
-        t.contains('F.SEDE') ||
+        t.contains('FSEDE') ||
         t.contains('FUORISEDE') ||
+        t.contains('1TURNO') ||
+        t.contains('INTERA') ||
         t.contains('PERNOTTO') ||
-        t.contains('COMPENSAZIONE') ||
-        t.contains('NOTT') ||
-        t.contains('FEST') ||
-        t.contains('STRAORD');
+        t.contains('COMPENSAZIONE');
 
     return positive && !excluded;
   }
 
-  bool _isServizioEsternoPuro(PayslipEntry entry) {
-    final t = _norm(entry.normalizedDescription);
-    final code = entry.code.toUpperCase();
+  bool _isServizioEsternoPuro(PayslipEntry e) {
+    final t = _norm(e.description);
+    final code = e.code.toUpperCase().trim();
 
     final positive =
         code == 'AA06/E1BW' ||
-        t.contains('INDENNITAPRESENZASERVIZIESTERNI');
+        t.contains('INDENNITAPRESENZASERVIZIESTERNI') ||
+        t.contains('SERVIZIESTERNI');
 
     final excluded =
         t.contains('COMPENSAZIONE') ||
+        t.contains('STRAORD') ||
         t.contains('NOTT') ||
-        t.contains('FEST') ||
-        t.contains('STRAORD');
+        t.contains('FEST');
 
     return positive && !excluded;
   }
@@ -208,17 +212,20 @@ class ShiftRateCalculator {
   double? _averageUnitAmount(List<PayslipEntry> entries) {
     final values = <double>[];
 
-    for (final entry in entries) {
-      final unit = entry.unitAmount;
-      final qty = entry.quantity ?? 0;
+    for (final e in entries) {
+      final unit = e.unitAmount;
+      final qty = e.quantity ?? 0;
 
       if (unit != null && unit > 0) {
         values.add(unit);
         continue;
       }
 
-      if (qty > 0) {
-        values.add(entry.amount / qty);
+      if (qty > 0 && e.amount > 0) {
+        final derived = e.amount / qty;
+        if (derived > 0 && derived < 100) {
+          values.add(derived);
+        }
       }
     }
 
@@ -227,11 +234,17 @@ class ShiftRateCalculator {
     return values.reduce((a, b) => a + b) / values.length;
   }
 
-  String _norm(String value) {
-    return value.toUpperCase().replaceAll(' ', '');
+  String _norm(String v) {
+    return v
+        .toUpperCase()
+        .replaceAll(' ', '')
+        .replaceAll('.', '')
+        .replaceAll("'", '')
+        .replaceAll('-', '')
+        .replaceAll('/', '');
   }
 
-  double _round2(double value) {
-    return double.parse(value.toStringAsFixed(2));
+  double _round2(double v) {
+    return double.parse(v.toStringAsFixed(2));
   }
 }

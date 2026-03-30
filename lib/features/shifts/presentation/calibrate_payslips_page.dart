@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'models/shift.dart';
@@ -26,6 +25,9 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
   final DutyPayEngine _dutyPayEngine = const DutyPayEngine();
   final ShiftRateCalculator _shiftRateCalculator = const ShiftRateCalculator();
 
+  final TextEditingController _monthlyOvertimeLimitController =
+      TextEditingController();
+
   final List<String?> selectedPdfPaths = [null, null, null];
   final List<String?> selectedPdfNames = [null, null, null];
   final List<int?> selectedPdfBytes = [null, null, null];
@@ -42,23 +44,23 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
 
   bool isPicking = false;
   bool isRestoring = true;
-  bool isLoadingDemo = false;
   double extraIncome = 0;
 
   static const String _prefsPdfPathsKey = 'dutypay_pdf_paths_v1';
-  static const String _prefsShiftsKey = 'dutypay_saved_shifts_v1';
+  static const String _prefsShiftsKey = 'dutypay_shifts';
   static const String _prefsRatesKey = 'dutypay_saved_rates_v1';
   static const String _prefsPayProfileKey = 'dutypay_pay_profile';
-
-  static const String _demoPdf1Asset =
-      'assets/demo_payslips/cedolino_demo_1.pdf';
-  static const String _demoPdf2Asset =
-      'assets/demo_payslips/cedolino_demo_2.pdf';
 
   @override
   void initState() {
     super.initState();
     _restorePersistedData();
+  }
+
+  @override
+  void dispose() {
+    _monthlyOvertimeLimitController.dispose();
+    super.dispose();
   }
 
   Future<void> _restorePersistedData() async {
@@ -85,15 +87,15 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
     } catch (e) {
       if (!mounted) return;
 
+      setState(() {
+        isRestoring = false;
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Errore durante il ripristino dati: $e'),
         ),
       );
-
-      setState(() {
-        isRestoring = false;
-      });
     }
   }
 
@@ -158,66 +160,98 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
 
   Future<void> _loadSavedShifts() async {
     final prefs = await SharedPreferences.getInstance();
-    final stored = prefs.get(_prefsShiftsKey);
-
     shifts.clear();
 
-    if (stored == null) return;
+    try {
+      final rawJson = prefs.getString(_prefsShiftsKey);
+      if (rawJson != null && rawJson.trim().isNotEmpty) {
+        final decoded = jsonDecode(rawJson);
 
-    List<dynamic> decodedList = [];
+        if (decoded is List) {
+          for (final item in decoded) {
+            try {
+              if (item is Map<String, dynamic>) {
+                shifts.add(Shift.fromJson(item));
+              } else if (item is Map) {
+                shifts.add(Shift.fromJson(Map<String, dynamic>.from(item)));
+              }
+            } catch (_) {}
+          }
 
-    if (stored is String) {
-      if (stored.trim().isEmpty) return;
-      final decoded = jsonDecode(stored);
-      if (decoded is List) {
-        decodedList = decoded;
+          shifts.sort((a, b) => b.serviceDate.compareTo(a.serviceDate));
+          return;
+        }
       }
-    } else if (stored is List) {
-      decodedList = stored;
+    } catch (_) {
+      // fallback legacy sotto
     }
 
-    for (final item in decodedList) {
-      try {
-        if (item is Map<String, dynamic>) {
-          shifts.add(Shift.fromJson(item));
-        } else if (item is Map) {
-          shifts.add(Shift.fromJson(Map<String, dynamic>.from(item)));
-        } else if (item is String) {
+    try {
+      final legacyList = prefs.getStringList(_prefsShiftsKey);
+      if (legacyList == null || legacyList.isEmpty) return;
+
+      for (final item in legacyList) {
+        try {
           final decoded = jsonDecode(item);
           if (decoded is Map<String, dynamic>) {
             shifts.add(Shift.fromJson(decoded));
           } else if (decoded is Map) {
             shifts.add(Shift.fromJson(Map<String, dynamic>.from(decoded)));
           }
-        }
-      } catch (_) {}
-    }
+        } catch (_) {}
+      }
 
-    shifts.sort((a, b) => b.date.compareTo(a.date));
+      shifts.sort((a, b) => b.serviceDate.compareTo(a.serviceDate));
+      await _saveShifts();
+    } catch (_) {}
   }
 
   Future<void> _saveShifts() async {
     final prefs = await SharedPreferences.getInstance();
-    shifts.sort((a, b) => b.date.compareTo(a.date));
+    shifts.sort((a, b) => b.serviceDate.compareTo(a.serviceDate));
 
-    final rawList = shifts.map((e) => jsonEncode(e.toJson())).toList();
-    await prefs.setStringList(_prefsShiftsKey, rawList);
+    final rawJson = jsonEncode(
+      shifts.map((e) => e.toJson()).toList(),
+    );
+
+    await prefs.setString(_prefsShiftsKey, rawJson);
   }
 
   Future<void> _loadSavedProfile() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_prefsPayProfileKey);
 
-    if (raw == null || raw.isEmpty) return;
+    if (raw == null || raw.trim().isEmpty) {
+      _monthlyOvertimeLimitController.text =
+          UserPayProfile.defaultProfile().monthlyOvertimePayableHoursLimit
+              .toStringAsFixed(0);
+      return;
+    }
 
-    final decoded = jsonDecode(raw);
-    if (decoded is! Map) return;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) {
+        _monthlyOvertimeLimitController.text =
+            UserPayProfile.defaultProfile().monthlyOvertimePayableHoursLimit
+                .toStringAsFixed(0);
+        return;
+      }
 
-    calibratedProfile = UserPayProfile.fromJson(
-      Map<String, dynamic>.from(decoded),
-    );
+      calibratedProfile = UserPayProfile.fromJson(
+        Map<String, dynamic>.from(decoded),
+      );
 
-    engineSnapshot = _dutyPayEngine.buildSnapshot(calibratedProfile!);
+      _monthlyOvertimeLimitController.text =
+          calibratedProfile!.monthlyOvertimePayableHoursLimit.toStringAsFixed(0);
+
+      engineSnapshot = _dutyPayEngine.buildSnapshot(calibratedProfile!);
+    } catch (_) {
+      calibratedProfile = null;
+      engineSnapshot = null;
+      _monthlyOvertimeLimitController.text =
+          UserPayProfile.defaultProfile().monthlyOvertimePayableHoursLimit
+              .toStringAsFixed(0);
+    }
   }
 
   Future<void> _saveProfile(UserPayProfile profile) async {
@@ -233,26 +267,23 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
     await prefs.remove(_prefsPayProfileKey);
   }
 
-  Future<void> _loadSavedRates() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_prefsRatesKey);
+Future<void> _loadSavedRates() async {
+  final prefs = await SharedPreferences.getInstance();
+  final raw = prefs.getString(_prefsRatesKey);
 
-    if (raw == null || raw.isEmpty) return;
+  if (raw == null || raw.trim().isEmpty) return;
 
+  try {
     final decoded = jsonDecode(raw);
     if (decoded is! Map) return;
 
-    final map = <String, double>{};
-    decoded.forEach((key, value) {
-      if (value is num) {
-        map[key.toString()] = value.toDouble();
-      } else {
-        map[key.toString()] = double.tryParse(value.toString()) ?? 0;
-      }
-    });
-
-    derivedRates = ShiftDerivedRates.fromMap(map);
+    derivedRates = ShiftDerivedRates.fromMap(
+      Map<String, dynamic>.from(decoded),
+    );
+  } catch (_) {
+    derivedRates = null;
   }
+}
 
   Future<void> _saveRates(ShiftDerivedRates rates) async {
     final prefs = await SharedPreferences.getInstance();
@@ -291,6 +322,47 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
     return '${(value * 100).toStringAsFixed(2)}%';
   }
 
+  double _parseMonthlyOvertimeLimitInput() {
+    final raw = _monthlyOvertimeLimitController.text.trim().replaceAll(',', '.');
+    final parsed = double.tryParse(raw);
+
+    if (parsed == null || parsed.isNaN || !parsed.isFinite || parsed < 0) {
+      return 55.0;
+    }
+
+    return parsed;
+  }
+
+  Future<void> _saveMonthlyOvertimeLimit() async {
+    final limit = _parseMonthlyOvertimeLimitInput();
+
+    final baseProfile = calibratedProfile ?? UserPayProfile.defaultProfile();
+    final updatedProfile = baseProfile.copyWith(
+      monthlyOvertimePayableHoursLimit: limit,
+    );
+
+    await _saveProfile(updatedProfile);
+
+    if (!mounted) return;
+
+    setState(() {
+      calibratedProfile = updatedProfile;
+      engineSnapshot = _dutyPayEngine.buildSnapshot(updatedProfile);
+      _monthlyOvertimeLimitController.text =
+          limit == limit.roundToDouble()
+              ? limit.toStringAsFixed(0)
+              : limit.toStringAsFixed(1);
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Limite ore straordinario salvato: ${_monthlyOvertimeLimitController.text} h',
+        ),
+      ),
+    );
+  }
+
   Future<void> _extractAndParsePdf(
     int index,
     String filePath, {
@@ -312,6 +384,11 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
     });
 
     try {
+      final file = File(filePath);
+      if (!await file.exists()) {
+        throw Exception('Il file selezionato non esiste più.');
+      }
+
       final parsed = await _parserService.extractAndParsePdf(filePath);
 
       if (!mounted) return;
@@ -371,24 +448,61 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
       return;
     }
 
-    final profile = _parserService.buildDynamicProfile(validPayslips);
-    final snapshot = _dutyPayEngine.buildSnapshot(profile);
-    final rates = _shiftRateCalculator.buildFromProfile(profile);
+    try {
+      final previousLimit =
+          calibratedProfile?.monthlyOvertimePayableHoursLimit ??
+              UserPayProfile.defaultProfile()
+                  .monthlyOvertimePayableHoursLimit;
 
-    if (!mounted) return;
+      final profile = _parserService
+          .buildDynamicProfile(validPayslips)
+          .copyWith(monthlyOvertimePayableHoursLimit: previousLimit);
 
-    setState(() {
-      calibratedProfile = profile;
-      engineSnapshot = snapshot;
-      derivedRates = rates;
-      extraIncome = ShiftValueCalculator.calculateTotal(
-        shifts,
-        rates: rates,
+      final snapshot = _dutyPayEngine.buildSnapshot(profile);
+      final rates = _shiftRateCalculator.buildFromProfile(profile);
+
+      if (!mounted) return;
+
+      setState(() {
+        calibratedProfile = profile;
+        engineSnapshot = snapshot;
+        derivedRates = rates;
+        _monthlyOvertimeLimitController.text =
+            profile.monthlyOvertimePayableHoursLimit == 0
+                ? '0'
+                : profile.monthlyOvertimePayableHoursLimit.roundToDouble() ==
+                        profile.monthlyOvertimePayableHoursLimit
+                    ? profile.monthlyOvertimePayableHoursLimit.toStringAsFixed(0)
+                    : profile.monthlyOvertimePayableHoursLimit.toStringAsFixed(
+                        1,
+                      );
+        extraIncome = ShiftValueCalculator.calculateTotal(
+          shifts,
+          rates: rates,
+        );
+      });
+
+      await _saveProfile(profile);
+      await _saveRates(rates);
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        calibratedProfile = null;
+        engineSnapshot = null;
+        derivedRates = null;
+        extraIncome = ShiftValueCalculator.calculateTotal(
+          shifts,
+          rates: null,
+        );
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Errore nella ricostruzione del profilo: $e'),
+        ),
       );
-    });
-
-    await _saveProfile(profile);
-    await _saveRates(rates);
+    }
   }
 
   Future<void> _setPdfAtIndex(
@@ -418,65 +532,8 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
     await _rebuildProfileIfPossible();
   }
 
-  Future<String> _writeAssetPdfToTemp(
-    String assetPath,
-    String fileName,
-  ) async {
-    final byteData = await rootBundle.load(assetPath);
-    final bytes = byteData.buffer.asUint8List();
-
-    final tempDir = await Directory.systemTemp.createTemp('dutypay_demo_');
-    final file = File('${tempDir.path}/$fileName');
-    await file.writeAsBytes(bytes, flush: true);
-    return file.path;
-  }
-
-  Future<void> _loadDemoPack() async {
-    if (isLoadingDemo || isPicking) return;
-
-    setState(() {
-      isLoadingDemo = true;
-    });
-
-    try {
-      final demo1Path = await _writeAssetPdfToTemp(
-        _demoPdf1Asset,
-        'cedolino_demo_1.pdf',
-      );
-      final demo2Path = await _writeAssetPdfToTemp(
-        _demoPdf2Asset,
-        'cedolino_demo_2.pdf',
-      );
-
-      await _setPdfAtIndex(0, demo1Path, 'cedolino_demo_1.pdf');
-      await _setPdfAtIndex(1, demo2Path, 'cedolino_demo_2.pdf');
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('PDF demo caricati nei primi 2 slot'),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Errore caricamento PDF demo. Verifica assets/demo_payslips/: $e',
-          ),
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          isLoadingDemo = false;
-        });
-      }
-    }
-  }
-
   Future<void> pickPdf(int index) async {
-    if (isPicking) return;
+    if (isPicking || isExtracting.any((e) => e)) return;
 
     setState(() {
       isPicking = true;
@@ -493,9 +550,6 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
       if (!mounted) return;
 
       if (result == null || result.files.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Selezione annullata')),
-        );
         return;
       }
 
@@ -538,38 +592,43 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
   }
 
   Future<void> _openAddShiftPage() async {
-    await Navigator.push(
+    final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => QuickAddShiftPage(
           rates: calibratedProfile,
-          onAdd: (shift) async {
-            setState(() {
-              shifts.add(shift);
-              shifts.sort((a, b) => b.date.compareTo(a.date));
-              extraIncome = ShiftValueCalculator.calculateTotal(
-                shifts,
-                rates: derivedRates,
-              );
-            });
-            await _saveShifts();
-          },
+          onAdd: (shift) => Navigator.of(context).pop(shift),
         ),
       ),
     );
 
     if (!mounted) return;
 
-    setState(() {
-      extraIncome = ShiftValueCalculator.calculateTotal(
-        shifts,
-        rates: derivedRates,
-      );
-    });
+    if (result is Shift) {
+      setState(() {
+        shifts.add(result);
+        shifts.sort((a, b) => b.serviceDate.compareTo(a.serviceDate));
+        extraIncome = ShiftValueCalculator.calculateTotal(
+          shifts,
+          rates: derivedRates,
+        );
+      });
+      await _saveShifts();
+    } else if (result is List<Shift>) {
+      setState(() {
+        shifts.addAll(result);
+        shifts.sort((a, b) => b.serviceDate.compareTo(a.serviceDate));
+        extraIncome = ShiftValueCalculator.calculateTotal(
+          shifts,
+          rates: derivedRates,
+        );
+      });
+      await _saveShifts();
+    }
   }
 
   Future<bool> _handleBackNavigation() async {
-    if (!mounted) return false;
+    if (!mounted) return true;
     Navigator.pop(context, true);
     return false;
   }
@@ -585,7 +644,10 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 11, color: Colors.white60)),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 11, color: Colors.white60),
+          ),
           const SizedBox(height: 4),
           Text(
             value,
@@ -866,7 +928,7 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              onPressed: (isPicking || extracting || isLoadingDemo)
+              onPressed: (isPicking || extracting || isExtracting.any((e) => e))
                   ? null
                   : () => pickPdf(index),
               icon: Icon(
@@ -909,7 +971,15 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
     );
   }
 
-  Widget _buildDemoPdfsCard() {
+  Widget _buildOvertimeLimitCard() {
+    final currentLimit =
+        calibratedProfile?.monthlyOvertimePayableHoursLimit ??
+            UserPayProfile.defaultProfile().monthlyOvertimePayableHoursLimit;
+
+    if (_monthlyOvertimeLimitController.text.trim().isEmpty) {
+      _monthlyOvertimeLimitController.text = currentLimit.toStringAsFixed(0);
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -921,35 +991,39 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Test rapido nel simulatore',
+            'Impostazioni ufficio',
             style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
           const Text(
-            'Per testare parser e calibrazione senza impazzire col picker del simulatore, puoi caricare 2 PDF demo dagli assets.',
+            'Imposta il limite massimo di ore straordinario liquidabili al mese. Cambia in base all’ufficio: ad esempio 55 al Reparto Mobile, 15 alla Squadra Mobile.',
             style: TextStyle(fontSize: 14, color: Colors.white70, height: 1.4),
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _monthlyOvertimeLimitController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
+              labelText: 'Limite ore straordinario pagabili al mese',
+              hintText: 'Es. 55',
+              filled: true,
+              fillColor: const Color(0xFF111827),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
           ),
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              onPressed: isLoadingDemo || isPicking ? null : _loadDemoPack,
-              icon: Icon(
-                isLoadingDemo
-                    ? Icons.hourglass_top_rounded
-                    : Icons.science_rounded,
-              ),
-              label: Text(
-                isLoadingDemo
-                    ? 'Caricamento demo in corso...'
-                    : 'Carica 2 PDF demo',
+              onPressed: _saveMonthlyOvertimeLimit,
+              icon: const Icon(Icons.save_rounded),
+              label: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 14),
+                child: Text('Salva impostazione'),
               ),
             ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Richiede: assets/demo_payslips/cedolino_demo_1.pdf e cedolino_demo_2.pdf',
-            style: TextStyle(fontSize: 12, color: Colors.white54),
           ),
         ],
       ),
@@ -1023,6 +1097,13 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
                 child: _buildInfoChip(
                   'Aliquota motore',
                   _formatPercent(profile.effectiveTaxRate),
+                ),
+              ),
+              SizedBox(
+                width: 170,
+                child: _buildInfoChip(
+                  'Limite ore straordinario',
+                  '${profile.monthlyOvertimePayableHoursLimit.toStringAsFixed(0)} h',
                 ),
               ),
             ],
@@ -1170,7 +1251,10 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: const TextStyle(fontSize: 11, color: Colors.white60)),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 11, color: Colors.white60),
+            ),
             const SizedBox(height: 4),
             Text(
               _formatMoney(value),
@@ -1339,36 +1423,54 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '${shift.date.day.toString().padLeft(2, '0')}/${shift.date.month.toString().padLeft(2, '0')}/${shift.date.year}',
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                          '${shift.serviceDate.day.toString().padLeft(2, '0')}/${shift.serviceDate.month.toString().padLeft(2, '0')}/${shift.serviceDate.year}',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           'Ore: ${shift.workedHours.toStringAsFixed(1)} • OP: ${_labelForOpType(shift.opServiceType)}',
-                          style: const TextStyle(fontSize: 12, color: Colors.white70),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.white70,
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           'Str. diurno: ${shift.straordinarioDiurnoHours.toStringAsFixed(1)} • Str. nott/fest: ${shift.straordinarioNotturnoFestivoHours.toStringAsFixed(1)}',
-                          style: const TextStyle(fontSize: 12, color: Colors.white70),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.white70,
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           'Notturni: ${shift.notturnoCount} • Festivi: ${shift.festivoCount} • Esterni: ${shift.servizioEsternoCount}',
-                          style: const TextStyle(fontSize: 12, color: Colors.white70),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.white70,
+                          ),
                         ),
                         if (shift.manualAmount != 0) ...[
                           const SizedBox(height: 4),
                           Text(
                             'Extra manuale: € ${_formatMoney(shift.manualAmount)}',
-                            style: const TextStyle(fontSize: 12, color: Colors.white70),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.white70,
+                            ),
                           ),
                         ],
                         if (shift.note.isNotEmpty) ...[
                           const SizedBox(height: 4),
                           Text(
                             shift.note,
-                            style: const TextStyle(fontSize: 12, color: Colors.white54),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.white54,
+                            ),
                           ),
                         ],
                       ],
@@ -1473,35 +1575,85 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      gradient: const LinearGradient(
-                        colors: [
-                          Color(0xFF0F2A22),
-                          Color(0xFF111827),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                    ),
-                    child: const Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Step operativo - DutyPayEngine',
-                          style: TextStyle(color: Colors.white70, fontSize: 14),
-                        ),
-                        SizedBox(height: 6),
-                        Text(
-                          'DutyPay usa la calibrazione per costruire snapshot, rate reali e simulazione turni.',
-                          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                  ),
+  padding: const EdgeInsets.all(18),
+  decoration: BoxDecoration(
+    borderRadius: BorderRadius.circular(20),
+    gradient: const LinearGradient(
+      colors: [
+        Color(0xFF0F2A22),
+        Color(0xFF111827),
+      ],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    border: Border.all(
+      color: const Color(0xFF22C55E),
+      width: 1,
+    ),
+  ),
+  child: const Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        'Calibrazione DutyPay',
+        style: TextStyle(
+          color: Colors.white70,
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      SizedBox(height: 8),
+      Text(
+        'Qui carichi i cedolini che permettono all’app di leggere i valori reali di straordinario e indennità.',
+        style: TextStyle(
+          fontSize: 17,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      SizedBox(height: 10),
+      Text(
+        'Consigliato: carica 3 cedolini recenti. Dopo la calibrazione, la pagina Cedolino e il simulatore turni useranno questi dati per generare stime molto più affidabili.',
+        style: TextStyle(
+          fontSize: 14,
+          color: Colors.white70,
+          height: 1.45,
+        ),
+      ),
+    ],
+  ),
+),
+const SizedBox(height: 14),
+Container(
+  padding: const EdgeInsets.all(14),
+  decoration: BoxDecoration(
+    color: const Color(0xFF171A21),
+    borderRadius: BorderRadius.circular(16),
+    border: Border.all(color: Colors.white10),
+  ),
+  child: const Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Icon(
+        Icons.info_outline_rounded,
+        color: Color(0xFF67B7FF),
+        size: 18,
+      ),
+      SizedBox(width: 10),
+      Expanded(
+        child: Text(
+          'I cedolini vengono usati solo per estrarre le voci utili al calcolo. Se sostituisci un PDF o ricarichi la calibrazione, DutyPay aggiorna i valori reali mostrati nell’app.',
+          style: TextStyle(
+            fontSize: 13,
+            color: Colors.white70,
+            height: 1.4,
+          ),
+        ),
+      ),
+    ],
+  ),
+),
                   const SizedBox(height: 18),
-                  _buildDemoPdfsCard(),
+                  _buildOvertimeLimitCard(),
                   const SizedBox(height: 24),
                   _buildPdfCard(0),
                   const SizedBox(height: 14),
@@ -1567,7 +1719,10 @@ class _StaticRateBox extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 11, color: Colors.white60)),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 11, color: Colors.white60),
+          ),
           const SizedBox(height: 4),
           Text(
             value,

@@ -419,15 +419,27 @@ class UserPayProfile {
   final double holidayAllowance;
   final double specialHolidayAllowance;
 
+  final double monthlyOvertimePayableHoursLimit;
+
   final String profileVersion;
   final DateTime calibratedAt;
   final String sourceWindowLabel;
   final String detectedGradeLabel;
   final double detectedBaseSalary;
   final double averageAccessoryPay;
+
+  final double? historicalAccessoryAvg;
+  final double? historicalHoursAvg;
+  final int? historicalMonths;
+
   final double recurringDeductionsTotal;
   final double effectiveTaxRate;
   final List<PayslipParsedData> sourcePayslips;
+
+  final double? annualProductionBonus;
+
+  final double genereDiConfortoRate;
+  final double ticketPastoRate;
 
   const UserPayProfile({
     this.rank,
@@ -440,15 +452,22 @@ class UserPayProfile {
     required this.externalServiceRate,
     required this.holidayAllowance,
     required this.specialHolidayAllowance,
+    required this.monthlyOvertimePayableHoursLimit,
     required this.profileVersion,
     required this.calibratedAt,
     required this.sourceWindowLabel,
     required this.detectedGradeLabel,
     required this.detectedBaseSalary,
     required this.averageAccessoryPay,
+    this.historicalAccessoryAvg,
+    this.historicalHoursAvg,
+    this.historicalMonths,
     required this.recurringDeductionsTotal,
     required this.effectiveTaxRate,
     required this.sourcePayslips,
+    this.annualProductionBonus,
+    required this.genereDiConfortoRate,
+    required this.ticketPastoRate,
   });
 
   factory UserPayProfile.defaultProfile() {
@@ -463,16 +482,28 @@ class UserPayProfile {
       externalServiceRate: 6.0,
       holidayAllowance: 8.0,
       specialHolidayAllowance: 10.0,
+      monthlyOvertimePayableHoursLimit: 55.0,
       profileVersion: 'default',
       calibratedAt: DateTime.now(),
       sourceWindowLabel: '',
       detectedGradeLabel: 'Non rilevato',
       detectedBaseSalary: 0,
       averageAccessoryPay: 0,
+      historicalAccessoryAvg: null,
+      historicalHoursAvg: null,
+      historicalMonths: null,
       recurringDeductionsTotal: 0,
       effectiveTaxRate: 0.27,
       sourcePayslips: const [],
+      annualProductionBonus: null,
+      genereDiConfortoRate: 1.02,
+      ticketPastoRate: 7.00,
     );
+  }
+
+  double get baseNetSalary {
+    if (detectedBaseSalary <= 0) return 0;
+    return detectedBaseSalary * 0.78;
   }
 
   UserPayProfile copyWith({
@@ -486,15 +517,22 @@ class UserPayProfile {
     double? externalServiceRate,
     double? holidayAllowance,
     double? specialHolidayAllowance,
+    double? monthlyOvertimePayableHoursLimit,
     String? profileVersion,
     DateTime? calibratedAt,
     String? sourceWindowLabel,
-    String? detectedGradeLabel,
     double? detectedBaseSalary,
+    String? detectedGradeLabel,
     double? averageAccessoryPay,
+    double? historicalAccessoryAvg,
+    double? historicalHoursAvg,
+    int? historicalMonths,
     double? recurringDeductionsTotal,
     double? effectiveTaxRate,
     List<PayslipParsedData>? sourcePayslips,
+    double? annualProductionBonus,
+    double? genereDiConfortoRate,
+    double? ticketPastoRate,
   }) {
     return UserPayProfile(
       rank: rank ?? this.rank,
@@ -510,16 +548,28 @@ class UserPayProfile {
       holidayAllowance: holidayAllowance ?? this.holidayAllowance,
       specialHolidayAllowance:
           specialHolidayAllowance ?? this.specialHolidayAllowance,
+      monthlyOvertimePayableHoursLimit:
+          monthlyOvertimePayableHoursLimit ??
+              this.monthlyOvertimePayableHoursLimit,
       profileVersion: profileVersion ?? this.profileVersion,
       calibratedAt: calibratedAt ?? this.calibratedAt,
       sourceWindowLabel: sourceWindowLabel ?? this.sourceWindowLabel,
       detectedGradeLabel: detectedGradeLabel ?? this.detectedGradeLabel,
       detectedBaseSalary: detectedBaseSalary ?? this.detectedBaseSalary,
       averageAccessoryPay: averageAccessoryPay ?? this.averageAccessoryPay,
+      historicalAccessoryAvg:
+          historicalAccessoryAvg ?? this.historicalAccessoryAvg,
+      historicalHoursAvg: historicalHoursAvg ?? this.historicalHoursAvg,
+      historicalMonths: historicalMonths ?? this.historicalMonths,
       recurringDeductionsTotal:
           recurringDeductionsTotal ?? this.recurringDeductionsTotal,
       effectiveTaxRate: effectiveTaxRate ?? this.effectiveTaxRate,
       sourcePayslips: sourcePayslips ?? this.sourcePayslips,
+      annualProductionBonus:
+          annualProductionBonus ?? this.annualProductionBonus,
+      genereDiConfortoRate:
+          genereDiConfortoRate ?? this.genereDiConfortoRate,
+      ticketPastoRate: ticketPastoRate ?? this.ticketPastoRate,
     );
   }
 
@@ -535,15 +585,22 @@ class UserPayProfile {
       'externalServiceRate': externalServiceRate,
       'holidayAllowance': holidayAllowance,
       'specialHolidayAllowance': specialHolidayAllowance,
+      'monthlyOvertimePayableHoursLimit': monthlyOvertimePayableHoursLimit,
       'profileVersion': profileVersion,
       'calibratedAt': calibratedAt.toIso8601String(),
       'sourceWindowLabel': sourceWindowLabel,
       'detectedGradeLabel': detectedGradeLabel,
       'detectedBaseSalary': detectedBaseSalary,
       'averageAccessoryPay': averageAccessoryPay,
+      'historicalAccessoryAvg': historicalAccessoryAvg,
+      'historicalHoursAvg': historicalHoursAvg,
+      'historicalMonths': historicalMonths,
       'recurringDeductionsTotal': recurringDeductionsTotal,
       'effectiveTaxRate': effectiveTaxRate,
       'sourcePayslips': sourcePayslips.map((e) => e.toJson()).toList(),
+      'annualProductionBonus': annualProductionBonus,
+      'genereDiConfortoRate': genereDiConfortoRate,
+      'ticketPastoRate': ticketPastoRate,
     };
   }
 
@@ -567,6 +624,9 @@ class UserPayProfile {
           (json['holidayAllowance'] as num?)?.toDouble() ?? 8.0,
       specialHolidayAllowance:
           (json['specialHolidayAllowance'] as num?)?.toDouble() ?? 10.0,
+      monthlyOvertimePayableHoursLimit:
+          (json['monthlyOvertimePayableHoursLimit'] as num?)?.toDouble() ??
+              55.0,
       profileVersion: (json['profileVersion'] ?? 'default') as String,
       calibratedAt: DateTime.tryParse(
             (json['calibratedAt'] ?? '') as String,
@@ -579,6 +639,10 @@ class UserPayProfile {
           (json['detectedBaseSalary'] as num?)?.toDouble() ?? 0,
       averageAccessoryPay:
           (json['averageAccessoryPay'] as num?)?.toDouble() ?? 0,
+      historicalAccessoryAvg:
+          (json['historicalAccessoryAvg'] as num?)?.toDouble(),
+      historicalHoursAvg: (json['historicalHoursAvg'] as num?)?.toDouble(),
+      historicalMonths: json['historicalMonths'] as int?,
       recurringDeductionsTotal:
           (json['recurringDeductionsTotal'] as num?)?.toDouble() ?? 0,
       effectiveTaxRate:
@@ -587,6 +651,12 @@ class UserPayProfile {
           .whereType<Map<String, dynamic>>()
           .map(PayslipParsedData.fromJson)
           .toList(),
+      annualProductionBonus:
+          (json['annualProductionBonus'] as num?)?.toDouble(),
+      genereDiConfortoRate:
+          (json['genereDiConfortoRate'] as num?)?.toDouble() ?? 1.02,
+      ticketPastoRate:
+          (json['ticketPastoRate'] as num?)?.toDouble() ?? 7.00,
     );
   }
 }

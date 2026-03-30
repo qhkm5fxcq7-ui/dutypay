@@ -1,22 +1,27 @@
 name: dutypay
-description: "A new Flutter project."
+description: "DutyPay app"
 publish_to: 'none'
 
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.11.3
+  sdk: ^3.3.0
 
 dependencies:
   flutter:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
+
   cupertino_icons: ^1.0.8
   syncfusion_flutter_pdf: ^33.1.45
-  file_selector: ^1.0.4
+
+  # STORAGE
   shared_preferences: ^2.2.2
-  file_picker: ^6.1.1
+
+  # FILE SYSTEM (EXPORT/IMPORT)
+  file_picker: ^8.0.0
+  path_provider: ^2.1.2
 
 dev_dependencies:
   flutter_test:

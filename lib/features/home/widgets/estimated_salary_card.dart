@@ -27,6 +27,8 @@ class EstimatedSalaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final total = baseNet + extraNet;
+    final safeTaxes = taxes.abs() < 0.005 ? 0.0 : taxes;
+    final hasWorkedDays = workedDays > 0;
 
     return Container(
       width: double.infinity,
@@ -50,15 +52,26 @@ class EstimatedSalaryCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Text(
-                'Stipendio stimato',
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.75),
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
+              Expanded(
+                child: Row(
+                  children: [
+                    Text(
+                      'Proiezione mese',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.75),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildBadge(
+                      label: 'ORA',
+                      textColor: const Color(0xFF4ADE80),
+                      backgroundColor: const Color(0xFF22C55E).withOpacity(0.12),
+                    ),
+                  ],
                 ),
               ),
-              const Spacer(),
               Text(
                 monthLabel,
                 style: TextStyle(
@@ -67,6 +80,14 @@ class EstimatedSalaryCard extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Soldi che stai accumulando con i turni di questo mese',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.65),
+              fontSize: 13,
+            ),
           ),
           const SizedBox(height: 14),
           Text(
@@ -79,35 +100,49 @@ class EstimatedSalaryCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 18),
-          _row('Base netta', baseNet),
+          _row('Quota fissa netta', baseNet),
           _row('Extra netti', extraNet, valueColor: const Color(0xFF4ADE80)),
           _row('Extra lordi', extraGross),
-          _row('Tasse stimate', -taxes, valueColor: const Color(0xFFFF6B6B)),
+          _row(
+            'Tasse stimate',
+            safeTaxes == 0.0 ? 0.0 : -safeTaxes,
+            valueColor: const Color(0xFFFF6B6B),
+          ),
           const SizedBox(height: 16),
-          Text(
-            '$workedDays giorno${workedDays == 1 ? '' : 'i'} lavorato${workedDays == 1 ? '' : 'i'} su $totalDays',
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.white.withOpacity(0.70),
+          if (hasWorkedDays) ...[
+            Text(
+              '$workedDays giorno${workedDays == 1 ? '' : 'i'} lavorato${workedDays == 1 ? '' : 'i'} su $totalDays',
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.white.withOpacity(0.70),
+              ),
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Media giornaliera: € ${avgPerDay.toStringAsFixed(2)}',
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.white.withOpacity(0.70),
+            const SizedBox(height: 6),
+            Text(
+              'Media giornaliera: € ${avgPerDay.toStringAsFixed(2)}',
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.white.withOpacity(0.70),
+              ),
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Stima a fine mese: € ${projectedTotal.toStringAsFixed(0)}',
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF22C55E),
+            const SizedBox(height: 6),
+            Text(
+              'Proiezione fine mese: € ${projectedTotal.toStringAsFixed(0)}',
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF22C55E),
+              ),
             ),
-          ),
+          ] else ...[
+            Text(
+              'Nessun turno inserito per questo mese',
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.white.withOpacity(0.70),
+              ),
+            ),
+          ],
           const SizedBox(height: 14),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
@@ -116,7 +151,7 @@ class EstimatedSalaryCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Text(
-              'Stima basata sui tuoi cedolini',
+              'Basata sui turni inseriti',
               style: TextStyle(
                 color: Color(0xFF4ADE80),
                 fontSize: 12,
@@ -129,7 +164,31 @@ class EstimatedSalaryCard extends StatelessWidget {
     );
   }
 
+  Widget _buildBadge({
+    required String label,
+    required Color textColor,
+    required Color backgroundColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: textColor,
+        ),
+      ),
+    );
+  }
+
   Widget _row(String label, double value, {Color? valueColor}) {
+    final displayValue = value.abs() < 0.005 ? 0.0 : value;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
@@ -144,7 +203,7 @@ class EstimatedSalaryCard extends StatelessWidget {
             ),
           ),
           Text(
-            '€ ${value.toStringAsFixed(2)}',
+            '€ ${displayValue.toStringAsFixed(2)}',
             style: TextStyle(
               color: valueColor ?? Colors.white,
               fontSize: 14,
