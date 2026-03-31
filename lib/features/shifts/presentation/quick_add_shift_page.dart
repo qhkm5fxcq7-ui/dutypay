@@ -340,18 +340,9 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
     return labels.join(' • ');
   }
 
-  Shift _buildShiftPreview() {
-    final autoAmount = _autoMealAndComfortAmount();
+    Shift _buildShiftPreview() {
     final manualAmount = _parseDouble(_manualExtraAmountController.text);
-    final totalManual = manualAmount + autoAmount;
-
-    final autoLabel = _autoMealAndComfortLabel();
     final manualLabel = _manualExtraLabelController.text.trim();
-
-    final finalLabel = [
-      if (autoLabel.isNotEmpty) autoLabel,
-      if (manualLabel.isNotEmpty) manualLabel,
-    ].join(' • ');
 
     if (_hasAbsence) {
       final description = _descriptionController.text.trim().isEmpty
@@ -368,6 +359,8 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
         absence: _normalizedAbsenceForSave(_selectedAbsence),
         manualExtraAmount: 0,
         manualExtraLabel: '',
+        genereDiConforto: false,
+        ticketPasto: false,
         note: _noteController.text.trim(),
       );
     }
@@ -387,8 +380,10 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
       orderPublic: _selectedOrderPublic,
       externalService: _externalService,
       absence: _normalizedAbsenceForSave(_selectedAbsence),
-      manualExtraAmount: totalManual,
-      manualExtraLabel: finalLabel,
+      manualExtraAmount: manualAmount,
+      manualExtraLabel: manualLabel,
+      genereDiConforto: _includeGenereDiConforto,
+      ticketPasto: _includeTicketPasto,
       note: _noteController.text.trim(),
     );
   }
@@ -885,7 +880,7 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
         DateTime current = _serviceDate;
 
         while (!current.isAfter(_absenceEndDate)) {
-          shifts.add(
+                    shifts.add(
             Shift(
               description: shift.description,
               start: DateTime(current.year, current.month, current.day, 0, 0),
@@ -893,9 +888,11 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
               serviceDate: current,
               orderPublic: 'Nessuno',
               externalService: false,
-              absence: _selectedAbsence,
+              absence: _normalizedAbsenceForSave(_selectedAbsence),
               manualExtraAmount: 0,
               manualExtraLabel: '',
+              genereDiConforto: false,
+              ticketPasto: false,
               note: shift.note,
             ),
           );

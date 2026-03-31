@@ -7,6 +7,8 @@ class MonthCalendarDayData {
   final bool isSelected;
   final bool isToday;
   final String? absenceBadge;
+  final bool hasTicket;
+  final bool hasConforto;
 
   const MonthCalendarDayData({
     required this.date,
@@ -15,6 +17,8 @@ class MonthCalendarDayData {
     required this.isSelected,
     required this.isToday,
     this.absenceBadge,
+    this.hasTicket = false,
+    this.hasConforto = false,
   });
 
   bool get hasAmount => amount > 0;
@@ -29,12 +33,23 @@ class MonthCalendarCard extends StatelessWidget {
   final DateTime month;
   final List<MonthCalendarDayData> days;
   final ValueChanged<DateTime> onDayTap;
+  final VoidCallback? onOpenMonthNotes;
+
+  final int ticketPastoCount;
+  final int genereDiConfortoCount;
+  final double ticketPastoTotal;
+  final double genereDiConfortoTotal;
 
   const MonthCalendarCard({
     super.key,
     required this.month,
     required this.days,
     required this.onDayTap,
+    this.onOpenMonthNotes,
+    this.ticketPastoCount = 0,
+    this.genereDiConfortoCount = 0,
+    this.ticketPastoTotal = 0.0,
+    this.genereDiConfortoTotal = 0.0,
   });
 
   String _monthLabel(DateTime date) {
@@ -130,7 +145,9 @@ class MonthCalendarCard extends StatelessWidget {
     if (day.isToday) return const Color(0xFF67B7FF);
     if (!day.isInCurrentMonth) return const Color(0xFF202A37);
     if (day.hasAbsence) return const Color(0xFF324050);
-    if (day.hasAmount) return const Color(0xFF2A5A47);
+    if (day.hasAmount || day.hasTicket || day.hasConforto) {
+      return const Color(0xFF2A5A47);
+    }
     return const Color(0xFF253140);
   }
 
@@ -144,6 +161,7 @@ class MonthCalendarCard extends StatelessWidget {
     const weekdayLabels = ['L', 'M', 'M', 'G', 'V', 'S', 'D'];
     final monthTotal = _monthlyTotal();
     final workedDays = _workedDaysCount();
+    final benefitTotal = ticketPastoTotal + genereDiConfortoTotal;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -163,6 +181,23 @@ class MonthCalendarCard extends StatelessWidget {
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                   letterSpacing: -0.2,
+                ),
+              ),
+            ),
+            InkWell(
+              onTap: onOpenMonthNotes,
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _CalendarPalette.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: _CalendarPalette.cardBorder),
+                ),
+                child: const Icon(
+                  Icons.edit_note_rounded,
+                  size: 18,
+                  color: _CalendarPalette.info,
                 ),
               ),
             ),
@@ -187,22 +222,54 @@ class MonthCalendarCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: _CalendarPalette.cardBorder),
           ),
-          child: Row(
+          child: Column(
             children: [
-              Expanded(
-                child: _TopInfoBlock(
-                  label: 'Totale mese',
-                  value: '€ ${_formatMoney(monthTotal)}',
-                  valueColor: const Color(0xFF5CE1A8),
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: _TopInfoBlock(
+                      label: 'Totale mese',
+                      value: '€ ${_formatMoney(monthTotal)}',
+                      valueColor: const Color(0xFF5CE1A8),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _TopInfoBlock(
+                      label: 'Giorni con attività',
+                      value: '$workedDays',
+                      valueColor: Colors.white,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _TopInfoBlock(
-                  label: 'Giorni con attività',
-                  value: '$workedDays',
-                  valueColor: Colors.white,
-                ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: _TopInfoBlock(
+                      label: 'Ticket 7€',
+                      value:
+                          '$ticketPastoCount • € ${_formatMoney(ticketPastoTotal)}',
+                      valueColor: const Color(0xFF67B7FF),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _TopInfoBlock(
+                      label: 'Conforto 1,02€',
+                      value:
+                          '$genereDiConfortoCount • € ${_formatMoney(genereDiConfortoTotal)}',
+                      valueColor: const Color(0xFFFFC14D),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              _TopInfoBlock(
+                label: 'Benefit mese',
+                value: '€ ${_formatMoney(benefitTotal)}',
+                valueColor: const Color(0xFF9AD9FF),
               ),
             ],
           ),
@@ -321,24 +388,53 @@ class MonthCalendarCard extends StatelessWidget {
                           ),
                         ),
                       )
-                    else if (day.hasAmount)
-                      Container(
-                        width: 26,
-                        height: 6,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF5CE1A8),
-                          borderRadius: BorderRadius.circular(999),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF5CE1A8).withOpacity(0.28),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
+                    else ...[
+                      if (day.hasTicket || day.hasConforto)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            if (day.hasTicket)
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF67B7FF),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            if (day.hasConforto) ...[
+                              const SizedBox(width: 4),
+                              Container(
+                                width: 7,
+                                height: 7,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFFFC14D),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            ],
                           ],
                         ),
-                      )
-                    else
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 4),
+                      if (day.hasAmount)
+                        Container(
+                          width: 26,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF5CE1A8),
+                            borderRadius: BorderRadius.circular(999),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF5CE1A8).withOpacity(0.28),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                        )
+                      else
+                        const SizedBox(height: 6),
+                    ],
                   ],
                 ),
               ),
@@ -387,6 +483,7 @@ class _TopInfoBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
         color: const Color(0xFF111827),

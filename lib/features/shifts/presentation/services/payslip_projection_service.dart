@@ -716,7 +716,7 @@ class PayslipProjectionService {
     for (final shift in monthShifts) {
       shiftCount++;
 
-      final breakdown = shift.getBreakdown(payProfile);
+            final breakdown = shift.getSalaryBreakdown(payProfile);
 
       for (final item in breakdown) {
         final label = (item['label'] as String? ?? '').toUpperCase().trim();

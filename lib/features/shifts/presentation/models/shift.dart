@@ -699,11 +699,38 @@ class Shift {
     return items;
   }
 
-  double getTotalAmount([UserPayProfile? profile]) {
-    return getBreakdown(profile).fold(
+    double getTotalAmount([UserPayProfile? profile]) {
+    if (hasAbsence) return 0.0;
+
+    return getSalaryBreakdown(profile).fold(
       0.0,
       (sum, item) => sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
     );
+  }
+
+  List<Map<String, dynamic>> getSalaryBreakdown([UserPayProfile? profile]) {
+    final fullBreakdown = getBreakdown(profile);
+
+    return fullBreakdown.where((item) {
+      final label = (item['label'] as String? ?? '').trim().toLowerCase();
+
+      if (label == 'genere di conforto') return false;
+      if (label == 'ticket pasto') return false;
+
+      return true;
+    }).toList();
+  }
+
+    double getWelfareAmount([UserPayProfile? profile]) {
+    return getGenereDiConfortoAmount(profile) + getTicketPastoAmount(profile);
+  }
+
+  double getTicketAmount([UserPayProfile? profile]) {
+    return getTicketPastoAmount(profile);
+  }
+
+  double getComfortAmount([UserPayProfile? profile]) {
+    return getGenereDiConfortoAmount(profile);
   }
 
   double get overtimeRate => getOvertimeRate();
