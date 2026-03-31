@@ -157,6 +157,10 @@ class _PayslipPageState extends State<PayslipPage> {
     final historicalReferenceText = usingHistoricalAverage
         ? 'Media storica utilizzata perché nel mese di riferimento ci sono pochi turni.'
         : 'Valori basati sul mese di riferimento delle accessorie.';
+        final referenceShiftCount = projection.referenceMonthShiftCount;
+final accessoriesGrossLiquidated = projection.accessoriesGrossLiquidated;
+final accessoriesGrossUsed = projection.accessoriesGrossUsedForEstimate;
+final accessoriesNetEstimated = projection.accessoriesNetEstimated;
 
     return _DutyPayScaffold(
       child: ListView(
@@ -372,6 +376,41 @@ _HeroNetCard(
                       ? CrossFadeState.showSecond
                       : CrossFadeState.showFirst,
                 ),
+                const SizedBox(height: 10),
+_InfoPill(
+  icon: Icons.calendar_view_month_rounded,
+  label: 'Turni nel mese di riferimento',
+  value: '$referenceShiftCount',
+),
+const SizedBox(height: 10),
+_InfoPill(
+  icon: Icons.payments_outlined,
+  label: 'Accessorie lorde liquidate',
+  value: _currency(accessoriesGrossLiquidated),
+),
+const SizedBox(height: 10),
+_InfoPill(
+  icon: Icons.calculate_outlined,
+  label: 'Accessorie lorde usate',
+  value: _currency(accessoriesGrossUsed),
+),
+const SizedBox(height: 10),
+_InfoPill(
+  icon: Icons.account_balance_wallet_outlined,
+  label: 'Accessorie nette stimate',
+  value: _currency(accessoriesNetEstimated),
+),
+_InfoPill(
+  icon: Icons.layers_outlined,
+  label: 'Accessorie NON straordinario',
+  value: _currency(projection.nonOvertimeGross),
+),
+const SizedBox(height: 10),
+_InfoPill(
+  icon: Icons.flash_on_outlined,
+  label: 'Straordinari lordi',
+  value: _currency(projection.overtimeGrossFromReferenceMonth),
+),
               ],
             ),
           ),
@@ -2123,7 +2162,7 @@ class _CedolinoDisclaimerCard extends StatelessWidget {
                 ),
                 SizedBox(height: 6),
                 Text(
-                  'Questa schermata mostra una proiezione del cedolino mensile costruita sui turni inseriti e sui cedolini caricati. I valori diventano molto più affidabili dopo la calibrazione. La stima resta un supporto operativo e non sostituisce il cedolino ufficiale NoiPA.',
+                  'Questa schermata mostra una proiezione del cedolino mensile costruita sui turni inseriti e sui cedolini caricati. Le cifre mostrate sono stime operative basate sui dati disponibili e diventano più affidabili dopo la calibrazione. La pagina aiuta a pianificare il mese, ma non sostituisce il cedolino ufficiale NoiPA.',
                   style: TextStyle(
                     color: _DutyPayColors.textSecondary,
                     fontSize: 13.2,

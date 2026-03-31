@@ -1220,7 +1220,7 @@ Future<void> _loadSavedRates() async {
     );
   }
 
-  Widget _buildDerivedRatesCard() {
+    Widget _buildDerivedRatesCard() {
     final rates = derivedRates;
 
     if (rates == null) {
@@ -1240,10 +1240,10 @@ Future<void> _loadSavedRates() async {
 
     Widget rateBox(String label, double value, bool isReal) {
       return Container(
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: const Color(0xFF111827),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: isReal ? const Color(0xFF22C55E) : const Color(0xFFF59E0B),
           ),
@@ -1253,18 +1253,33 @@ Future<void> _loadSavedRates() async {
           children: [
             Text(
               label,
-              style: const TextStyle(fontSize: 11, color: Colors.white60),
+              style: const TextStyle(
+                fontSize: 11.5,
+                color: Colors.white60,
+              ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
             Text(
               _formatMoney(value),
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
+            Text(
+              _rateSupportLabel(label),
+              style: const TextStyle(
+                fontSize: 11.5,
+                color: Colors.white54,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
             Text(
               isReal ? 'REALE' : 'STIMATO',
               style: TextStyle(
-                fontSize: 10,
+                fontSize: 10.5,
                 fontWeight: FontWeight.w700,
                 color: isReal
                     ? const Color(0xFF22C55E)
@@ -1286,11 +1301,47 @@ Future<void> _loadSavedRates() async {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Rate reali derivati dai cedolini',
-            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Rate reali derivati dai cedolini',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              InkWell(
+                onTap: _showRatesInfoSheet,
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0F172A),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white10),
+                  ),
+                  child: const Icon(
+                    Icons.info_outline_rounded,
+                    size: 18,
+                    color: Color(0xFF67B7FF),
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
+          const Text(
+            'Valori medi letti dai cedolini caricati. Tocca la i per capire come interpretarli.',
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.white70,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 14),
           Wrap(
             spacing: 10,
             runSpacing: 10,
@@ -1340,6 +1391,7 @@ Future<void> _loadSavedRates() async {
                 child: _StaticRateBox(
                   label: 'OP fuori sede 1 turno',
                   value: '18,20',
+                  subtitle: 'Importo medio netto',
                 ),
               ),
               const SizedBox(
@@ -1347,6 +1399,7 @@ Future<void> _loadSavedRates() async {
                 child: _StaticRateBox(
                   label: 'OP fuori sede intera',
                   value: '26,00',
+                  subtitle: 'Importo medio netto',
                 ),
               ),
             ],
@@ -1548,7 +1601,161 @@ Future<void> _loadSavedRates() async {
       ),
     );
   }
+  void _showRatesInfoSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF121922),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        Widget infoBlock({
+          required String title,
+          required String body,
+        }) {
+          return Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFF111827),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.white10),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF5CE1A8),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  body,
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    color: Colors.white70,
+                    height: 1.45,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
 
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 28),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 42,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  const Text(
+                    'Come leggere questi valori',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'I valori mostrati rappresentano importi medi netti o maggiorazioni medie derivate dai cedolini caricati.',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.white70,
+                      height: 1.45,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Non sono tariffe contrattuali ufficiali lorde: servono a mostrarti quanto emerge realmente dai cedolini usati per la calibrazione.',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.white70,
+                      height: 1.45,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  infoBlock(
+                    title: 'Straordinario orario',
+                    body:
+                        'È una media netta per ora ricavata dai cedolini. Può risultare più alta rispetto al valore lordo teorico perché riflette quanto emerge realmente in busta paga.',
+                  ),
+                  const SizedBox(height: 12),
+                  infoBlock(
+                    title: 'Notturno',
+                    body:
+                        'Non è una paga oraria completa. È la maggiorazione o indennità aggiuntiva legata alla componente notturna del servizio.',
+                  ),
+                  const SizedBox(height: 12),
+                  infoBlock(
+                    title: 'Festivo, OP e servizio esterno',
+                    body:
+                        'Questi importi rappresentano valori medi netti rilevati dai cedolini caricati e servono per costruire simulazioni più credibili.',
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Importante',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF67B7FF),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'I valori possono variare in base al mese, alla tassazione, al tipo di servizio e alla situazione personale. DutyPay li usa come riferimento operativo realistico, non come sostituzione del cedolino ufficiale.',
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      color: Colors.white70,
+                      height: 1.45,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  String _rateSupportLabel(String label) {
+    switch (label) {
+      case 'Straordinario orario':
+        return 'Netto medio per ora';
+      case 'Notturno':
+        return 'Maggiorazione media';
+      case 'Festivo':
+        return 'Importo medio netto';
+      case 'OP in sede':
+        return 'Importo medio netto';
+      case 'Servizio esterno':
+        return 'Importo medio netto';
+      case 'OP fuori sede 1 turno':
+        return 'Importo medio netto';
+      case 'OP fuori sede intera':
+        return 'Importo medio netto';
+      default:
+        return 'Valore medio';
+    }
+  }
   @override
   Widget build(BuildContext context) {
     final loadedCount = selectedPdfNames.where((e) => e != null).length;
@@ -1701,19 +1908,21 @@ Container(
 class _StaticRateBox extends StatelessWidget {
   final String label;
   final String value;
+  final String subtitle;
 
   const _StaticRateBox({
     required this.label,
     required this.value,
+    required this.subtitle,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: const Color(0xFF111827),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFF22C55E)),
       ),
       child: Column(
@@ -1721,18 +1930,33 @@ class _StaticRateBox extends StatelessWidget {
         children: [
           Text(
             label,
-            style: const TextStyle(fontSize: 11, color: Colors.white60),
+            style: const TextStyle(
+              fontSize: 11.5,
+              color: Colors.white60,
+            ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
           Text(
             value,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
+          Text(
+            subtitle,
+            style: const TextStyle(
+              fontSize: 11.5,
+              color: Colors.white54,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
           const Text(
             'REALE',
             style: TextStyle(
-              fontSize: 10,
+              fontSize: 10.5,
               fontWeight: FontWeight.w700,
               color: Color(0xFF22C55E),
             ),
