@@ -43,6 +43,7 @@ class PayslipPage extends StatefulWidget {
 class _PayslipPageState extends State<PayslipPage> {
   bool _detailsExpanded = false;
   bool _infoExpanded = false;
+  bool _advancedAccessoriesExpanded = false;
 
   PayslipProjectionResult? get _projection =>
       widget.projection ?? widget.projectionResult;
@@ -59,78 +60,78 @@ class _PayslipPageState extends State<PayslipPage> {
     final precision = _precision;
 
     if (projection == null) {
-  return _DutyPayScaffold(
-    child: ListView(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-      children: [
-        Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color(0xFF1A1F2B),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: const Color(0xFF22C55E),
-              width: 1,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Row(
+      return _DutyPayScaffold(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+          children: [
+            Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1A1F2B),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: const Color(0xFF22C55E),
+                  width: 1,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
-                    Icons.upload_file,
-                    color: Color(0xFF22C55E),
+                  const Row(
+                    children: [
+                      Icon(
+                        Icons.upload_file,
+                        color: Color(0xFF22C55E),
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Carica i cedolini',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
                   ),
-                  SizedBox(width: 8),
-                  Text(
-                    'Carica i cedolini',
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Per avere una stima precisa devi caricare almeno 2 cedolini.\n\nTocca l’icona in alto a destra per iniziare.',
                     style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
+                      color: Colors.white70,
+                      fontSize: 13,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton.icon(
+                    onPressed: widget.onOpenCalibration,
+                    icon: const Icon(Icons.upload_file),
+                    label: const Text('Carica cedolini'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF22C55E),
+                      foregroundColor: Colors.black,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
-              const Text(
-                'Per avere una stima precisa devi caricare almeno 2 cedolini.\n\nTocca l’icona in alto a destra per iniziare.',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 13,
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 12),
-              ElevatedButton.icon(
-                onPressed: widget.onOpenCalibration,
-                icon: const Icon(Icons.upload_file),
-                label: const Text('Carica cedolini'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF22C55E),
-                  foregroundColor: Colors.black,
-                ),
-              ),
-            ],
-          ),
+            ),
+            _PageTitle(
+              title: 'Cedolino',
+              subtitle: 'Stima chiara, semplice e affidabile del tuo mese.',
+            ),
+            const SizedBox(height: 18),
+            _EmptyStateCard(
+              title: 'Nessuna stima disponibile',
+              subtitle:
+                  'Carica i cedolini per calibrare l’app e ottenere una proiezione realistica del netto.',
+              primaryActionLabel: 'Carica i 3 cedolini',
+              onPrimaryAction: widget.onOpenCalibration,
+            ),
+          ],
         ),
-        _PageTitle(
-          title: 'Cedolino',
-          subtitle: 'Stima chiara, semplice e affidabile del tuo mese.',
-        ),
-        const SizedBox(height: 18),
-        _EmptyStateCard(
-          title: 'Nessuna stima disponibile',
-          subtitle:
-              'Carica i cedolini per calibrare l’app e ottenere una proiezione realistica del netto.',
-          primaryActionLabel: 'Carica i 3 cedolini',
-          onPrimaryAction: widget.onOpenCalibration,
-        ),
-      ],
-    ),
-  );
-}
+      );
+    }
 
     final monthLabel = _monthYearLabel(_pageMonth);
     final estimatedNet = _readEstimatedNet(projection);
@@ -157,32 +158,32 @@ class _PayslipPageState extends State<PayslipPage> {
     final historicalReferenceText = usingHistoricalAverage
         ? 'Media storica utilizzata perché nel mese di riferimento ci sono pochi turni.'
         : 'Valori basati sul mese di riferimento delle accessorie.';
-        final referenceShiftCount = projection.referenceMonthShiftCount;
-final accessoriesGrossLiquidated = projection.accessoriesGrossLiquidated;
-final accessoriesGrossUsed = projection.accessoriesGrossUsedForEstimate;
-final accessoriesNetEstimated = projection.accessoriesNetEstimated;
+
+    final referenceShiftCount = projection.referenceMonthShiftCount;
+    final accessoriesGrossLiquidated = projection.accessoriesGrossLiquidated;
+    final accessoriesGrossUsed = projection.accessoriesGrossUsedForEstimate;
 
     return _DutyPayScaffold(
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 34),
         children: [
           _PageTitle(
-  title: 'Cedolino',
-  subtitle: 'Tutto quello che ti serve, senza confusione.',
-),
-const SizedBox(height: 18),
-_CalibrationExplainerCard(
-  onOpenCalibration: widget.onOpenCalibration,
-  isCalibrated: true,
-),
-const SizedBox(height: 16),
-const _CedolinoDisclaimerCard(),
-const SizedBox(height: 16),
-_HeroNetCard(
-  monthLabel: monthLabel,
-  netValue: estimatedNet,
-  precision: precision,
-),
+            title: 'Cedolino',
+            subtitle: 'Tutto quello che ti serve, senza confusione.',
+          ),
+          const SizedBox(height: 18),
+          _CalibrationExplainerCard(
+            onOpenCalibration: widget.onOpenCalibration,
+            isCalibrated: true,
+          ),
+          const SizedBox(height: 16),
+          const _CedolinoDisclaimerCard(),
+          const SizedBox(height: 16),
+          _HeroNetCard(
+            monthLabel: monthLabel,
+            netValue: estimatedNet,
+            precision: precision,
+          ),
           const SizedBox(height: 16),
           _PrimarySummaryCard(
             title: 'Quanto stai costruendo',
@@ -328,7 +329,7 @@ _HeroNetCard(
                 _SectionHeader(
                   title: 'Accessorie e ritardo di pagamento',
                   subtitle:
-                      'Ti mostriamo sempre il mese giusto su cui stai realmente maturando.',
+                      'Ti mostriamo il mese giusto su cui stai realmente maturando.',
                   trailing: IconButton(
                     onPressed: () {
                       setState(() {
@@ -357,6 +358,104 @@ _HeroNetCard(
                       ? 'Media storica'
                       : 'Mese di riferimento',
                 ),
+                const SizedBox(height: 10),
+                _InfoPill(
+                  icon: Icons.account_balance_wallet_outlined,
+                  label: 'Accessorie nette stimate',
+                  value: _currency(netAccessories),
+                ),
+                const SizedBox(height: 14),
+                InkWell(
+                  onTap: () {
+                    setState(() {
+                      _advancedAccessoriesExpanded =
+                          !_advancedAccessoriesExpanded;
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 13,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _DutyPayColors.surface,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: _DutyPayColors.cardBorder),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.tune_rounded,
+                          size: 18,
+                          color: _DutyPayColors.info,
+                        ),
+                        const SizedBox(width: 10),
+                        const Expanded(
+                          child: Text(
+                            'Dettagli avanzati',
+                            style: TextStyle(
+                              color: _DutyPayColors.textPrimary,
+                              fontSize: 13.8,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        Icon(
+                          _advancedAccessoriesExpanded
+                              ? Icons.keyboard_arrow_up_rounded
+                              : Icons.keyboard_arrow_down_rounded,
+                          color: _DutyPayColors.textSecondary,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                AnimatedCrossFade(
+                  duration: const Duration(milliseconds: 220),
+                  firstChild: const SizedBox.shrink(),
+                  secondChild: Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Column(
+                      children: [
+                        _InfoPill(
+                          icon: Icons.calendar_view_month_rounded,
+                          label: 'Turni nel mese di riferimento',
+                          value: '$referenceShiftCount',
+                        ),
+                        const SizedBox(height: 10),
+                        _InfoPill(
+                          icon: Icons.payments_outlined,
+                          label: 'Accessorie lorde liquidate',
+                          value: _currency(accessoriesGrossLiquidated),
+                        ),
+                        const SizedBox(height: 10),
+                        _InfoPill(
+                          icon: Icons.calculate_outlined,
+                          label: 'Accessorie lorde usate',
+                          value: _currency(accessoriesGrossUsed),
+                        ),
+                        const SizedBox(height: 10),
+                        _InfoPill(
+                          icon: Icons.layers_outlined,
+                          label: 'Accessorie NON straordinario',
+                          value: _currency(projection.nonOvertimeGross),
+                        ),
+                        const SizedBox(height: 10),
+                        _InfoPill(
+                          icon: Icons.flash_on_outlined,
+                          label: 'Straordinari lordi',
+                          value:
+                              _currency(projection.overtimeGrossFromReferenceMonth),
+                        ),
+                      ],
+                    ),
+                  ),
+                  crossFadeState: _advancedAccessoriesExpanded
+                      ? CrossFadeState.showSecond
+                      : CrossFadeState.showFirst,
+                ),
                 AnimatedCrossFade(
                   duration: const Duration(milliseconds: 220),
                   firstChild: const SizedBox.shrink(),
@@ -376,41 +475,6 @@ _HeroNetCard(
                       ? CrossFadeState.showSecond
                       : CrossFadeState.showFirst,
                 ),
-                const SizedBox(height: 10),
-_InfoPill(
-  icon: Icons.calendar_view_month_rounded,
-  label: 'Turni nel mese di riferimento',
-  value: '$referenceShiftCount',
-),
-const SizedBox(height: 10),
-_InfoPill(
-  icon: Icons.payments_outlined,
-  label: 'Accessorie lorde liquidate',
-  value: _currency(accessoriesGrossLiquidated),
-),
-const SizedBox(height: 10),
-_InfoPill(
-  icon: Icons.calculate_outlined,
-  label: 'Accessorie lorde usate',
-  value: _currency(accessoriesGrossUsed),
-),
-const SizedBox(height: 10),
-_InfoPill(
-  icon: Icons.account_balance_wallet_outlined,
-  label: 'Accessorie nette stimate',
-  value: _currency(accessoriesNetEstimated),
-),
-_InfoPill(
-  icon: Icons.layers_outlined,
-  label: 'Accessorie NON straordinario',
-  value: _currency(projection.nonOvertimeGross),
-),
-const SizedBox(height: 10),
-_InfoPill(
-  icon: Icons.flash_on_outlined,
-  label: 'Straordinari lordi',
-  value: _currency(projection.overtimeGrossFromReferenceMonth),
-),
               ],
             ),
           ),
@@ -613,90 +677,90 @@ _InfoPill(
   }
 
   double _readEstimatedNet(PayslipProjectionResult projection) {
-  final dynamic p = projection;
-  return _readFirstDouble(
-    [
-      () => p.estimatedPayslipTotal,
-      () => p.totalFinalNetEstimate,
-      () => p.estimatedNetTotal,
-      () => p.finalNetEstimate,
-      () => p.netTotalEstimate,
-    ],
-    fallback: 0,
-  );
-}
+    final dynamic p = projection;
+    return _readFirstDouble(
+      [
+        () => p.estimatedPayslipTotal,
+        () => p.totalFinalNetEstimate,
+        () => p.estimatedNetTotal,
+        () => p.finalNetEstimate,
+        () => p.netTotalEstimate,
+      ],
+      fallback: 0,
+    );
+  }
 
   double _readBaseNet(PayslipProjectionResult projection) {
-  final dynamic p = projection;
-  return _readFirstDouble(
-    [
-      () => p.fixedBaseNetEstimated,
-      () => p.baseNetSalaryEstimate,
-      () => p.baseNetEstimate,
-      () => p.estimatedBaseNet,
-      () => p.baseNet,
-    ],
-    fallback: 0,
-  );
-}
+    final dynamic p = projection;
+    return _readFirstDouble(
+      [
+        () => p.fixedBaseNetEstimated,
+        () => p.baseNetSalaryEstimate,
+        () => p.baseNetEstimate,
+        () => p.estimatedBaseNet,
+        () => p.baseNet,
+      ],
+      fallback: 0,
+    );
+  }
 
   double _readNetAccessories(PayslipProjectionResult projection) {
-  final dynamic p = projection;
-  return _readFirstDouble(
-    [
-      () => p.accessoriesNetEstimated,
-      () => p.accessoryNetEstimate,
-      () => p.netAccessoryEstimate,
-      () => p.accessoriesNetEstimate,
-      () => p.referenceMonthAccessoryNet,
-    ],
-    fallback: 0,
-  );
-}
+    final dynamic p = projection;
+    return _readFirstDouble(
+      [
+        () => p.accessoriesNetEstimated,
+        () => p.accessoryNetEstimate,
+        () => p.netAccessoryEstimate,
+        () => p.accessoriesNetEstimate,
+        () => p.referenceMonthAccessoryNet,
+      ],
+      fallback: 0,
+    );
+  }
 
   double _readExtraNetBuilt(PayslipProjectionResult projection) {
-  final dynamic p = projection;
-  return _readFirstDouble(
-    [
-      () => p.accessoriesNetEstimated,
-      () => p.extraNetBuilt,
-      () => p.netExtrasBuilt,
-      () => p.shiftExtraNet,
-      () => p.extraNetEstimate,
-    ],
-    fallback: (_readExtraGross(projection) - _readExtraTaxes(projection))
-        .clamp(0, double.infinity),
-  );
-}
+    final dynamic p = projection;
+    return _readFirstDouble(
+      [
+        () => p.accessoriesNetEstimated,
+        () => p.extraNetBuilt,
+        () => p.netExtrasBuilt,
+        () => p.shiftExtraNet,
+        () => p.extraNetEstimate,
+      ],
+      fallback: (_readExtraGross(projection) - _readExtraTaxes(projection))
+          .clamp(0, double.infinity),
+    );
+  }
 
   double _readExtraGross(PayslipProjectionResult projection) {
-  final dynamic p = projection;
-  return _readFirstDouble(
-    [
-      () => p.accessoriesGrossUsedForEstimate,
-      () => p.accessoriesGrossLiquidated,
-      () => p.extraGrossBuilt,
-      () => p.shiftExtraGross,
-      () => p.totalAccessoriesGross,
-      () => p.accessoryGrossEstimate,
-    ],
-    fallback: 0,
-  );
-}
+    final dynamic p = projection;
+    return _readFirstDouble(
+      [
+        () => p.accessoriesGrossUsedForEstimate,
+        () => p.accessoriesGrossLiquidated,
+        () => p.extraGrossBuilt,
+        () => p.shiftExtraGross,
+        () => p.totalAccessoriesGross,
+        () => p.accessoryGrossEstimate,
+      ],
+      fallback: 0,
+    );
+  }
 
   double _readExtraTaxes(PayslipProjectionResult projection) {
-  final dynamic p = projection;
-  return _readFirstDouble(
-    [
-      () => p.taxes,
-      () => p.extraTaxesEstimate,
-      () => p.estimatedExtraTaxes,
-      () => p.accessoryTaxEstimate,
-      () => p.extraTaxAmount,
-    ],
-    fallback: 0,
-  );
-}
+    final dynamic p = projection;
+    return _readFirstDouble(
+      [
+        () => p.taxes,
+        () => p.extraTaxesEstimate,
+        () => p.estimatedExtraTaxes,
+        () => p.accessoryTaxEstimate,
+        () => p.extraTaxAmount,
+      ],
+      fallback: 0,
+    );
+  }
 
   double _readRecurringDeductions(PayslipProjectionResult projection) {
     final dynamic p = projection;
@@ -2178,6 +2242,7 @@ class _CedolinoDisclaimerCard extends StatelessWidget {
     );
   }
 }
+
 class _DutyPayColors {
   static const background = Color(0xFF0B0F14);
   static const backgroundSoft = Color(0xFF11161E);
@@ -2220,7 +2285,7 @@ enum _RowTone {
 
 enum _MetricTone {
   neutral,
- positive,
+  positive,
   warning,
 }
 
