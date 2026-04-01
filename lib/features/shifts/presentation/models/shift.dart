@@ -356,6 +356,14 @@ class Shift {
     return _sanitizeRate(p.ticketPastoRate, 7.00);
   }
 
+  double _resolvedOvertimeNetMultiplier(UserPayProfile p) {
+    final value = p.straordinarioNetMultiplier;
+    if (value.isNaN || !value.isFinite || value <= 0 || value > 1) {
+      return 0.67;
+    }
+    return value;
+  }
+
   double getOvertimeRate([UserPayProfile? profile]) {
     final p = _effectiveProfile(profile);
 
@@ -376,17 +384,23 @@ class Shift {
     if (hasAbsence) return 0.0;
 
     final p = _effectiveProfile(profile);
-    final dayRate = _resolvedOvertimeDayRate(p);
-    final nightOrHolidayRate = _resolvedOvertimeNightOrHolidayRate(p);
+    final multiplier = _resolvedOvertimeNetMultiplier(p);
 
     if (isLegacyQuantifiedShift) {
-      final diurno = straordinarioDiurnoHours * dayRate;
-      final nottFest =
+      final dayRate = _resolvedOvertimeDayRate(p);
+      final nightOrHolidayRate = _resolvedOvertimeNightOrHolidayRate(p);
+
+      final diurnoLordo = straordinarioDiurnoHours * dayRate;
+      final nottFestLordo =
           straordinarioNotturnoFestivoHours * nightOrHolidayRate;
-      return diurno + nottFest;
+
+      return (diurnoLordo + nottFestLordo) * multiplier;
     }
 
-    return overtimeHours * getOvertimeRate(profile);
+    final overtimeRate = getOvertimeRate(profile);
+    final lordo = overtimeHours * overtimeRate;
+
+    return lordo * multiplier;
   }
 
   double getOrderPublicAmount([UserPayProfile? profile]) {
@@ -554,8 +568,6 @@ class Shift {
     }
 
     final items = <Map<String, dynamic>>[];
-
-    final overtimeRate = getOvertimeRate(profile);
     final overtimeAmount = getOvertimeAmount(profile);
     final orderPublicAmount = getOrderPublicAmount(profile);
     final festiveAmount = getFestiveAmount(profile);
@@ -575,22 +587,25 @@ class Shift {
 
     if (isLegacyQuantifiedShift) {
       final p = _effectiveProfile(profile);
+      final multiplier = _resolvedOvertimeNetMultiplier(p);
       final dayRate = _resolvedOvertimeDayRate(p);
       final nightOrHolidayRate = _resolvedOvertimeNightOrHolidayRate(p);
 
       if (straordinarioDiurnoHours > 0) {
+        final nettoRate = dayRate * multiplier;
         items.add({
           'label':
-              'Straordinario diurno (${straordinarioDiurnoHours.toStringAsFixed(1)}h × €${dayRate.toStringAsFixed(2)})',
-          'amount': straordinarioDiurnoHours * dayRate,
+              'Straordinario diurno (${straordinarioDiurnoHours.toStringAsFixed(1)}h × €${nettoRate.toStringAsFixed(2)})',
+          'amount': straordinarioDiurnoHours * nettoRate,
         });
       }
 
       if (straordinarioNotturnoFestivoHours > 0) {
+        final nettoRate = nightOrHolidayRate * multiplier;
         items.add({
           'label':
-              'Straordinario notturno/festivo (${straordinarioNotturnoFestivoHours.toStringAsFixed(1)}h × €${nightOrHolidayRate.toStringAsFixed(2)})',
-          'amount': straordinarioNotturnoFestivoHours * nightOrHolidayRate,
+              'Straordinario notturno/festivo (${straordinarioNotturnoFestivoHours.toStringAsFixed(1)}h × €${nettoRate.toStringAsFixed(2)})',
+          'amount': straordinarioNotturnoFestivoHours * nettoRate,
         });
       }
 
@@ -640,9 +655,13 @@ class Shift {
     }
 
     if (overtimeHours > 0) {
+      final p = _effectiveProfile(profile);
+      final overtimeRate = getOvertimeRate(profile);
+      final nettoRate = overtimeRate * _resolvedOvertimeNetMultiplier(p);
+
       items.add({
         'label':
-            '${getOvertimeLabel(profile)} (${overtimeHours.toStringAsFixed(1)}h × €${overtimeRate.toStringAsFixed(2)})',
+            '${getOvertimeLabel(profile)} (${overtimeHours.toStringAsFixed(1)}h × €${nettoRate.toStringAsFixed(2)})',
         'amount': overtimeAmount,
       });
     }
@@ -699,7 +718,7 @@ class Shift {
     return items;
   }
 
-    double getTotalAmount([UserPayProfile? profile]) {
+  double getTotalAmount([UserPayProfile? profile]) {
     if (hasAbsence) return 0.0;
 
     return getSalaryBreakdown(profile).fold(
@@ -721,7 +740,7 @@ class Shift {
     }).toList();
   }
 
-    double getWelfareAmount([UserPayProfile? profile]) {
+  double getWelfareAmount([UserPayProfile? profile]) {
     return getGenereDiConfortoAmount(profile) + getTicketPastoAmount(profile);
   }
 

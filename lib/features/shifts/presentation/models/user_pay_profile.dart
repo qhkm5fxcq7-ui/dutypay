@@ -440,10 +440,12 @@ class UserPayProfile {
 
   final double genereDiConfortoRate;
   final double ticketPastoRate;
+  final double straordinarioNetMultiplier;
 
   const UserPayProfile({
     this.rank,
     required this.overtimeDayRate,
+    this.straordinarioNetMultiplier = 0.67,
     required this.overtimeNightOrHolidayRate,
     required this.overtimeNightAndHolidayRate,
     required this.orderPublicInSede,
@@ -498,6 +500,7 @@ class UserPayProfile {
       annualProductionBonus: null,
       genereDiConfortoRate: 1.02,
       ticketPastoRate: 7.00,
+      straordinarioNetMultiplier: 0.67,
     );
   }
 
