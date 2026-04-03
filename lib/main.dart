@@ -748,10 +748,17 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
       (sum, shift) => sum + _salaryOnlyAmount(shift),
     );
   }
+  
   int get monthlyTicketPastoCount {
   return filteredShifts.where((shift) => shift.ticketPasto).length;
 }
 
+double get monthlyOvertimeHours {
+  return filteredShifts.fold(
+    0.0,
+    (sum, shift) => sum + shift.overtimeHours,
+  );
+}
 int get monthlyGenereDiConfortoCount {
   return filteredShifts.where((shift) => shift.genereDiConforto).length;
 }
@@ -2006,6 +2013,7 @@ double get monthlyGenereDiConfortoTotal {
   genereDiConfortoCount: monthlyGenereDiConfortoCount,
   ticketPastoTotal: monthlyTicketPastoTotal,
   genereDiConfortoTotal: monthlyGenereDiConfortoTotal,
+  totalOvertimeHours: monthlyOvertimeHours,
   onOpenMonthNotes: _openMonthNotes,
   onDayTap: (date) {
     setState(() {

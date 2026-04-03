@@ -39,6 +39,7 @@ class MonthCalendarCard extends StatelessWidget {
   final int genereDiConfortoCount;
   final double ticketPastoTotal;
   final double genereDiConfortoTotal;
+  final double totalOvertimeHours;
 
   const MonthCalendarCard({
     super.key,
@@ -50,6 +51,7 @@ class MonthCalendarCard extends StatelessWidget {
     this.genereDiConfortoCount = 0,
     this.ticketPastoTotal = 0.0,
     this.genereDiConfortoTotal = 0.0,
+    this.totalOvertimeHours = 0.0,
   });
 
   String _monthLabel(DateTime date) {
@@ -266,10 +268,24 @@ class MonthCalendarCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 10),
-              _TopInfoBlock(
-                label: 'Benefit mese',
-                value: '€ ${_formatMoney(benefitTotal)}',
-                valueColor: const Color(0xFF9AD9FF),
+              Row(
+                children: [
+                  Expanded(
+                    child: _TopInfoBlock(
+                      label: 'Benefit mese',
+                      value: '€ ${_formatMoney(benefitTotal)}',
+                      valueColor: const Color(0xFF9AD9FF),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _TopInfoBlock(
+                      label: 'Straordinario',
+                      value: '${totalOvertimeHours.toStringAsFixed(1)} h',
+                      valueColor: const Color(0xFF5CE1A8),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -425,7 +441,8 @@ class MonthCalendarCard extends StatelessWidget {
                             borderRadius: BorderRadius.circular(999),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF5CE1A8).withOpacity(0.28),
+                                color:
+                                    const Color(0xFF5CE1A8).withOpacity(0.28),
                                 blurRadius: 8,
                                 offset: const Offset(0, 2),
                               ),
