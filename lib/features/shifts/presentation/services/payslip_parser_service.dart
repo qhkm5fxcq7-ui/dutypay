@@ -294,6 +294,7 @@ class PayslipParserService {
 
     return UserPayProfile(
       monthlyOvertimePayableHoursLimit: 55.0,
+      departmentId: 'polizia_mobile',
       rank: latest.detectedGradeLabel == 'Non rilevato'
           ? defaultProfile.rank
           : latest.detectedGradeLabel,

@@ -406,6 +406,7 @@ class PayslipParsedData {
 
 class UserPayProfile {
   final String? rank;
+  final String departmentId;
 
   final double overtimeDayRate;
   final double overtimeNightOrHolidayRate;
@@ -444,6 +445,7 @@ class UserPayProfile {
 
   const UserPayProfile({
     this.rank,
+    required this.departmentId,
     required this.overtimeDayRate,
     this.straordinarioNetMultiplier = 0.67,
     required this.overtimeNightOrHolidayRate,
@@ -475,6 +477,7 @@ class UserPayProfile {
   factory UserPayProfile.defaultProfile() {
     return UserPayProfile(
       rank: null,
+      departmentId: 'polizia_mobile',
       overtimeDayRate: 12.0,
       overtimeNightOrHolidayRate: 13.5,
       overtimeNightAndHolidayRate: 15.0,
@@ -511,6 +514,7 @@ class UserPayProfile {
 
   UserPayProfile copyWith({
     String? rank,
+    String? departmentId,
     double? overtimeDayRate,
     double? overtimeNightOrHolidayRate,
     double? overtimeNightAndHolidayRate,
@@ -536,9 +540,11 @@ class UserPayProfile {
     double? annualProductionBonus,
     double? genereDiConfortoRate,
     double? ticketPastoRate,
+    double? straordinarioNetMultiplier,
   }) {
     return UserPayProfile(
       rank: rank ?? this.rank,
+      departmentId: departmentId ?? this.departmentId,
       overtimeDayRate: overtimeDayRate ?? this.overtimeDayRate,
       overtimeNightOrHolidayRate:
           overtimeNightOrHolidayRate ?? this.overtimeNightOrHolidayRate,
@@ -573,12 +579,15 @@ class UserPayProfile {
       genereDiConfortoRate:
           genereDiConfortoRate ?? this.genereDiConfortoRate,
       ticketPastoRate: ticketPastoRate ?? this.ticketPastoRate,
+      straordinarioNetMultiplier:
+          straordinarioNetMultiplier ?? this.straordinarioNetMultiplier,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'rank': rank,
+      'departmentId': departmentId,
       'overtimeDayRate': overtimeDayRate,
       'overtimeNightOrHolidayRate': overtimeNightOrHolidayRate,
       'overtimeNightAndHolidayRate': overtimeNightAndHolidayRate,
@@ -604,12 +613,14 @@ class UserPayProfile {
       'annualProductionBonus': annualProductionBonus,
       'genereDiConfortoRate': genereDiConfortoRate,
       'ticketPastoRate': ticketPastoRate,
+      'straordinarioNetMultiplier': straordinarioNetMultiplier,
     };
   }
 
   factory UserPayProfile.fromJson(Map<String, dynamic> json) {
     return UserPayProfile(
       rank: json['rank'] as String?,
+      departmentId: (json['departmentId'] ?? 'polizia_mobile') as String,
       overtimeDayRate: (json['overtimeDayRate'] as num?)?.toDouble() ?? 12.0,
       overtimeNightOrHolidayRate:
           (json['overtimeNightOrHolidayRate'] as num?)?.toDouble() ?? 13.5,
@@ -660,6 +671,8 @@ class UserPayProfile {
           (json['genereDiConfortoRate'] as num?)?.toDouble() ?? 1.02,
       ticketPastoRate:
           (json['ticketPastoRate'] as num?)?.toDouble() ?? 7.00,
+      straordinarioNetMultiplier:
+          (json['straordinarioNetMultiplier'] as num?)?.toDouble() ?? 0.67,
     );
   }
 }

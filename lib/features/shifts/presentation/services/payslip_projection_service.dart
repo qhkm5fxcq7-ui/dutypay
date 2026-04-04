@@ -1,5 +1,6 @@
 import '../models/shift.dart';
 import '../models/user_pay_profile.dart';
+import '../../../departments/models/allowance_payroll_impact.dart';
 
 enum PrecisionLevel {
   low,
@@ -18,14 +19,18 @@ class PrecisionStatus {
 }
 
 class BasketPayment {
+  static const String legacyDefaultDepartmentId = 'polizia_mobile';
+
   final DateTime paymentMonth;
   final double hoursPaid;
   final String note;
+  final String departmentId;
 
   const BasketPayment({
     required this.paymentMonth,
     required this.hoursPaid,
     this.note = '',
+    required this.departmentId,
   });
 
   Map<String, dynamic> toJson() {
@@ -33,10 +38,16 @@ class BasketPayment {
       'paymentMonth': paymentMonth.toIso8601String(),
       'hoursPaid': hoursPaid,
       'note': note,
+      'departmentId': departmentId,
     };
   }
 
   factory BasketPayment.fromJson(Map<String, dynamic> json) {
+    final parsedDepartmentId =
+        (json['departmentId'] as String?)?.trim().isNotEmpty == true
+            ? (json['departmentId'] as String).trim()
+            : legacyDefaultDepartmentId;
+
     return BasketPayment(
       paymentMonth: DateTime.tryParse(
             (json['paymentMonth'] ?? '') as String,
@@ -44,6 +55,7 @@ class BasketPayment {
           DateTime.now(),
       hoursPaid: (json['hoursPaid'] as num?)?.toDouble() ?? 0,
       note: (json['note'] ?? '') as String,
+      departmentId: parsedDepartmentId,
     );
   }
 }
@@ -105,6 +117,10 @@ class PayslipProjectionResult {
   final double accessoriesGrossLiquidated;
   final double accessoriesGrossUsedForEstimate;
   final double accessoriesNetEstimated;
+  final double v2MonthlyAllowancesGross;
+  final double v2BasketAllowancesGross;
+  final double basketOvertimeResidualGrossEstimate;
+  final double basketAllowanceResidualGross;
   final bool isUsingHistoricalAccessories;
 
   final double estimatedPrevidenziali;
@@ -156,6 +172,10 @@ class PayslipProjectionResult {
     required this.accessoriesGrossLiquidated,
     required this.accessoriesGrossUsedForEstimate,
     required this.accessoriesNetEstimated,
+    required this.v2MonthlyAllowancesGross,
+    required this.v2BasketAllowancesGross,
+    required this.basketOvertimeResidualGrossEstimate,
+    required this.basketAllowanceResidualGross,
     required this.isUsingHistoricalAccessories,
     required this.estimatedPrevidenziali,
     required this.estimatedFiscali,
@@ -242,11 +262,12 @@ class PayslipProjectionService {
   static const int _historicalAccessoriesThreshold = 5;
 
   PayslipProjectionResult projectPayslip({
-    required DateTime payslipMonth,
-    required List<Shift> allShifts,
-    required UserPayProfile payProfile,
-    List<BasketPayment> basketPayments = const [],
-  }) {
+  required DateTime payslipMonth,
+  required List<Shift> allShifts,
+  required UserPayProfile payProfile,
+  List<BasketPayment> basketPayments = const [],
+  AllowancePayrollImpact? allowancePayrollImpact,
+}) {
     final normalizedPayslipMonth =
         DateTime(payslipMonth.year, payslipMonth.month);
 
@@ -263,6 +284,11 @@ class PayslipProjectionService {
     final fixedBaseGross = _sanitizeMoney(payProfile.detectedBaseSalary);
     final overtimeHoursLimit =
         _sanitizeNonNegative(payProfile.monthlyOvertimePayableHoursLimit);
+        final v2MonthlyAllowancesGross =
+    _sanitizeMoney(allowancePayrollImpact?.monthlyAllowanceTotal ?? 0.0);
+
+final v2BasketAllowancesGross =
+    _sanitizeMoney(allowancePayrollImpact?.basketAllowanceTotal ?? 0.0);
 
     final basketStartMonth = _findFirstShiftMonth(allShifts);
 
@@ -464,9 +490,16 @@ class PayslipProjectionService {
     final currentBasketResidualHours = _sanitizeNonNegative(
       rawOpenBasketHours - cumulativeManualPaidHours,
     );
-
-    final currentBasketResidualGrossEstimate = _sanitizeMoney(
+        final basketOvertimeResidualGrossEstimate = _sanitizeMoney(
       rawOpenBasketGross - cumulativeManualPaidGross,
+    );
+
+    final basketAllowanceResidualGross = _sanitizeMoney(
+      v2BasketAllowancesGross,
+    );
+
+        final currentBasketResidualGrossEstimate = _sanitizeMoney(
+      basketOvertimeResidualGrossEstimate + basketAllowanceResidualGross,
     );
 
     final nonOvertimeGross = _sanitizeMoney(referenceSummary.nonOvertimeGross);
@@ -516,8 +549,10 @@ class PayslipProjectionService {
     );
 
     final accessoriesGrossUsedForEstimate = _sanitizeMoney(
-      estimatedBaseAccessoriesGross + manualBasketPaidGrossForMonth,
-    );
+  estimatedBaseAccessoriesGross +
+      manualBasketPaidGrossForMonth +
+      v2MonthlyAllowancesGross,
+);
 
     final accessoryTaxRate = _clamp(
       historical.averageAccessoryTaxRate > 0
@@ -625,6 +660,10 @@ class PayslipProjectionService {
       historicalAverageOtherDeductions: historical.averageOtherDeductions,
       historicalAverageConguagli: historical.averageConguagli,
       openBasketEntries: openBasketEntries,
+      v2MonthlyAllowancesGross: v2MonthlyAllowancesGross,
+      v2BasketAllowancesGross: v2BasketAllowancesGross,
+            basketOvertimeResidualGrossEstimate: basketOvertimeResidualGrossEstimate,
+      basketAllowanceResidualGross: basketAllowanceResidualGross,
     );
   }
 
@@ -632,9 +671,9 @@ class PayslipProjectionService {
     required List<Shift> allShifts,
   }) {
     final months = allShifts
-        .map((shift) => DateTime(shift.start.year, shift.start.month))
-        .toSet()
-        .length;
+    .map((shift) => DateTime(shift.serviceDate.year, shift.serviceDate.month))
+    .toSet()
+    .length;
 
     if (months == 0) {
       return const PrecisionStatus(
@@ -710,8 +749,9 @@ class PayslipProjectionService {
     int shiftCount = 0;
 
     final monthShifts = allShifts.where((shift) {
-      return shift.start.year == month.year && shift.start.month == month.month;
-    });
+  return shift.serviceDate.year == month.year &&
+      shift.serviceDate.month == month.month;
+});
 
     for (final shift in monthShifts) {
       shiftCount++;
@@ -949,11 +989,13 @@ class PayslipProjectionService {
     return hours * fallbackRate;
   }
 
-  DateTime? _findFirstShiftMonth(List<Shift> allShifts) {
+    DateTime? _findFirstShiftMonth(List<Shift> allShifts) {
     if (allShifts.isEmpty) return null;
 
-    final sorted = [...allShifts]..sort((a, b) => a.start.compareTo(b.start));
-    final first = sorted.first.start;
+    final sorted = [...allShifts]
+      ..sort((a, b) => a.serviceDate.compareTo(b.serviceDate));
+
+    final first = sorted.first.serviceDate;
     return DateTime(first.year, first.month);
   }
 

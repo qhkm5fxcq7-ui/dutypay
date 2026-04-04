@@ -1,16 +1,23 @@
 import '../models/payslip_extract_result.dart';
 import '../models/user_pay_profile.dart';
+import '../../../departments/models/allowance_payroll_impact.dart';
 
 class DutyPayEngine {
   const DutyPayEngine();
 
-  DutyPayEngineSnapshot buildSnapshot(UserPayProfile profile) {
+  DutyPayEngineSnapshot buildSnapshot(
+  UserPayProfile profile, {
+  AllowancePayrollImpact? allowancePayrollImpact,
+}) {
     final baseGrossMonthly = profile.detectedBaseSalary;
-    final averageOperationalAccessoriesGross = profile.averageAccessoryPay;
-    final recurringRealDeductions = profile.recurringDeductionsTotal;
+final legacyOperationalAccessoriesGross = profile.averageAccessoryPay;
+final v2MonthlyAllowancesGross =
+    allowancePayrollImpact?.monthlyAllowanceTotal ?? 0.0;
+final averageOperationalAccessoriesGross =
+    legacyOperationalAccessoriesGross + v2MonthlyAllowancesGross;
+final recurringRealDeductions = profile.recurringDeductionsTotal;
 
-    final grossTotal =
-        baseGrossMonthly + averageOperationalAccessoriesGross;
+final grossTotal = baseGrossMonthly + averageOperationalAccessoriesGross;
 
     final estimatedTaxAmount = grossTotal * profile.effectiveTaxRate;
     final estimatedNetBeforeRealDeductions = grossTotal - estimatedTaxAmount;
@@ -36,6 +43,7 @@ class DutyPayEngine {
     return DutyPayEngineSnapshot(
       baseGrossMonthly: baseGrossMonthly,
       averageOperationalAccessoriesGross: averageOperationalAccessoriesGross,
+      v2MonthlyAllowancesGross: v2MonthlyAllowancesGross,
       recurringRealDeductions: recurringRealDeductions,
       estimatedTaxAmount: estimatedTaxAmount,
       estimatedNetBeforeRealDeductions: estimatedNetBeforeRealDeductions,
@@ -189,6 +197,7 @@ class DutyPayEngineSnapshot {
   final double estimatedNetAfterRealDeductions;
   final double averageObservedNet;
   final double averageDeltaFromObservedNet;
+  final double v2MonthlyAllowancesGross;
   final List<DutyPayEngineComponent> topOperationalComponents;
 
   const DutyPayEngineSnapshot({
@@ -201,6 +210,7 @@ class DutyPayEngineSnapshot {
     required this.averageObservedNet,
     required this.averageDeltaFromObservedNet,
     required this.topOperationalComponents,
+    required this.v2MonthlyAllowancesGross,
   });
 }
 

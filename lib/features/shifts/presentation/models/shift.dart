@@ -8,6 +8,8 @@ enum OpServiceType {
 }
 
 class Shift {
+  static const String legacyDefaultDepartmentId = 'polizia_mobile';
+
   final String description;
   final DateTime start;
   final DateTime end;
@@ -15,6 +17,7 @@ class Shift {
   /// Giorno operativo/di competenza da usare per calendario, conteggi e filtri.
   final DateTime serviceDate;
 
+  final String departmentId;
   final String orderPublic;
   final bool externalService;
   final String absence;
@@ -56,6 +59,7 @@ class Shift {
     DateTime? start,
     DateTime? end,
     DateTime? serviceDate,
+    String? departmentId,
     String orderPublic = 'Nessuno',
     bool externalService = false,
     String absence = 'Nessuna',
@@ -85,6 +89,9 @@ class Shift {
       serviceDate ?? _deriveServiceDate(resolvedStart, resolvedEnd),
     );
 
+    final resolvedDepartmentId =
+        _normalizeDepartmentId(departmentId) ?? legacyDefaultDepartmentId;
+
     final resolvedOrderPublic = _normalizeOrderPublic(
       orderPublic: orderPublic,
       opServiceType: opServiceType,
@@ -103,6 +110,7 @@ class Shift {
       start: resolvedStart,
       end: resolvedEnd,
       serviceDate: resolvedServiceDate,
+      departmentId: resolvedDepartmentId,
       orderPublic: resolvedOrderPublic,
       externalService: resolvedExternalService,
       absence: absence,
@@ -127,6 +135,7 @@ class Shift {
     required this.start,
     required this.end,
     required this.serviceDate,
+    required this.departmentId,
     required this.orderPublic,
     required this.externalService,
     required this.absence,
@@ -150,6 +159,7 @@ class Shift {
     DateTime? start,
     DateTime? end,
     DateTime? serviceDate,
+    String? departmentId,
     String? orderPublic,
     bool? externalService,
     String? absence,
@@ -175,6 +185,8 @@ class Shift {
       start: nextStart,
       end: nextEnd,
       serviceDate: _normalizeDate(serviceDate ?? this.serviceDate),
+      departmentId:
+          _normalizeDepartmentId(departmentId) ?? this.departmentId,
       orderPublic: orderPublic ?? this.orderPublic,
       externalService: externalService ?? this.externalService,
       absence: absence ?? this.absence,
@@ -769,6 +781,7 @@ class Shift {
       'start': start.toIso8601String(),
       'end': end.toIso8601String(),
       'serviceDate': serviceDate.toIso8601String(),
+      'departmentId': departmentId,
       'orderPublic': orderPublic,
       'externalService': externalService,
       'absence': absence,
@@ -808,11 +821,16 @@ class Shift {
         ? _normalizeDate(DateTime.parse(json['serviceDate'] as String))
         : _normalizeDate(_deriveServiceDate(parsedStart, parsedEnd));
 
+    final parsedDepartmentId =
+        _normalizeDepartmentId(json['departmentId']?.toString()) ??
+            legacyDefaultDepartmentId;
+
     return Shift._internal(
       description: json['description'] as String? ?? '',
       start: parsedStart,
       end: parsedEnd,
       serviceDate: parsedServiceDate,
+      departmentId: parsedDepartmentId,
       orderPublic: json['orderPublic'] as String? ??
           _normalizeOrderPublic(
             orderPublic: null,
@@ -838,6 +856,13 @@ class Shift {
       note: json['note']?.toString() ?? '',
       workedHoursOverride: parsedWorkedHours,
     );
+  }
+
+  static String? _normalizeDepartmentId(String? value) {
+    if (value == null) return null;
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return null;
+    return trimmed;
   }
 
   static String _normalizeOrderPublic({

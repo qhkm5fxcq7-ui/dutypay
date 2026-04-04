@@ -12,6 +12,9 @@ import 'features/shifts/presentation/models/shift.dart';
 import 'features/shifts/presentation/models/user_pay_profile.dart';
 import 'features/shifts/presentation/quick_add_shift_page.dart';
 import 'features/shifts/presentation/services/payslip_projection_service.dart';
+import 'package:dutypay/features/departments/models/data/department_catalog.dart';
+import 'features/departments/services/shift_allowance_integration_service.dart';
+import 'features/departments/services/allowance_payroll_adapter_service.dart';
 
 void main() {
   runApp(const DutyPayApp());
@@ -438,6 +441,12 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
   final PayslipProjectionService _projectionService =
       const PayslipProjectionService();
 
+  final ShiftAllowanceIntegrationService _shiftAllowanceIntegrationService =
+      const ShiftAllowanceIntegrationService();
+
+  final AllowancePayrollAdapterService _allowancePayrollAdapterService =
+      const AllowancePayrollAdapterService();
+
   final List<Shift> shifts = [];
   final List<BasketPayment> basketPayments = [];
 
@@ -449,6 +458,54 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
   late DateTime selectedPayslipMonth;
 
   UserPayProfile payProfile = UserPayProfile.defaultProfile();
+
+  String _activeDepartmentLabel() {
+    final department = DepartmentCatalog.getById(payProfile.departmentId);
+    return department?.label ?? 'Reparto non riconosciuto';
+  }
+  bool _hasValidDepartmentSelection() {
+  return DepartmentCatalog.getById(payProfile.departmentId) != null;
+}
+
+  Future<void> _toggleDepartment() async {
+    final newDepartmentId =
+        payProfile.departmentId == 'polizia_mobile'
+            ? 'polizia_polfer'
+            : 'polizia_mobile';
+
+    final updatedProfile = payProfile.copyWith(
+      departmentId: newDepartmentId,
+    );
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      payProfileStorageKey,
+      jsonEncode(updatedProfile.toJson()),
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      payProfile = updatedProfile;
+    });
+  }
+  Future<void> _selectDepartment(String departmentId) async {
+  final updatedProfile = payProfile.copyWith(
+    departmentId: departmentId,
+  );
+
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setString(
+    payProfileStorageKey,
+    jsonEncode(updatedProfile.toJson()),
+  );
+
+  if (!mounted) return;
+
+  setState(() {
+    payProfile = updatedProfile;
+  });
+}
 
   @override
   void initState() {
@@ -489,78 +546,6 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
         ..addAll(loadedBasketPayments);
       isLoading = false;
     });
-    Future<void> _openMonthNotes() async {
-  final prefs = await SharedPreferences.getInstance();
-  final raw = prefs.getString(monthNotesStorageKey);
-
-  Map<String, dynamic> notesMap = {};
-  if (raw != null && raw.trim().isNotEmpty) {
-    try {
-      final decoded = jsonDecode(raw);
-      if (decoded is Map) {
-        notesMap = Map<String, dynamic>.from(decoded);
-      }
-    } catch (_) {}
-  }
-
-  final key = _monthNoteKey(selectedMonth);
-  final controller = TextEditingController(
-    text: (notesMap[key] ?? '').toString(),
-  );
-
-  final saved = await showDialog<bool>(
-    context: context,
-    builder: (context) {
-      return AlertDialog(
-        title: Text('Note ${_formatMonthYear(selectedMonth)}'),
-        content: TextField(
-          controller: controller,
-          minLines: 6,
-          maxLines: 10,
-          textCapitalization: TextCapitalization.sentences,
-          decoration: const InputDecoration(
-            hintText: 'Scrivi qui note utili per questo mese...',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Chiudi'),
-          ),
-          TextButton(
-            onPressed: () async {
-              final text = controller.text.trim();
-
-              if (text.isEmpty) {
-                notesMap.remove(key);
-              } else {
-                notesMap[key] = text;
-              }
-
-              await prefs.setString(
-                monthNotesStorageKey,
-                jsonEncode(notesMap),
-              );
-
-              if (!mounted) return;
-              Navigator.pop(context, true);
-            },
-            child: const Text('Salva'),
-          ),
-        ],
-      );
-    },
-  );
-
-  controller.dispose();
-
-    if (saved == true && mounted) {
-    setState(() {});
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Nota mensile salvata')),
-    );
-  }
-}
   }
 
   Future<List<Shift>> _loadShiftsFromPrefs(SharedPreferences prefs) async {
@@ -651,7 +636,7 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
     await prefs.setString(basketPaymentsStorageKey, raw);
   }
 
-  Future<void> addBasketPayment(
+      Future<void> addBasketPayment(
     DateTime paymentMonth,
     double hoursPaid,
     String note,
@@ -660,13 +645,14 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
       paymentMonth: DateTime(paymentMonth.year, paymentMonth.month),
       hoursPaid: hoursPaid,
       note: note,
+      departmentId: payProfile.departmentId,
     );
 
     final projectionForMonth = _projectionService.projectPayslip(
       payslipMonth: payment.paymentMonth,
-      allShifts: shifts,
+      allShifts: shifts.where(_belongsToActiveDepartment).toList(),
       payProfile: payProfile,
-      basketPayments: basketPayments,
+      basketPayments: activeDepartmentBasketPayments,
     );
 
     final availableHours = projectionForMonth.currentBasketResidualHours;
@@ -727,10 +713,40 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
       (sum, item) => sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
     );
   }
+    String _effectiveShiftDepartmentId(Shift shift) {
+    final value = shift.departmentId.trim();
+    if (value.isEmpty) {
+      return Shift.legacyDefaultDepartmentId;
+    }
+    return value;
+  }
+    String _effectiveBasketDepartmentId(BasketPayment payment) {
+    final value = payment.departmentId.trim();
+    if (value.isEmpty) {
+      return 'polizia_mobile';
+    }
+    return value;
+  }
 
-  List<Shift> get filteredShifts {
+  bool _basketBelongsToActiveDepartment(BasketPayment payment) {
+    return _effectiveBasketDepartmentId(payment) == payProfile.departmentId;
+  }
+
+  List<BasketPayment> get activeDepartmentBasketPayments {
+    return basketPayments
+        .where(_basketBelongsToActiveDepartment)
+        .toList()
+      ..sort((a, b) => a.paymentMonth.compareTo(b.paymentMonth));
+  }
+
+  bool _belongsToActiveDepartment(Shift shift) {
+    return _effectiveShiftDepartmentId(shift) == payProfile.departmentId;
+  }
+
+    List<Shift> get filteredShifts {
     return shifts.where((shift) {
-      return shift.serviceDate.year == selectedMonth.year &&
+      return _belongsToActiveDepartment(shift) &&
+          shift.serviceDate.year == selectedMonth.year &&
           shift.serviceDate.month == selectedMonth.month;
     }).toList();
   }
@@ -748,42 +764,44 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
       (sum, shift) => sum + _salaryOnlyAmount(shift),
     );
   }
-  
+
   int get monthlyTicketPastoCount {
-  return filteredShifts.where((shift) => shift.ticketPasto).length;
-}
+    return filteredShifts.where((shift) => shift.ticketPasto).length;
+  }
 
-double get monthlyOvertimeHours {
-  return filteredShifts.fold(
-    0.0,
-    (sum, shift) => sum + shift.overtimeHours,
-  );
-}
-int get monthlyGenereDiConfortoCount {
-  return filteredShifts.where((shift) => shift.genereDiConforto).length;
-}
+  double get monthlyOvertimeHours {
+    return filteredShifts.fold(
+      0.0,
+      (sum, shift) => sum + shift.overtimeHours,
+    );
+  }
 
-double get monthlyTicketPastoTotal {
-  return filteredShifts.fold<double>(
-    0.0,
-    (sum, shift) =>
-        sum + (shift.ticketPasto ? payProfile.ticketPastoRate : 0.0),
-  );
-}
+  int get monthlyGenereDiConfortoCount {
+    return filteredShifts.where((shift) => shift.genereDiConforto).length;
+  }
 
-double get monthlyGenereDiConfortoTotal {
-  return filteredShifts.fold<double>(
-    0.0,
-    (sum, shift) =>
-        sum + (shift.genereDiConforto ? payProfile.genereDiConfortoRate : 0.0),
-  );
-}
+  double get monthlyTicketPastoTotal {
+    return filteredShifts.fold<double>(
+      0.0,
+      (sum, shift) =>
+          sum + (shift.ticketPasto ? payProfile.ticketPastoRate : 0.0),
+    );
+  }
 
-  double get todayTotal {
+  double get monthlyGenereDiConfortoTotal {
+    return filteredShifts.fold<double>(
+      0.0,
+      (sum, shift) =>
+          sum + (shift.genereDiConforto ? payProfile.genereDiConfortoRate : 0.0),
+    );
+  }
+
+    double get todayTotal {
     final now = DateTime.now();
 
     return shifts.where((shift) {
-      return shift.serviceDate.year == now.year &&
+      return _belongsToActiveDepartment(shift) &&
+          shift.serviceDate.year == now.year &&
           shift.serviceDate.month == now.month &&
           shift.serviceDate.day == now.day;
     }).fold(
@@ -792,13 +810,14 @@ double get monthlyGenereDiConfortoTotal {
     );
   }
 
-  double get weekTotal {
+    double get weekTotal {
     final now = DateTime.now();
     final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
 
     return shifts.where((shift) {
       final day = shift.serviceDate;
-      return day.isAfter(startOfWeek.subtract(const Duration(seconds: 1))) &&
+      return _belongsToActiveDepartment(shift) &&
+          day.isAfter(startOfWeek.subtract(const Duration(seconds: 1))) &&
           day.isBefore(now.add(const Duration(days: 1)));
     }).fold(
       0.0,
@@ -853,7 +872,8 @@ double get monthlyGenereDiConfortoTotal {
         .where((shift) => _isSameDay(shift.serviceDate, date))
         .fold(0.0, (sum, shift) => sum + _salaryOnlyAmount(shift));
   }
-    bool _hasTicketInDate(DateTime date) {
+
+  bool _hasTicketInDate(DateTime date) {
     return filteredShifts.any(
       (shift) => _isSameDay(shift.serviceDate, date) && shift.ticketPasto,
     );
@@ -866,7 +886,7 @@ double get monthlyGenereDiConfortoTotal {
     );
   }
 
-    String? _absenceBadgeForDate(DateTime date) {
+  String? _absenceBadgeForDate(DateTime date) {
     final dayShifts = filteredShifts
         .where((shift) => _isSameDay(shift.serviceDate, date))
         .toList();
@@ -928,14 +948,42 @@ double get monthlyGenereDiConfortoTotal {
     });
   }
 
-  PayslipProjectionResult get payslipProjection {
-    return _projectionService.projectPayslip(
-      payslipMonth: selectedPayslipMonth,
-      allShifts: shifts,
-      payProfile: payProfile,
-      basketPayments: basketPayments,
-    );
-  }
+      PayslipProjectionResult get payslipProjection {
+  final departmentId = payProfile.departmentId;
+  final departmentConfig =
+      DepartmentCatalog.getById(departmentId) ??
+          DepartmentCatalog.repartoMobile;
+
+  final selectedAllowanceIds =
+      DepartmentCatalog.defaultSelectedAllowanceIds(departmentConfig.id);
+
+  final activeDepartmentShifts =
+      shifts.where(_belongsToActiveDepartment).toList();
+
+  final monthlyShifts = activeDepartmentShifts.where((shift) {
+    return shift.serviceDate.year == selectedPayslipMonth.year &&
+        shift.serviceDate.month == selectedPayslipMonth.month;
+  }).toList();
+
+  final monthlyAllowanceSummary =
+      _shiftAllowanceIntegrationService.calculateMonthlySummary(
+    shifts: monthlyShifts,
+    departmentConfig: departmentConfig,
+    selectedAllowanceIds: selectedAllowanceIds,
+  );
+
+  final payrollImpact = _allowancePayrollAdapterService.buildPayrollImpact(
+    summary: monthlyAllowanceSummary,
+  );
+
+  return _projectionService.projectPayslip(
+    payslipMonth: selectedPayslipMonth,
+    allShifts: activeDepartmentShifts,
+    payProfile: payProfile,
+    basketPayments: activeDepartmentBasketPayments,
+    allowancePayrollImpact: payrollImpact,
+  );
+}
 
   PrecisionStatus get payslipPrecisionStatus {
     return _projectionService.calculatePrecision(
@@ -1057,10 +1105,11 @@ double get monthlyGenereDiConfortoTotal {
     final newShift = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => QuickAddShiftPage(
+                builder: (context) => QuickAddShiftPage(
           onAdd: (shift) => Navigator.of(context).pop(shift),
           rates: payProfile,
           initialDate: selectedDay,
+          activeDepartmentId: payProfile.departmentId,
         ),
       ),
     );
@@ -1080,10 +1129,11 @@ double get monthlyGenereDiConfortoTotal {
     final editedShift = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => QuickAddShiftPage(
+                builder: (context) => QuickAddShiftPage(
           onAdd: (shift) => Navigator.of(context).pop(shift),
           rates: payProfile,
           initialShift: shifts[index],
+          activeDepartmentId: payProfile.departmentId,
         ),
       ),
     );
@@ -1221,7 +1271,7 @@ double get monthlyGenereDiConfortoTotal {
     return 'Servizio: $serviceDay/$serviceMonth/$serviceYear • Start: $startDay/$startMonth/$startYear • $startHour:$startMinute';
   }
 
-    String _formatMonthYear(DateTime date) {
+  String _formatMonthYear(DateTime date) {
     const months = [
       'gennaio',
       'febbraio',
@@ -1247,81 +1297,81 @@ double get monthlyGenereDiConfortoTotal {
   }
 
   Future<void> _openMonthNotes() async {
-  final prefs = await SharedPreferences.getInstance();
-  final raw = prefs.getString(monthNotesStorageKey);
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(monthNotesStorageKey);
 
-  Map<String, dynamic> notesMap = {};
-  if (raw != null && raw.trim().isNotEmpty) {
-    try {
-      final decoded = jsonDecode(raw);
-      if (decoded is Map) {
-        notesMap = Map<String, dynamic>.from(decoded);
-      }
-    } catch (_) {}
-  }
-
-  final key = _monthNoteKey(selectedMonth);
-  String draftText = (notesMap[key] ?? '').toString();
-
-  final saved = await showDialog<bool>(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: Text('Note ${_formatMonthYear(selectedMonth)}'),
-            content: StatefulBuilder(
-              builder: (context, setModalState) {
-                return TextFormField(
-                  initialValue: draftText,
-                  minLines: 6,
-                  maxLines: 10,
-                  textCapitalization: TextCapitalization.sentences,
-                  decoration: const InputDecoration(
-                    hintText: 'Scrivi qui note utili per questo mese...',
-                  ),
-                  onChanged: (value) {
-                    setModalState(() {
-                      draftText = value;
-                    });
-                  },
-                );
-              },
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Chiudi'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Salva'),
-              ),
-            ],
-          );
-        },
-      ) ??
-      false;
-
-  if (saved == true) {
-    final text = draftText.trim();
-
-    if (text.isEmpty) {
-      notesMap.remove(key);
-    } else {
-      notesMap[key] = text;
+    Map<String, dynamic> notesMap = {};
+    if (raw != null && raw.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is Map) {
+          notesMap = Map<String, dynamic>.from(decoded);
+        }
+      } catch (_) {}
     }
 
-    await prefs.setString(
-      monthNotesStorageKey,
-      jsonEncode(notesMap),
-    );
+    final key = _monthNoteKey(selectedMonth);
+    String draftText = (notesMap[key] ?? '').toString();
 
-    if (!mounted) return;
-    setState(() {});
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Nota mensile salvata')),
-    );
+    final saved = await showDialog<bool>(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              title: Text('Note ${_formatMonthYear(selectedMonth)}'),
+              content: StatefulBuilder(
+                builder: (context, setModalState) {
+                  return TextFormField(
+                    initialValue: draftText,
+                    minLines: 6,
+                    maxLines: 10,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: const InputDecoration(
+                      hintText: 'Scrivi qui note utili per questo mese...',
+                    ),
+                    onChanged: (value) {
+                      setModalState(() {
+                        draftText = value;
+                      });
+                    },
+                  );
+                },
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Chiudi'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Salva'),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+
+    if (saved == true) {
+      final text = draftText.trim();
+
+      if (text.isEmpty) {
+        notesMap.remove(key);
+      } else {
+        notesMap[key] = text;
+      }
+
+      await prefs.setString(
+        monthNotesStorageKey,
+        jsonEncode(notesMap),
+      );
+
+      if (!mounted) return;
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nota mensile salvata')),
+      );
+    }
   }
-}
 
   String _formatSelectedDayTitle(DateTime date) {
     final day = date.day.toString().padLeft(2, '0');
@@ -1433,228 +1483,228 @@ double get monthlyGenereDiConfortoTotal {
   }
 
   Widget _buildShiftCard(Shift shift, int index) {
-  final shiftIndex = shifts.indexOf(shift);
-  final orderPublicAmount = shift.getOrderPublicAmount(payProfile);
-  final totalAmount = _salaryOnlyAmount(shift);
-  final extraAmount = totalAmount - orderPublicAmount;
-  final breakdown = shift.getBreakdown(payProfile);
+    final shiftIndex = shifts.indexOf(shift);
+    final orderPublicAmount = shift.getOrderPublicAmount(payProfile);
+    final totalAmount = _salaryOnlyAmount(shift);
+    final extraAmount = totalAmount - orderPublicAmount;
+    final breakdown = shift.getBreakdown(payProfile);
 
-  final hasAbsence = shift.hasAbsence;
-  final isExternal = shift.externalService;
-  final hasOrderPublic =
-      shift.effectiveOrderPublicLabel.trim().toLowerCase() != 'nessuno';
+    final hasAbsence = shift.hasAbsence;
+    final isExternal = shift.externalService;
+    final hasOrderPublic =
+        shift.effectiveOrderPublicLabel.trim().toLowerCase() != 'nessuno';
 
-  Future<void> confirmDelete() async {
-    final shouldDelete = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text(
-              'Elimina turno',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            content: const Text(
-              'Sei sicuro di voler eliminare questo turno?',
-              style: TextStyle(color: DutyPayPalette.textSecondary),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Annulla'),
+    Future<void> confirmDelete() async {
+      final shouldDelete = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text(
+                'Elimina turno',
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text(
-                  'Elimina',
-                  style: TextStyle(color: DutyPayPalette.danger),
+              content: const Text(
+                'Sei sicuro di voler eliminare questo turno?',
+                style: TextStyle(color: DutyPayPalette.textSecondary),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Annulla'),
                 ),
-              ),
-            ],
-          ),
-        ) ??
-        false;
+                TextButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text(
+                    'Elimina',
+                    style: TextStyle(color: DutyPayPalette.danger),
+                  ),
+                ),
+              ],
+            ),
+          ) ??
+          false;
 
-    if (shouldDelete && shiftIndex >= 0) {
-      await removeShift(shiftIndex);
-    }
-  }
-
-  return GestureDetector(
-    onTap: () {
-      if (shiftIndex >= 0) {
-        openEditShift(shiftIndex);
+      if (shouldDelete && shiftIndex >= 0) {
+        await removeShift(shiftIndex);
       }
-    },
-    child: Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: DutyPayPalette.card,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: DutyPayPalette.cardBorder),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.16),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Text(
-                  shift.description.isEmpty
-                      ? 'Turno senza descrizione'
-                      : shift.description,
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.2,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const SizedBox(width: 10),
-              IconButton(
-                onPressed: confirmDelete,
-                tooltip: 'Elimina turno',
-                style: IconButton.styleFrom(
-                  backgroundColor: DutyPayPalette.danger.withOpacity(0.10),
-                  side: BorderSide(
-                    color: DutyPayPalette.danger.withOpacity(0.28),
-                  ),
-                ),
-                icon: const Icon(
-                  Icons.delete_outline_rounded,
-                  color: DutyPayPalette.danger,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '${shift.hours.toStringAsFixed(1)}h',
-                    style: const TextStyle(
-                      color: DutyPayPalette.textSecondary,
-                      fontSize: 12.8,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    _formatCurrency(totalAmount),
-                    style: const TextStyle(
-                      color: DutyPayPalette.primary,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.3,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            _formatShiftDate(shift),
-            style: const TextStyle(
-              fontSize: 13.2,
-              color: DutyPayPalette.textSecondary,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              if (hasOrderPublic)
-                _infoChip(
-                  label: 'OP: ${shift.effectiveOrderPublicLabel}',
-                  color: DutyPayPalette.info,
-                ),
-              if (isExternal)
-                _infoChip(
-                  label: 'Servizio esterno',
-                  color: DutyPayPalette.warning,
-                ),
-              if (hasAbsence)
-                _infoChip(
-                  label: 'Assenza: ${shift.absence}',
-                  color: DutyPayPalette.danger,
-                ),
-              if (!hasOrderPublic && !isExternal && !hasAbsence)
-                _infoChip(
-                  label: 'Turno standard',
-                  color: DutyPayPalette.textSecondary,
-                ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _statTile(
-                  label: 'Straordinario',
-                  value: shift.overtimeHours > 0
-                      ? '${shift.overtimeHours.toStringAsFixed(1)}h'
-                      : 'Nessuno',
-                  icon: Icons.schedule_rounded,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _statTile(
-                  label: 'Extra generati',
-                  value: _formatCurrency(extraAmount),
-                  valueColor: DutyPayPalette.primary,
-                  icon: Icons.trending_up_rounded,
-                ),
-              ),
-            ],
-          ),
-          if (breakdown.isNotEmpty) ...[
-            const SizedBox(height: 14),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: DutyPayPalette.surface,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: DutyPayPalette.cardBorder),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Dettaglio calcolo',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: DutyPayPalette.textSecondary,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  ...breakdown.map((item) {
-                    final label = item['label'] as String;
-                    final amount =
-                        (item['amount'] as num?)?.toDouble() ?? 0.0;
-                    return _buildBreakdownRow(label, amount);
-                  }),
-                ],
-              ),
+    }
+
+    return GestureDetector(
+      onTap: () {
+        if (shiftIndex >= 0) {
+          openEditShift(shiftIndex);
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: DutyPayPalette.card,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: DutyPayPalette.cardBorder),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.16),
+              blurRadius: 18,
+              offset: const Offset(0, 10),
             ),
           ],
-        ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    shift.description.isEmpty
+                        ? 'Turno senza descrizione'
+                        : shift.description,
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.2,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                IconButton(
+                  onPressed: confirmDelete,
+                  tooltip: 'Elimina turno',
+                  style: IconButton.styleFrom(
+                    backgroundColor: DutyPayPalette.danger.withOpacity(0.10),
+                    side: BorderSide(
+                      color: DutyPayPalette.danger.withOpacity(0.28),
+                    ),
+                  ),
+                  icon: const Icon(
+                    Icons.delete_outline_rounded,
+                    color: DutyPayPalette.danger,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '${shift.hours.toStringAsFixed(1)}h',
+                      style: const TextStyle(
+                        color: DutyPayPalette.textSecondary,
+                        fontSize: 12.8,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _formatCurrency(totalAmount),
+                      style: const TextStyle(
+                        color: DutyPayPalette.primary,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              _formatShiftDate(shift),
+              style: const TextStyle(
+                fontSize: 13.2,
+                color: DutyPayPalette.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if (hasOrderPublic)
+                  _infoChip(
+                    label: 'OP: ${shift.effectiveOrderPublicLabel}',
+                    color: DutyPayPalette.info,
+                  ),
+                if (isExternal)
+                  _infoChip(
+                    label: 'Servizio esterno',
+                    color: DutyPayPalette.warning,
+                  ),
+                if (hasAbsence)
+                  _infoChip(
+                    label: 'Assenza: ${shift.absence}',
+                    color: DutyPayPalette.danger,
+                  ),
+                if (!hasOrderPublic && !isExternal && !hasAbsence)
+                  _infoChip(
+                    label: 'Turno standard',
+                    color: DutyPayPalette.textSecondary,
+                  ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: _statTile(
+                    label: 'Straordinario',
+                    value: shift.overtimeHours > 0
+                        ? '${shift.overtimeHours.toStringAsFixed(1)}h'
+                        : 'Nessuno',
+                    icon: Icons.schedule_rounded,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _statTile(
+                    label: 'Extra generati',
+                    value: _formatCurrency(extraAmount),
+                    valueColor: DutyPayPalette.primary,
+                    icon: Icons.trending_up_rounded,
+                  ),
+                ),
+              ],
+            ),
+            if (breakdown.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: DutyPayPalette.surface,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: DutyPayPalette.cardBorder),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Dettaglio calcolo',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: DutyPayPalette.textSecondary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    ...breakdown.map((item) {
+                      final label = item['label'] as String;
+                      final amount =
+                          (item['amount'] as num?)?.toDouble() ?? 0.0;
+                      return _buildBreakdownRow(label, amount);
+                    }),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildTurnsHeader() {
     return Container(
@@ -1970,6 +2020,11 @@ double get monthlyGenereDiConfortoTotal {
   }
 
   Widget _buildTurnsPage() {
+    if (!_hasValidDepartmentSelection()) {
+  return DepartmentSelectionPage(
+    onSelect: _selectDepartment,
+  );
+}
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -2006,21 +2061,21 @@ double get monthlyGenereDiConfortoTotal {
                   ],
                 ),
                 padding: const EdgeInsets.all(12),
-                                child: MonthCalendarCard(
-  month: selectedMonth,
-  days: calendarDays,
-  ticketPastoCount: monthlyTicketPastoCount,
-  genereDiConfortoCount: monthlyGenereDiConfortoCount,
-  ticketPastoTotal: monthlyTicketPastoTotal,
-  genereDiConfortoTotal: monthlyGenereDiConfortoTotal,
-  totalOvertimeHours: monthlyOvertimeHours,
-  onOpenMonthNotes: _openMonthNotes,
-  onDayTap: (date) {
-    setState(() {
-      selectedDay = _normalizeDate(date);
-    });
-  },
-),
+                child: MonthCalendarCard(
+                  month: selectedMonth,
+                  days: calendarDays,
+                  ticketPastoCount: monthlyTicketPastoCount,
+                  genereDiConfortoCount: monthlyGenereDiConfortoCount,
+                  ticketPastoTotal: monthlyTicketPastoTotal,
+                  genereDiConfortoTotal: monthlyGenereDiConfortoTotal,
+                  totalOvertimeHours: monthlyOvertimeHours,
+                  onOpenMonthNotes: _openMonthNotes,
+                  onDayTap: (date) {
+                    setState(() {
+                      selectedDay = _normalizeDate(date);
+                    });
+                  },
+                ),
               ),
               const SizedBox(height: 18),
               _buildSelectedDaySection(),
@@ -2056,12 +2111,14 @@ double get monthlyGenereDiConfortoTotal {
     );
 
     return PayslipPage(
-      projection: projection,
-      selectedMonth: selectedPayslipMonth,
-      onOpenCalibration: openCalibratePayslips,
-      onAddBasketPayment: addBasketPayment,
-      precision: payslipPrecisionStatus,
-    );
+  projection: projection,
+  selectedMonth: selectedPayslipMonth,
+  onOpenCalibration: openCalibratePayslips,
+  onAddBasketPayment: addBasketPayment,
+  precision: payslipPrecisionStatus,
+  activeDepartmentLabel: _activeDepartmentLabel(),
+  onToggleDepartment: _toggleDepartment,
+);
   }
 
   @override
@@ -2121,6 +2178,162 @@ double get monthlyGenereDiConfortoTotal {
               child: const Icon(Icons.add_rounded),
             )
           : null,
+    );
+  }
+}
+class DepartmentSelectionPage extends StatelessWidget {
+  final Future<void> Function(String departmentId) onSelect;
+
+  const DepartmentSelectionPage({
+    super.key,
+    required this.onSelect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            DutyPayPalette.background,
+            DutyPayPalette.backgroundSoft,
+          ],
+        ),
+      ),
+      child: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Scegli il tuo reparto',
+                    style: TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.8,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'DutyPay adatterà turni, indennità e logiche di calcolo in base al reparto selezionato.',
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      color: DutyPayPalette.textSecondary,
+                      height: 1.5,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  _DepartmentChoiceCard(
+                    title: 'Reparto Mobile',
+                    subtitle: 'Esperienza identica alla V1.',
+                    onTap: () => onSelect('polizia_mobile'),
+                  ),
+                  const SizedBox(height: 16),
+                  _DepartmentChoiceCard(
+                    title: 'Polfer',
+                    subtitle: 'Logica dedicata con scalo e indennità specifiche.',
+                    onTap: () => onSelect('polizia_polfer'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DepartmentChoiceCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _DepartmentChoiceCard({
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(28),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(22),
+        decoration: BoxDecoration(
+          color: DutyPayPalette.card,
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: DutyPayPalette.cardBorder),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.18),
+              blurRadius: 18,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 54,
+              height: 54,
+              decoration: BoxDecoration(
+                color: DutyPayPalette.primary.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: const Icon(
+                Icons.apartment_rounded,
+                color: DutyPayPalette.primary,
+                size: 28,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: DutyPayPalette.textSecondary,
+                      fontSize: 13.8,
+                      height: 1.4,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Icon(
+              Icons.arrow_forward_rounded,
+              color: DutyPayPalette.primary,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

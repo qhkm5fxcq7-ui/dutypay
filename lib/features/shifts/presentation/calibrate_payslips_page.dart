@@ -598,6 +598,8 @@ Future<void> _loadSavedRates() async {
         builder: (_) => QuickAddShiftPage(
           rates: calibratedProfile,
           onAdd: (shift) => Navigator.of(context).pop(shift),
+          activeDepartmentId:
+    calibratedProfile?.departmentId ?? 'polizia_mobile',
         ),
       ),
     );

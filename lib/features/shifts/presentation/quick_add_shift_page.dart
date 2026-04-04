@@ -8,6 +8,7 @@ class QuickAddShiftPage extends StatefulWidget {
   final UserPayProfile? rates;
   final Shift? initialShift;
   final DateTime? initialDate;
+  final String activeDepartmentId;
 
   const QuickAddShiftPage({
     super.key,
@@ -15,6 +16,7 @@ class QuickAddShiftPage extends StatefulWidget {
     this.rates,
     this.initialShift,
     this.initialDate,
+    required this.activeDepartmentId,
   });
 
   @override
@@ -91,6 +93,9 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
   bool _includeTicketPasto = false;
 
   bool get _isEditing => widget.initialShift != null;
+    String get _resolvedDepartmentId {
+    return widget.initialShift?.departmentId ?? widget.activeDepartmentId;
+  }
   bool get _hasAbsence => _selectedAbsence != 'Nessuna';
   bool get _startIsPreviousDay => !_isSameDay(_realStartDate, _serviceDate);
 
@@ -349,7 +354,7 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
           ? _defaultAbsenceDescription(_selectedAbsence)
           : _descriptionController.text.trim();
 
-      return Shift(
+            return Shift(
         description: description,
         start: DateTime(_serviceDate.year, _serviceDate.month, _serviceDate.day),
         end: DateTime(_serviceDate.year, _serviceDate.month, _serviceDate.day),
@@ -372,11 +377,12 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
       end = end.add(const Duration(days: 1));
     }
 
-    return Shift(
+        return Shift(
       description: _descriptionController.text.trim(),
       start: start,
       end: end,
       serviceDate: _serviceDate,
+      departmentId: _resolvedDepartmentId,
       orderPublic: _selectedOrderPublic,
       externalService: _externalService,
       absence: _normalizedAbsenceForSave(_selectedAbsence),
@@ -880,12 +886,13 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
         DateTime current = _serviceDate;
 
         while (!current.isAfter(_absenceEndDate)) {
-                    shifts.add(
+                              shifts.add(
             Shift(
               description: shift.description,
               start: DateTime(current.year, current.month, current.day, 0, 0),
               end: DateTime(current.year, current.month, current.day, 0, 0),
               serviceDate: current,
+              departmentId: _resolvedDepartmentId,
               orderPublic: 'Nessuno',
               externalService: false,
               absence: _normalizedAbsenceForSave(_selectedAbsence),

@@ -15,6 +15,8 @@ class PayslipPage extends StatefulWidget {
     this.precisionStatus,
     this.onOpenCalibration,
     this.onAddBasketPayment,
+    this.activeDepartmentLabel,
+    this.onToggleDepartment,
   });
 
   final PayslipProjectionResult? projection;
@@ -27,6 +29,8 @@ class PayslipPage extends StatefulWidget {
   final PrecisionStatus? precisionStatus;
 
   final VoidCallback? onOpenCalibration;
+  final String? activeDepartmentLabel;
+  final VoidCallback? onToggleDepartment;
 
   /// Firma prevista:
   /// onAddBasketPayment(DateTime paymentMonth, double hoursPaid, String note)
@@ -134,6 +138,7 @@ class _PayslipPageState extends State<PayslipPage> {
     }
 
     final monthLabel = _monthYearLabel(_pageMonth);
+    final activeDepartmentLabel = widget.activeDepartmentLabel;
     final estimatedNet = _readEstimatedNet(projection);
     final baseNet = _readBaseNet(projection);
     final netAccessories = _readNetAccessories(projection);
@@ -151,10 +156,16 @@ class _PayslipPageState extends State<PayslipPage> {
         _readManualBasketPaidHoursForMonth(projection);
     final basketPaidThisMonthGross =
         _readManualBasketPaidGrossForMonth(projection);
+    final basketOvertimeResidualGross =
+        _readBasketOvertimeResidualGross(projection);
+    final basketAllowanceResidualGross =
+        _readBasketAllowanceResidualGross(projection);
 
     final accessoriesReferenceMonth =
         _readAccessoriesReferenceMonth(projection) ?? _pageMonth;
     final usingHistoricalAverage = _readUsingHistoricalAverage(projection);
+    final v2MonthlyAllowancesGross = projection.v2MonthlyAllowancesGross;
+    final v2BasketAllowancesGross = projection.v2BasketAllowancesGross;
     final historicalReferenceText = usingHistoricalAverage
         ? 'Media storica utilizzata perché nel mese di riferimento ci sono pochi turni.'
         : 'Valori basati sul mese di riferimento delle accessorie.';
@@ -172,6 +183,55 @@ class _PayslipPageState extends State<PayslipPage> {
             subtitle: 'Tutto quello che ti serve, senza confusione.',
           ),
           const SizedBox(height: 18),
+          if (activeDepartmentLabel != null &&
+              activeDepartmentLabel.trim().isNotEmpty) ...[
+            GestureDetector(
+              onTap: widget.onToggleDepartment,
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF18212C),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: const Color(0xFF253140),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.apartment_rounded,
+                      color: Color(0xFF67B7FF),
+                      size: 18,
+                    ),
+                    const SizedBox(width: 10),
+                    const Text(
+                      'Reparto attivo:',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        activeDepartmentLabel,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13.8,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
           _CalibrationExplainerCard(
             onOpenCalibration: widget.onOpenCalibration,
             isCalibrated: true,
@@ -217,7 +277,10 @@ class _PayslipPageState extends State<PayslipPage> {
             recoveredGross: basketRecoveredGross,
             paidThisMonthHours: basketPaidThisMonthHours,
             paidThisMonthGross: basketPaidThisMonthGross,
-            onAddPayment: widget.onAddBasketPayment == null
+            overtimeResidualGross: basketOvertimeResidualGross,
+            allowanceResidualGross: basketAllowanceResidualGross,
+            isAllowanceMode: basketHours == 0 && basketGross > 0,
+            onAddPayment: widget.onAddBasketPayment == null || basketHours <= 0
                 ? null
                 : () => _openBasketDialog(
                       residualHours: basketHours,
@@ -438,6 +501,18 @@ class _PayslipPageState extends State<PayslipPage> {
                         ),
                         const SizedBox(height: 10),
                         _InfoPill(
+                          icon: Icons.add_chart_rounded,
+                          label: 'Indennità V2 mese',
+                          value: _currency(v2MonthlyAllowancesGross),
+                        ),
+                        const SizedBox(height: 10),
+                        _InfoPill(
+                          icon: Icons.inventory_2_outlined,
+                          label: 'Indennità V2 basket',
+                          value: _currency(v2BasketAllowancesGross),
+                        ),
+                        const SizedBox(height: 10),
+                        _InfoPill(
                           icon: Icons.layers_outlined,
                           label: 'Accessorie NON straordinario',
                           value: _currency(projection.nonOvertimeGross),
@@ -446,8 +521,9 @@ class _PayslipPageState extends State<PayslipPage> {
                         _InfoPill(
                           icon: Icons.flash_on_outlined,
                           label: 'Straordinari lordi',
-                          value:
-                              _currency(projection.overtimeGrossFromReferenceMonth),
+                          value: _currency(
+                            projection.overtimeGrossFromReferenceMonth,
+                          ),
                         ),
                       ],
                     ),
@@ -803,6 +879,27 @@ class _PayslipPageState extends State<PayslipPage> {
       [
         () => p.currentBasketResidualGrossEstimate,
         () => p.overtimeInBasketGross,
+      ],
+      fallback: 0,
+    );
+  }
+
+  double _readBasketOvertimeResidualGross(PayslipProjectionResult projection) {
+    final dynamic p = projection;
+    return _readFirstDouble(
+      [
+        () => p.basketOvertimeResidualGrossEstimate,
+        () => p.overtimeInBasketGross,
+      ],
+      fallback: 0,
+    );
+  }
+
+  double _readBasketAllowanceResidualGross(PayslipProjectionResult projection) {
+    final dynamic p = projection;
+    return _readFirstDouble(
+      [
+        () => p.basketAllowanceResidualGross,
       ],
       fallback: 0,
     );
@@ -1264,6 +1361,9 @@ class _BasketCard extends StatelessWidget {
     required this.recoveredGross,
     required this.paidThisMonthHours,
     required this.paidThisMonthGross,
+    required this.overtimeResidualGross,
+    required this.allowanceResidualGross,
+    required this.isAllowanceMode,
     required this.onAddPayment,
   });
 
@@ -1273,11 +1373,31 @@ class _BasketCard extends StatelessWidget {
   final double recoveredGross;
   final double paidThisMonthHours;
   final double paidThisMonthGross;
+  final double overtimeResidualGross;
+  final double allowanceResidualGross;
+  final bool isAllowanceMode;
   final VoidCallback? onAddPayment;
 
   @override
   Widget build(BuildContext context) {
-    final bool hasResidual = residualHours > 0;
+    final bool hasResidualHours = residualHours > 0;
+    final bool hasAllowanceOnly =
+        residualHours <= 0 && allowanceResidualGross > 0;
+    final bool hasAnyResidual = residualGross > 0 || residualHours > 0;
+
+    final String title = hasAllowanceOnly
+        ? 'Basket indennità'
+        : 'Basket straordinario';
+
+    final String subtitle = hasAllowanceOnly
+        ? 'Qui vedi importi maturati da indennità reparto inviati nel basket.'
+        : 'Una delle funzioni più utili per il Reparto Mobile.';
+
+    final String actionLabel = hasResidualHours
+        ? 'Registra pagamento basket'
+        : hasAllowanceOnly
+            ? 'Importi da indennità presenti'
+            : 'Nessuna disponibilità';
 
     return Container(
       decoration: BoxDecoration(
@@ -1285,7 +1405,7 @@ class _BasketCard extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: hasResidual
+          colors: hasAnyResidual
               ? const [
                   Color(0xFF1B1A14),
                   Color(0xFF12110E),
@@ -1296,7 +1416,7 @@ class _BasketCard extends StatelessWidget {
                 ],
         ),
         border: Border.all(
-          color: hasResidual
+          color: hasAnyResidual
               ? const Color(0xFF4A3B15)
               : const Color(0xFF273142),
           width: 1.2,
@@ -1319,36 +1439,38 @@ class _BasketCard extends StatelessWidget {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: hasResidual
+                  color: hasAnyResidual
                       ? const Color(0x1AF59E0B)
                       : const Color(0x143B82F6),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(
-                  Icons.inventory_2_outlined,
-                  color: hasResidual
+                  hasAllowanceOnly
+                      ? Icons.account_balance_wallet_outlined
+                      : Icons.inventory_2_outlined,
+                  color: hasAnyResidual
                       ? _DutyPayColors.warning
                       : _DutyPayColors.info,
                 ),
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Basket straordinario',
-                      style: TextStyle(
+                      title,
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
                         letterSpacing: -0.2,
                       ),
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
-                      'Una delle funzioni più utili per il Reparto Mobile.',
-                      style: TextStyle(
+                      subtitle,
+                      style: const TextStyle(
                         color: _DutyPayColors.textSecondary,
                         fontSize: 13.2,
                         height: 1.35,
@@ -1367,7 +1489,9 @@ class _BasketCard extends StatelessWidget {
                 child: _MetricBlock(
                   label: 'Residuo ore',
                   value: _PayslipPageState._formatHours(residualHours),
-                  tone: hasResidual ? _MetricTone.warning : _MetricTone.neutral,
+                  tone: hasResidualHours
+                      ? _MetricTone.warning
+                      : _MetricTone.neutral,
                 ),
               ),
               const SizedBox(width: 12),
@@ -1375,7 +1499,9 @@ class _BasketCard extends StatelessWidget {
                 child: _MetricBlock(
                   label: 'Residuo lordo',
                   value: _PayslipPageState._currency(residualGross),
-                  tone: hasResidual ? _MetricTone.warning : _MetricTone.neutral,
+                  tone: hasAnyResidual
+                      ? _MetricTone.warning
+                      : _MetricTone.neutral,
                 ),
               ),
             ],
@@ -1400,33 +1526,43 @@ class _BasketCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _MetricBlock(
-                  label: 'Pagato questo mese',
-                  value: _PayslipPageState._formatHours(paidThisMonthHours),
+          if (!isAllowanceMode) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _MetricBlock(
+                    label: 'Pagato questo mese',
+                    value: _PayslipPageState._formatHours(paidThisMonthHours),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _MetricBlock(
-                  label: 'Valore questo mese',
-                  value: _PayslipPageState._currency(paidThisMonthGross),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _MetricBlock(
+                    label: 'Valore questo mese',
+                    value: _PayslipPageState._currency(paidThisMonthGross),
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
+          if (allowanceResidualGross > 0) ...[
+            const SizedBox(height: 12),
+            _MetricBlock(
+              label: 'Quota indennità nel basket',
+              value: _PayslipPageState._currency(allowanceResidualGross),
+              tone: _MetricTone.warning,
+            ),
+          ],
           const SizedBox(height: 18),
           _PrimaryButton(
-            label: hasResidual
-                ? 'Registra pagamento basket'
-                : 'Nessuna ora disponibile',
-            icon: hasResidual
+            label: actionLabel,
+            icon: hasResidualHours
                 ? Icons.add_task_rounded
-                : Icons.lock_outline_rounded,
-            onPressed: hasResidual ? onAddPayment : null,
+                : hasAllowanceOnly
+                    ? Icons.info_outline_rounded
+                    : Icons.lock_outline_rounded,
+            onPressed: hasResidualHours ? onAddPayment : null,
           ),
         ],
       ),
