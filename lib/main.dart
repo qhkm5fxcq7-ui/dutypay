@@ -8,13 +8,12 @@ import 'core/services/data_backup_service.dart';
 import 'features/home/widgets/month_calendar_card.dart';
 import 'features/payslip/presentation/payslip_page.dart';
 import 'features/shifts/presentation/calibrate_payslips_page.dart';
+import 'features/shifts/presentation/department_selection_page.dart';
+import 'features/shifts/presentation/models/department.dart';
 import 'features/shifts/presentation/models/shift.dart';
 import 'features/shifts/presentation/models/user_pay_profile.dart';
 import 'features/shifts/presentation/quick_add_shift_page.dart';
 import 'features/shifts/presentation/services/payslip_projection_service.dart';
-import 'package:dutypay/features/departments/models/data/department_catalog.dart';
-import 'features/departments/services/shift_allowance_integration_service.dart';
-import 'features/departments/services/allowance_payroll_adapter_service.dart';
 
 void main() {
   runApp(const DutyPayApp());
@@ -29,9 +28,11 @@ class DutyPayApp extends StatefulWidget {
 
 class _DutyPayAppState extends State<DutyPayApp> {
   static const String _userNameStorageKey = 'dutypay_user_name';
+  static const String _activeDepartmentStorageKey = 'dutypay_active_department';
 
   bool isLoading = true;
   String? userName;
+  Department? activeDepartment;
 
   @override
   void initState() {
@@ -42,11 +43,23 @@ class _DutyPayAppState extends State<DutyPayApp> {
   Future<void> _loadUserName() async {
     final prefs = await SharedPreferences.getInstance();
     final savedName = prefs.getString(_userNameStorageKey)?.trim();
+    final savedDepartmentId = prefs.getString(_activeDepartmentStorageKey);
+
+    Department? resolvedDepartment;
+    if (savedDepartmentId != null) {
+      for (final dept in Department.values) {
+        if (dept.id == savedDepartmentId) {
+          resolvedDepartment = dept;
+          break;
+        }
+      }
+    }
 
     if (!mounted) return;
 
     setState(() {
       userName = (savedName == null || savedName.isEmpty) ? null : savedName;
+      activeDepartment = resolvedDepartment;
       isLoading = false;
     });
   }
@@ -62,6 +75,17 @@ class _DutyPayAppState extends State<DutyPayApp> {
 
     setState(() {
       userName = cleaned;
+    });
+  }
+
+  Future<void> _handleDepartmentSelected(Department department) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_activeDepartmentStorageKey, department.id);
+
+    if (!mounted) return;
+
+    setState(() {
+      activeDepartment = department;
     });
   }
 
@@ -252,7 +276,17 @@ class _DutyPayAppState extends State<DutyPayApp> {
       ],
       home: userName == null
           ? OnboardingPage(onCompleted: _handleOnboardingCompleted)
-          : DutyPayHomePage(userName: userName!),
+          : activeDepartment == null
+              ? DepartmentSelectionPage(
+                  initialDepartment: null,
+                  onSelected: _handleDepartmentSelected,
+                )
+              : DutyPayHomePage(
+                  key: ValueKey(activeDepartment!.id),
+                  userName: userName!,
+                  activeDepartment: activeDepartment!,
+                  onDepartmentChanged: _handleDepartmentSelected,
+                ),
     );
   }
 }
@@ -422,10 +456,14 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
 class DutyPayHomePage extends StatefulWidget {
   final String userName;
+  final Department activeDepartment;
+  final Future<void> Function(Department department) onDepartmentChanged;
 
   const DutyPayHomePage({
     super.key,
     required this.userName,
+    required this.activeDepartment,
+    required this.onDepartmentChanged,
   });
 
   @override
@@ -433,22 +471,31 @@ class DutyPayHomePage extends StatefulWidget {
 }
 
 class _DutyPayHomePageState extends State<DutyPayHomePage> {
-  static const String shiftsStorageKey = 'dutypay_shifts';
-  static const String payProfileStorageKey = 'dutypay_pay_profile';
-  static const String basketPaymentsStorageKey = 'dutypay_basket_payments';
-  static const String monthNotesStorageKey = 'dutypay_month_notes';
+  static const String _legacyShiftsStorageKey = 'dutypay_shifts';
+  static const String _legacyPayProfileStorageKey = 'dutypay_pay_profile';
+  static const String _legacyBasketPaymentsStorageKey =
+      'dutypay_basket_payments';
+  static const String _legacyMonthNotesStorageKey = 'dutypay_month_notes';
+
+  String get _storageScope => widget.activeDepartment.id;
+  String get rfiBasketPaymentsStorageKey =>
+      'dutypay_rfi_basket_payments_$_storageScope';
+
+  String get shiftsStorageKey => 'dutypay_shifts_$_storageScope';
+  String get payProfileStorageKey => 'dutypay_pay_profile_$_storageScope';
+  String get basketPaymentsStorageKey =>
+      'dutypay_basket_payments_$_storageScope';
+  String get monthNotesStorageKey => 'dutypay_month_notes_$_storageScope';
+
+  bool get _isRepartoMobileScope =>
+      widget.activeDepartment == Department.repartoMobile;
 
   final PayslipProjectionService _projectionService =
       const PayslipProjectionService();
 
-  final ShiftAllowanceIntegrationService _shiftAllowanceIntegrationService =
-      const ShiftAllowanceIntegrationService();
-
-  final AllowancePayrollAdapterService _allowancePayrollAdapterService =
-      const AllowancePayrollAdapterService();
-
   final List<Shift> shifts = [];
   final List<BasketPayment> basketPayments = [];
+  final List<RfiBasketPayment> rfiBasketPayments = [];
 
   bool isLoading = true;
   int selectedTabIndex = 0;
@@ -458,54 +505,6 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
   late DateTime selectedPayslipMonth;
 
   UserPayProfile payProfile = UserPayProfile.defaultProfile();
-
-  String _activeDepartmentLabel() {
-    final department = DepartmentCatalog.getById(payProfile.departmentId);
-    return department?.label ?? 'Reparto non riconosciuto';
-  }
-  bool _hasValidDepartmentSelection() {
-  return DepartmentCatalog.getById(payProfile.departmentId) != null;
-}
-
-  Future<void> _toggleDepartment() async {
-    final newDepartmentId =
-        payProfile.departmentId == 'polizia_mobile'
-            ? 'polizia_polfer'
-            : 'polizia_mobile';
-
-    final updatedProfile = payProfile.copyWith(
-      departmentId: newDepartmentId,
-    );
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      payProfileStorageKey,
-      jsonEncode(updatedProfile.toJson()),
-    );
-
-    if (!mounted) return;
-
-    setState(() {
-      payProfile = updatedProfile;
-    });
-  }
-  Future<void> _selectDepartment(String departmentId) async {
-  final updatedProfile = payProfile.copyWith(
-    departmentId: departmentId,
-  );
-
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString(
-    payProfileStorageKey,
-    jsonEncode(updatedProfile.toJson()),
-  );
-
-  if (!mounted) return;
-
-  setState(() {
-    payProfile = updatedProfile;
-  });
-}
 
   @override
   void initState() {
@@ -518,8 +517,67 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
   }
 
   @override
-  void dispose() {
-    super.dispose();
+  void didUpdateWidget(covariant DutyPayHomePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.activeDepartment != widget.activeDepartment) {
+      setState(() {
+        isLoading = true;
+        shifts.clear();
+        basketPayments.clear();
+        rfiBasketPayments.clear();
+        payProfile = UserPayProfile.defaultProfile();
+
+        final now = DateTime.now();
+        selectedMonth = DateTime(now.year, now.month);
+        selectedDay = DateTime(now.year, now.month, now.day);
+        selectedPayslipMonth = DateTime(now.year, now.month);
+      });
+
+      loadData();
+    }
+  }
+
+  String _activeDepartmentLabel() {
+    return widget.activeDepartment.label;
+  }
+
+  Future<String?> _readScopedString({
+    required SharedPreferences prefs,
+    required String scopedKey,
+    required String legacyKey,
+  }) async {
+    final scoped = prefs.getString(scopedKey);
+    if (scoped != null) return scoped;
+
+    if (_isRepartoMobileScope) {
+      final legacy = prefs.getString(legacyKey);
+      if (legacy != null) {
+        await prefs.setString(scopedKey, legacy);
+        return legacy;
+      }
+    }
+
+    return null;
+  }
+
+  Future<List<String>?> _readScopedStringList({
+    required SharedPreferences prefs,
+    required String scopedKey,
+    required String legacyKey,
+  }) async {
+    final scoped = prefs.getStringList(scopedKey);
+    if (scoped != null) return scoped;
+
+    if (_isRepartoMobileScope) {
+      final legacy = prefs.getStringList(legacyKey);
+      if (legacy != null) {
+        await prefs.setStringList(scopedKey, legacy);
+        return legacy;
+      }
+    }
+
+    return null;
   }
 
   Future<void> loadData() async {
@@ -528,11 +586,23 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
     final loadedShifts = await _loadShiftsFromPrefs(prefs);
     loadedShifts.sort((a, b) => b.start.compareTo(a.start));
 
-    final rawProfile = prefs.getString(payProfileStorageKey);
+    final rawProfile = await _readScopedString(
+      prefs: prefs,
+      scopedKey: payProfileStorageKey,
+      legacyKey: _legacyPayProfileStorageKey,
+    );
     final loadedProfile = _loadPayProfile(rawProfile);
 
-    final rawBasketPayments = prefs.getString(basketPaymentsStorageKey);
+    final rawBasketPayments = await _readScopedString(
+      prefs: prefs,
+      scopedKey: basketPaymentsStorageKey,
+      legacyKey: _legacyBasketPaymentsStorageKey,
+    );
     final loadedBasketPayments = _loadBasketPayments(rawBasketPayments);
+
+    final rawRfiBasketPayments = prefs.getString(rfiBasketPaymentsStorageKey);
+    final loadedRfiBasketPayments =
+        _loadRfiBasketPayments(rawRfiBasketPayments);
 
     if (!mounted) return;
 
@@ -540,17 +610,24 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
       shifts
         ..clear()
         ..addAll(loadedShifts);
-      payProfile = loadedProfile;
       basketPayments
         ..clear()
         ..addAll(loadedBasketPayments);
+      rfiBasketPayments
+        ..clear()
+        ..addAll(loadedRfiBasketPayments);
+      payProfile = loadedProfile;
       isLoading = false;
     });
   }
 
   Future<List<Shift>> _loadShiftsFromPrefs(SharedPreferences prefs) async {
     try {
-      final rawJson = prefs.getString(shiftsStorageKey);
+      final rawJson = await _readScopedString(
+        prefs: prefs,
+        scopedKey: shiftsStorageKey,
+        legacyKey: _legacyShiftsStorageKey,
+      );
 
       if (rawJson != null && rawJson.trim().isNotEmpty) {
         final decoded = jsonDecode(rawJson);
@@ -568,7 +645,12 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
       }
     } catch (_) {}
 
-    final rawLegacyList = prefs.getStringList(shiftsStorageKey);
+    final rawLegacyList = await _readScopedStringList(
+      prefs: prefs,
+      scopedKey: shiftsStorageKey,
+      legacyKey: _legacyShiftsStorageKey,
+    );
+
     if (rawLegacyList == null || rawLegacyList.isEmpty) {
       return [];
     }
@@ -628,6 +710,43 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
     return [];
   }
 
+  List<RfiBasketPayment> _loadRfiBasketPayments(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return [];
+
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is List) {
+        return decoded
+            .whereType<Map>()
+            .map(
+              (item) => RfiBasketPayment.fromJson(
+                Map<String, dynamic>.from(item as Map),
+              ),
+            )
+            .toList()
+          ..sort((a, b) => a.paymentMonth.compareTo(b.paymentMonth));
+      }
+    } catch (_) {}
+
+    return [];
+  }
+
+  Future<void> _saveShiftsToPrefs(
+    SharedPreferences prefs,
+    List<Shift> shiftsToSave,
+  ) async {
+    final rawJson = jsonEncode(
+      shiftsToSave.map((shift) => shift.toJson()).toList(),
+    );
+    await prefs.setString(shiftsStorageKey, rawJson);
+  }
+
+  Future<void> saveShifts() async {
+    shifts.sort((a, b) => b.start.compareTo(a.start));
+    final prefs = await SharedPreferences.getInstance();
+    await _saveShiftsToPrefs(prefs, shifts);
+  }
+
   Future<void> _saveBasketPayments() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = jsonEncode(
@@ -636,7 +755,15 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
     await prefs.setString(basketPaymentsStorageKey, raw);
   }
 
-      Future<void> addBasketPayment(
+  Future<void> _saveRfiBasketPayments() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = jsonEncode(
+      rfiBasketPayments.map((e) => e.toJson()).toList(),
+    );
+    await prefs.setString(rfiBasketPaymentsStorageKey, raw);
+  }
+
+  Future<void> addBasketPayment(
     DateTime paymentMonth,
     double hoursPaid,
     String note,
@@ -645,14 +772,14 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
       paymentMonth: DateTime(paymentMonth.year, paymentMonth.month),
       hoursPaid: hoursPaid,
       note: note,
-      departmentId: payProfile.departmentId,
     );
 
     final projectionForMonth = _projectionService.projectPayslip(
       payslipMonth: payment.paymentMonth,
-      allShifts: shifts.where(_belongsToActiveDepartment).toList(),
+      allShifts: shifts,
       payProfile: payProfile,
-      basketPayments: activeDepartmentBasketPayments,
+      basketPayments: basketPayments,
+      rfiBasketPayments: rfiBasketPayments,
     );
 
     final availableHours = projectionForMonth.currentBasketResidualHours;
@@ -675,20 +802,73 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
     await _saveBasketPayments();
   }
 
-  Future<void> saveShifts() async {
-    shifts.sort((a, b) => b.start.compareTo(a.start));
-    final prefs = await SharedPreferences.getInstance();
-    await _saveShiftsToPrefs(prefs, shifts);
+  Future<void> addRfiBasketPayment(
+    DateTime paymentMonth,
+    double hoursPaid,
+    String note,
+  ) async {
+    final payment = RfiBasketPayment(
+      paymentMonth: DateTime(paymentMonth.year, paymentMonth.month),
+      hoursPaid: hoursPaid,
+      note: note,
+    );
+
+    final projectionForMonth = _projectionService.projectPayslip(
+      payslipMonth: payment.paymentMonth,
+      allShifts: shifts,
+      payProfile: payProfile,
+      basketPayments: basketPayments,
+      rfiBasketPayments: rfiBasketPayments,
+    );
+
+    final availableHours = projectionForMonth.currentRfiBasketResidualHours;
+
+    if (availableHours <= 0) {
+      throw Exception('Non ci sono ore disponibili nel basket RFI');
+    }
+
+    if (payment.hoursPaid > availableHours) {
+      throw Exception(
+        'Non puoi scaricare più di ${availableHours.toStringAsFixed(1)} ore',
+      );
+    }
+
+    setState(() {
+      rfiBasketPayments.add(payment);
+      rfiBasketPayments.sort((a, b) => a.paymentMonth.compareTo(b.paymentMonth));
+    });
+
+    await _saveRfiBasketPayments();
   }
 
-  Future<void> _saveShiftsToPrefs(
-    SharedPreferences prefs,
-    List<Shift> shiftsToSave,
-  ) async {
-    final rawJson = jsonEncode(
-      shiftsToSave.map((shift) => shift.toJson()).toList(),
-    );
-    await prefs.setString(shiftsStorageKey, rawJson);
+  Future<void> addShift(Shift shift) async {
+    setState(() {
+      shifts.add(shift);
+      selectedMonth = DateTime(shift.serviceDate.year, shift.serviceDate.month);
+      selectedDay = _normalizeDate(shift.serviceDate);
+      shifts.sort((a, b) => b.start.compareTo(a.start));
+    });
+
+    await saveShifts();
+  }
+
+  Future<void> updateShift(int index, Shift shift) async {
+    setState(() {
+      shifts[index] = shift;
+      selectedMonth = DateTime(shift.serviceDate.year, shift.serviceDate.month);
+      selectedDay = _normalizeDate(shift.serviceDate);
+      shifts.sort((a, b) => b.start.compareTo(a.start));
+    });
+
+    await saveShifts();
+  }
+
+  Future<void> removeShift(int index) async {
+    setState(() {
+      shifts.removeAt(index);
+    });
+
+    await saveShifts();
   }
 
   DateTime _normalizeDate(DateTime date) {
@@ -708,45 +888,12 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
   }
 
   double _salaryOnlyAmount(Shift shift) {
-    return shift.getSalaryBreakdown(payProfile).fold<double>(
-      0.0,
-      (sum, item) => sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
-    );
-  }
-    String _effectiveShiftDepartmentId(Shift shift) {
-    final value = shift.departmentId.trim();
-    if (value.isEmpty) {
-      return Shift.legacyDefaultDepartmentId;
-    }
-    return value;
-  }
-    String _effectiveBasketDepartmentId(BasketPayment payment) {
-    final value = payment.departmentId.trim();
-    if (value.isEmpty) {
-      return 'polizia_mobile';
-    }
-    return value;
+    return shift.getTotalAmount(payProfile);
   }
 
-  bool _basketBelongsToActiveDepartment(BasketPayment payment) {
-    return _effectiveBasketDepartmentId(payment) == payProfile.departmentId;
-  }
-
-  List<BasketPayment> get activeDepartmentBasketPayments {
-    return basketPayments
-        .where(_basketBelongsToActiveDepartment)
-        .toList()
-      ..sort((a, b) => a.paymentMonth.compareTo(b.paymentMonth));
-  }
-
-  bool _belongsToActiveDepartment(Shift shift) {
-    return _effectiveShiftDepartmentId(shift) == payProfile.departmentId;
-  }
-
-    List<Shift> get filteredShifts {
+  List<Shift> get filteredShifts {
     return shifts.where((shift) {
-      return _belongsToActiveDepartment(shift) &&
-          shift.serviceDate.year == selectedMonth.year &&
+      return shift.serviceDate.year == selectedMonth.year &&
           shift.serviceDate.month == selectedMonth.month;
     }).toList();
   }
@@ -792,16 +939,16 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
     return filteredShifts.fold<double>(
       0.0,
       (sum, shift) =>
-          sum + (shift.genereDiConforto ? payProfile.genereDiConfortoRate : 0.0),
+          sum +
+          (shift.genereDiConforto ? payProfile.genereDiConfortoRate : 0.0),
     );
   }
 
-    double get todayTotal {
+  double get todayTotal {
     final now = DateTime.now();
 
     return shifts.where((shift) {
-      return _belongsToActiveDepartment(shift) &&
-          shift.serviceDate.year == now.year &&
+      return shift.serviceDate.year == now.year &&
           shift.serviceDate.month == now.month &&
           shift.serviceDate.day == now.day;
     }).fold(
@@ -810,14 +957,13 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
     );
   }
 
-    double get weekTotal {
+  double get weekTotal {
     final now = DateTime.now();
     final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
 
     return shifts.where((shift) {
       final day = shift.serviceDate;
-      return _belongsToActiveDepartment(shift) &&
-          day.isAfter(startOfWeek.subtract(const Duration(seconds: 1))) &&
+      return day.isAfter(startOfWeek.subtract(const Duration(seconds: 1))) &&
           day.isBefore(now.add(const Duration(days: 1)));
     }).fold(
       0.0,
@@ -881,8 +1027,7 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
 
   bool _hasConfortoInDate(DateTime date) {
     return filteredShifts.any(
-      (shift) =>
-          _isSameDay(shift.serviceDate, date) && shift.genereDiConforto,
+      (shift) => _isSameDay(shift.serviceDate, date) && shift.genereDiConforto,
     );
   }
 
@@ -922,18 +1067,183 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
     return null;
   }
 
+  String? _extractSpmnLabelFromShift(Shift shift) {
+    final code = shift.spmnPresetCode.trim().toLowerCase();
+    switch (code) {
+      case 'sera':
+        return 'SERA';
+      case 'pomeriggio':
+        return 'POM';
+      case 'mattina':
+        return 'MAT';
+      case 'notte':
+        return 'NOTTE';
+      case 'smontante':
+        return 'SMONT';
+      case 'riposo':
+        return 'RIP';
+      case 'aggiornamento':
+        return 'AGG';
+      default:
+        return null;
+    }
+  }
+
+  String? _nextSpmnLabel(String current) {
+    switch (current) {
+      case 'SERA':
+        return 'POM';
+      case 'POM':
+        return 'MAT';
+      case 'MAT':
+        return 'NOTTE';
+      case 'NOTTE':
+        return 'SMONT';
+      case 'SMONT':
+        return 'RIP';
+      case 'RIP':
+        return 'SERA';
+      case 'AGG':
+        return 'SERA';
+      default:
+        return null;
+    }
+  }
+
+  String _resolvePredictedSpmnLabelForDate({
+    required String baseNextLabel,
+    required int daysAfterAnchor,
+    required DateTime targetDate,
+  }) {
+    String current = baseNextLabel;
+
+    for (int i = 0; i < daysAfterAnchor; i++) {
+      current = _nextSpmnLabel(current) ?? current;
+    }
+
+    if (current == 'RIP' && targetDate.weekday == DateTime.tuesday) {
+      return 'AGG';
+    }
+
+    return current;
+  }
+
+  Map<String, String> _buildPredictedSpmnCalendarMap() {
+    if (shifts.isEmpty) return {};
+
+    final spmnSource = shifts
+        .where((shift) => _extractSpmnLabelFromShift(shift) != null)
+        .toList()
+      ..sort((a, b) => a.serviceDate.compareTo(b.serviceDate));
+
+    if (spmnSource.isEmpty) return {};
+
+    final anchorShift = spmnSource.last;
+    final anchorLabel = _extractSpmnLabelFromShift(anchorShift);
+
+    if (anchorLabel == null) return {};
+
+    final nextLabel = _nextSpmnLabel(anchorLabel);
+    if (nextLabel == null) return {};
+
+    final predictionMap = <String, String>{};
+    final anchorDate = _normalizeDate(anchorShift.serviceDate);
+
+    for (int offset = 1; offset <= 70; offset++) {
+      final targetDate = anchorDate.add(Duration(days: offset));
+      final key =
+          '${targetDate.year}-${targetDate.month.toString().padLeft(2, '0')}-${targetDate.day.toString().padLeft(2, '0')}';
+
+      final hasRealShift = shifts.any(
+        (shift) => _isSameDay(shift.serviceDate, targetDate),
+      );
+      if (hasRealShift) continue;
+
+      predictionMap[key] = _resolvePredictedSpmnLabelForDate(
+        baseNextLabel: nextLabel,
+        daysAfterAnchor: offset - 1,
+        targetDate: targetDate,
+      );
+    }
+
+    return predictionMap;
+  }
+
+  String _calendarKey(DateTime date) {
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  String? _nextSpmnPresetCode(String currentCode, DateTime nextServiceDate) {
+    switch (currentCode) {
+      case 'sera':
+        return 'pomeriggio';
+      case 'pomeriggio':
+        return 'mattina';
+      case 'mattina':
+        return 'notte';
+      case 'notte':
+        return 'smontante';
+      case 'smontante':
+        return 'riposo';
+      case 'riposo':
+        return nextServiceDate.weekday == DateTime.tuesday
+            ? 'aggiornamento'
+            : 'sera';
+      case 'aggiornamento':
+        return 'sera';
+      default:
+        return null;
+    }
+  }
+
+  String? _suggestedSpmnPresetCodeForDate(DateTime targetDate) {
+    if (widget.activeDepartment != Department.polfer) return null;
+
+    final normalizedTarget = _normalizeDate(targetDate);
+
+    final previousSpmnShifts = shifts
+        .where((shift) {
+          final code = shift.spmnPresetCode.trim().toLowerCase();
+          return code.isNotEmpty &&
+              shift.serviceDate.isBefore(normalizedTarget);
+        })
+        .toList()
+      ..sort((a, b) => a.serviceDate.compareTo(b.serviceDate));
+
+    if (previousSpmnShifts.isEmpty) return null;
+
+    final anchor = previousSpmnShifts.last;
+    String? currentCode = anchor.spmnPresetCode.trim().toLowerCase();
+
+    if (currentCode.isEmpty) return null;
+
+    DateTime cursor = _normalizeDate(anchor.serviceDate);
+
+    while (cursor.isBefore(normalizedTarget)) {
+      final nextDay = cursor.add(const Duration(days: 1));
+      currentCode = _nextSpmnPresetCode(currentCode!, nextDay);
+      if (currentCode == null || currentCode.isEmpty) return null;
+      cursor = nextDay;
+    }
+
+    return currentCode;
+  }
+
   List<MonthCalendarDayData> get calendarDays {
-    final firstDayOfMonth =
-        DateTime(selectedMonth.year, selectedMonth.month, 1);
+    final firstDayOfMonth = DateTime(selectedMonth.year, selectedMonth.month, 1);
     final startWeekday = firstDayOfMonth.weekday;
-    final gridStart = firstDayOfMonth.subtract(Duration(days: startWeekday - 1));
+    final gridStart =
+        firstDayOfMonth.subtract(Duration(days: startWeekday - 1));
 
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
+    final predictedSpmnMap = _buildPredictedSpmnCalendarMap();
+
     return List.generate(42, (index) {
       final date = gridStart.add(Duration(days: index));
       final isInCurrentMonth = date.month == selectedMonth.month;
+      final dayKey = _calendarKey(date);
 
       return MonthCalendarDayData(
         date: date,
@@ -944,46 +1254,20 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
         absenceBadge: isInCurrentMonth ? _absenceBadgeForDate(date) : null,
         hasTicket: _hasTicketInDate(date),
         hasConforto: _hasConfortoInDate(date),
+        predictedSpmnLabel: isInCurrentMonth ? predictedSpmnMap[dayKey] : null,
       );
     });
   }
 
-      PayslipProjectionResult get payslipProjection {
-  final departmentId = payProfile.departmentId;
-  final departmentConfig =
-      DepartmentCatalog.getById(departmentId) ??
-          DepartmentCatalog.repartoMobile;
-
-  final selectedAllowanceIds =
-      DepartmentCatalog.defaultSelectedAllowanceIds(departmentConfig.id);
-
-  final activeDepartmentShifts =
-      shifts.where(_belongsToActiveDepartment).toList();
-
-  final monthlyShifts = activeDepartmentShifts.where((shift) {
-    return shift.serviceDate.year == selectedPayslipMonth.year &&
-        shift.serviceDate.month == selectedPayslipMonth.month;
-  }).toList();
-
-  final monthlyAllowanceSummary =
-      _shiftAllowanceIntegrationService.calculateMonthlySummary(
-    shifts: monthlyShifts,
-    departmentConfig: departmentConfig,
-    selectedAllowanceIds: selectedAllowanceIds,
-  );
-
-  final payrollImpact = _allowancePayrollAdapterService.buildPayrollImpact(
-    summary: monthlyAllowanceSummary,
-  );
-
-  return _projectionService.projectPayslip(
-    payslipMonth: selectedPayslipMonth,
-    allShifts: activeDepartmentShifts,
-    payProfile: payProfile,
-    basketPayments: activeDepartmentBasketPayments,
-    allowancePayrollImpact: payrollImpact,
-  );
-}
+  PayslipProjectionResult get payslipProjection {
+    return _projectionService.projectPayslip(
+      payslipMonth: selectedPayslipMonth,
+      allShifts: shifts,
+      payProfile: payProfile,
+      basketPayments: basketPayments,
+      rfiBasketPayments: rfiBasketPayments,
+    );
+  }
 
   PrecisionStatus get payslipPrecisionStatus {
     return _projectionService.calculatePrecision(
@@ -1074,42 +1358,18 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
     });
   }
 
-  Future<void> addShift(Shift shift) async {
-    setState(() {
-      shifts.add(shift);
-      selectedMonth = DateTime(shift.serviceDate.year, shift.serviceDate.month);
-      selectedDay = _normalizeDate(shift.serviceDate);
-      shifts.sort((a, b) => b.start.compareTo(a.start));
-    });
-    await saveShifts();
-  }
-
-  Future<void> updateShift(int index, Shift shift) async {
-    setState(() {
-      shifts[index] = shift;
-      selectedMonth = DateTime(shift.serviceDate.year, shift.serviceDate.month);
-      selectedDay = _normalizeDate(shift.serviceDate);
-      shifts.sort((a, b) => b.start.compareTo(a.start));
-    });
-    await saveShifts();
-  }
-
-  Future<void> removeShift(int index) async {
-    setState(() {
-      shifts.removeAt(index);
-    });
-    await saveShifts();
-  }
-
   Future<void> openAddShift() async {
+    final suggestedPresetCode = _suggestedSpmnPresetCodeForDate(selectedDay);
+
     final newShift = await Navigator.push(
       context,
       MaterialPageRoute(
-                builder: (context) => QuickAddShiftPage(
+        builder: (context) => QuickAddShiftPage(
           onAdd: (shift) => Navigator.of(context).pop(shift),
           rates: payProfile,
           initialDate: selectedDay,
-          activeDepartmentId: payProfile.departmentId,
+          activeDepartment: widget.activeDepartment,
+          initialSuggestedSpmnPresetCode: suggestedPresetCode,
         ),
       ),
     );
@@ -1120,6 +1380,12 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
       setState(() {
         shifts.addAll(newShift);
         shifts.sort((a, b) => b.start.compareTo(a.start));
+        if (newShift.isNotEmpty) {
+          final first = newShift.first;
+          selectedMonth =
+              DateTime(first.serviceDate.year, first.serviceDate.month);
+          selectedDay = _normalizeDate(first.serviceDate);
+        }
       });
       await saveShifts();
     }
@@ -1129,11 +1395,11 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
     final editedShift = await Navigator.push(
       context,
       MaterialPageRoute(
-                builder: (context) => QuickAddShiftPage(
+        builder: (context) => QuickAddShiftPage(
           onAdd: (shift) => Navigator.of(context).pop(shift),
           rates: payProfile,
           initialShift: shifts[index],
-          activeDepartmentId: payProfile.departmentId,
+          activeDepartment: widget.activeDepartment,
         ),
       ),
     );
@@ -1147,7 +1413,9 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const CalibratePayslipsPage(),
+        builder: (context) => CalibratePayslipsPage(
+          activeDepartment: widget.activeDepartment,
+        ),
       ),
     );
 
@@ -1199,9 +1467,8 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
                       ),
                       itemBuilder: (context, index) {
                         final month = months[index];
-                        final isSelected =
-                            month.year == selectedMonth.year &&
-                                month.month == selectedMonth.month;
+                        final isSelected = month.year == selectedMonth.year &&
+                            month.month == selectedMonth.month;
 
                         return ListTile(
                           contentPadding: const EdgeInsets.symmetric(
@@ -1743,6 +2010,15 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
             ),
           ),
           const SizedBox(height: 8),
+          Text(
+            'Reparto attivo: ${_activeDepartmentLabel()}',
+            style: const TextStyle(
+              fontSize: 14.5,
+              color: DutyPayPalette.info,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
           const Text(
             'Inserisci i turni, controlla il calendario e capisci subito quanto stai accumulando.',
             style: TextStyle(
@@ -2020,11 +2296,6 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
   }
 
   Widget _buildTurnsPage() {
-    if (!_hasValidDepartmentSelection()) {
-  return DepartmentSelectionPage(
-    onSelect: _selectDepartment,
-  );
-}
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -2111,14 +2382,13 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
     );
 
     return PayslipPage(
-  projection: projection,
-  selectedMonth: selectedPayslipMonth,
-  onOpenCalibration: openCalibratePayslips,
-  onAddBasketPayment: addBasketPayment,
-  precision: payslipPrecisionStatus,
-  activeDepartmentLabel: _activeDepartmentLabel(),
-  onToggleDepartment: _toggleDepartment,
-);
+      projection: projection,
+      selectedMonth: selectedPayslipMonth,
+      onOpenCalibration: openCalibratePayslips,
+      onAddBasketPayment: addBasketPayment,
+      onAddRfiBasketPayment: addRfiBasketPayment,
+      precision: payslipPrecisionStatus,
+    );
   }
 
   @override
@@ -2133,6 +2403,30 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
       appBar: AppBar(
         title: const Text('DutyPay'),
         actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: IconButton(
+              tooltip: 'Cambia reparto',
+              onPressed: () async {
+                final selected = await Navigator.push<Department>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => DepartmentSelectionPage(
+                      initialDepartment: widget.activeDepartment,
+                      onSelected: (department) async {
+                        Navigator.of(context).pop(department);
+                      },
+                    ),
+                  ),
+                );
+
+                if (selected != null) {
+                  await widget.onDepartmentChanged(selected);
+                }
+              },
+              icon: const Icon(Icons.swap_horiz_rounded),
+            ),
+          ),
           if (selectedTabIndex == 1)
             Padding(
               padding: const EdgeInsets.only(right: 10),
@@ -2178,162 +2472,6 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
               child: const Icon(Icons.add_rounded),
             )
           : null,
-    );
-  }
-}
-class DepartmentSelectionPage extends StatelessWidget {
-  final Future<void> Function(String departmentId) onSelect;
-
-  const DepartmentSelectionPage({
-    super.key,
-    required this.onSelect,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            DutyPayPalette.background,
-            DutyPayPalette.backgroundSoft,
-          ],
-        ),
-      ),
-      child: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 560),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Scegli il tuo reparto',
-                    style: TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.8,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  const Text(
-                    'DutyPay adatterà turni, indennità e logiche di calcolo in base al reparto selezionato.',
-                    style: TextStyle(
-                      fontSize: 14.5,
-                      color: DutyPayPalette.textSecondary,
-                      height: 1.5,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-                  _DepartmentChoiceCard(
-                    title: 'Reparto Mobile',
-                    subtitle: 'Esperienza identica alla V1.',
-                    onTap: () => onSelect('polizia_mobile'),
-                  ),
-                  const SizedBox(height: 16),
-                  _DepartmentChoiceCard(
-                    title: 'Polfer',
-                    subtitle: 'Logica dedicata con scalo e indennità specifiche.',
-                    onTap: () => onSelect('polizia_polfer'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _DepartmentChoiceCard extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-
-  const _DepartmentChoiceCard({
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(28),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(22),
-        decoration: BoxDecoration(
-          color: DutyPayPalette.card,
-          borderRadius: BorderRadius.circular(28),
-          border: Border.all(color: DutyPayPalette.cardBorder),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.18),
-              blurRadius: 18,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 54,
-              height: 54,
-              decoration: BoxDecoration(
-                color: DutyPayPalette.primary.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: const Icon(
-                Icons.apartment_rounded,
-                color: DutyPayPalette.primary,
-                size: 28,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.3,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      color: DutyPayPalette.textSecondary,
-                      fontSize: 13.8,
-                      height: 1.4,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Icon(
-              Icons.arrow_forward_rounded,
-              color: DutyPayPalette.primary,
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

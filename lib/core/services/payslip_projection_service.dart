@@ -23,6 +23,7 @@ class MonthlyAccessorySummary {
   final double nonOvertimeGross;
   final double overtimeGross;
   final double overtimeHours;
+  final double rfiBasketGross;
   final double totalGross;
 
   const MonthlyAccessorySummary({
@@ -31,6 +32,7 @@ class MonthlyAccessorySummary {
     required this.nonOvertimeGross,
     required this.overtimeGross,
     required this.overtimeHours,
+    required this.rfiBasketGross,
     required this.totalGross,
   });
 }
@@ -61,6 +63,7 @@ class PayslipProjectionResult {
   final double nonOvertimeGross;
   final double overtimeGrossFromReferenceMonth;
   final double overtimeHoursFromReferenceMonth;
+  final double rfiBasketGrossFromReferenceMonth;
 
   final double basketRecoveredGross;
   final double basketRecoveredHours;
@@ -108,6 +111,7 @@ class PayslipProjectionResult {
     required this.nonOvertimeGross,
     required this.overtimeGrossFromReferenceMonth,
     required this.overtimeHoursFromReferenceMonth,
+    required this.rfiBasketGrossFromReferenceMonth,
     required this.basketRecoveredGross,
     required this.basketRecoveredHours,
     required this.liquidatedOvertimeGross,
@@ -144,9 +148,12 @@ class PayslipProjectionResult {
       overtimeInBasketGross > 0 ||
       openBasketEntries.isNotEmpty;
 
+  bool get hasAnyRfiBasketMovement => rfiBasketGrossFromReferenceMonth > 0;
+
   // Compatibilità con la nuova payslip_page.dart
   double get extraGross => accessoriesGrossUsedForEstimate;
   double get extraNet => accessoriesNetEstimated;
+  double get rfiBasketGross => rfiBasketGrossFromReferenceMonth;
 
   /// In questa UI nuova usiamo una tassazione stimata sugli extra.
   /// Manteniamo il concetto semplice e coerente con extra lordi/netti.
@@ -248,6 +255,7 @@ class PayslipProjectionService {
             nonOvertimeGross: 0,
             overtimeGross: 0,
             overtimeHours: 0,
+            rfiBasketGross: 0,
             totalGross: 0,
           )
         : monthlySummaries
@@ -263,6 +271,7 @@ class PayslipProjectionService {
               nonOvertimeGross: 0,
               overtimeGross: 0,
               overtimeHours: 0,
+              rfiBasketGross: 0,
               totalGross: 0,
             );
 
@@ -362,6 +371,8 @@ class PayslipProjectionService {
     }
 
     final nonOvertimeGross = _sanitizeMoney(referenceSummary.nonOvertimeGross);
+    final rfiBasketGrossFromReferenceMonth =
+        _sanitizeMoney(referenceSummary.rfiBasketGross);
 
     final accessoriesGrossLiquidated = _sanitizeMoney(
       nonOvertimeGross + basketRecoveredGross + liquidatedOvertimeGross,
@@ -474,6 +485,7 @@ class PayslipProjectionService {
           _sanitizeMoney(referenceSummary.overtimeGross),
       overtimeHoursFromReferenceMonth:
           _sanitizeNonNegative(referenceSummary.overtimeHours),
+      rfiBasketGrossFromReferenceMonth: rfiBasketGrossFromReferenceMonth,
       basketRecoveredGross: _sanitizeMoney(basketRecoveredGross),
       basketRecoveredHours: _sanitizeNonNegative(basketRecoveredHours),
       liquidatedOvertimeGross: _sanitizeMoney(liquidatedOvertimeGross),
@@ -582,6 +594,7 @@ class PayslipProjectionService {
     double nonOvertimeGross = 0;
     double overtimeGross = 0;
     double overtimeHours = 0;
+    double rfiBasketGross = 0;
     int shiftCount = 0;
 
     final monthShifts = allShifts.where((shift) {
@@ -601,6 +614,8 @@ class PayslipProjectionService {
 
         if (_isOvertimeLabel(label)) {
           overtimeGross += amount;
+        } else if (_isRfiBasketLabel(label)) {
+          rfiBasketGross += amount;
         } else {
           nonOvertimeGross += amount;
         }
@@ -609,7 +624,7 @@ class PayslipProjectionService {
       overtimeHours += _extractShiftOvertimeHours(shift);
     }
 
-    final totalGross = nonOvertimeGross + overtimeGross;
+    final totalGross = nonOvertimeGross + overtimeGross + rfiBasketGross;
 
     return MonthlyAccessorySummary(
       month: month,
@@ -617,6 +632,7 @@ class PayslipProjectionService {
       nonOvertimeGross: _sanitizeMoney(nonOvertimeGross),
       overtimeGross: _sanitizeMoney(overtimeGross),
       overtimeHours: _sanitizeNonNegative(overtimeHours),
+      rfiBasketGross: _sanitizeMoney(rfiBasketGross),
       totalGross: _sanitizeMoney(totalGross),
     );
   }
@@ -779,6 +795,10 @@ class PayslipProjectionService {
         label.contains('ST02') ||
         label.contains('ST03') ||
         label.contains('A01B/');
+  }
+
+  bool _isRfiBasketLabel(String label) {
+    return label.contains('RFI') || label.contains('SCALO');
   }
 
   double _extractShiftOvertimeHours(Shift shift) {

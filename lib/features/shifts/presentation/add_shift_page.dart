@@ -6,13 +6,11 @@ import 'services/shift_rate_calculator.dart';
 class AddShiftPage extends StatefulWidget {
   final Shift? initialShift;
   final ShiftDerivedRates? derivedRates;
-  final String activeDepartmentId;
 
   const AddShiftPage({
     super.key,
     this.initialShift,
     this.derivedRates,
-    required this.activeDepartmentId,
   });
 
   @override
@@ -60,10 +58,6 @@ class _AddShiftPageState extends State<AddShiftPage> {
   DateTime? selectedEnd;
 
   bool get isEditing => widget.initialShift != null;
-
-  String get _resolvedDepartmentId {
-    return widget.initialShift?.departmentId ?? widget.activeDepartmentId;
-  }
 
   @override
   void initState() {
@@ -199,7 +193,6 @@ class _AddShiftPageState extends State<AddShiftPage> {
       description: descriptionController.text.trim(),
       start: selectedStart ?? DateTime.now(),
       end: selectedEnd ?? DateTime.now().add(const Duration(hours: 6)),
-      departmentId: _resolvedDepartmentId,
       orderPublic: selectedOrderPublic,
       externalService: externalService,
       absence: selectedAbsence,
@@ -403,7 +396,6 @@ class _AddShiftPageState extends State<AddShiftPage> {
       description: description,
       start: start,
       end: end,
-      departmentId: _resolvedDepartmentId,
       orderPublic: selectedOrderPublic,
       externalService: externalService,
       absence: selectedAbsence,

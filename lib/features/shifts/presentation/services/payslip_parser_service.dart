@@ -294,7 +294,6 @@ class PayslipParserService {
 
     return UserPayProfile(
       monthlyOvertimePayableHoursLimit: 55.0,
-      departmentId: 'polizia_mobile',
       rank: latest.detectedGradeLabel == 'Non rilevato'
           ? defaultProfile.rank
           : latest.detectedGradeLabel,
@@ -305,6 +304,8 @@ class PayslipParserService {
       orderPublicFuoriSede: defaultProfile.orderPublicFuoriSede,
       orderPublicPernotto: defaultProfile.orderPublicPernotto,
       externalServiceRate: defaultProfile.externalServiceRate,
+      controlloTerritorioSerale: 5.00,
+      controlloTerritorioNotturno: 10.00,
       holidayAllowance: defaultProfile.holidayAllowance,
       specialHolidayAllowance: defaultProfile.specialHolidayAllowance,
       profileVersion: 'v${DateTime.now().millisecondsSinceEpoch}',
@@ -387,84 +388,85 @@ class PayslipParserService {
   }
 
   String _extractAccessoryBlock(String text) {
-  final marker = 'Assegniaccessori';
-  final markerIndex = text.indexOf(marker);
+    final marker = 'Assegniaccessori';
+    final markerIndex = text.indexOf(marker);
 
-  if (markerIndex == -1) {
-    return '';
+    if (markerIndex == -1) {
+      return '';
+    }
+
+    final start = markerIndex + marker.length;
+
+    final endMatch = RegExp(
+      r'Ritenute',
+      caseSensitive: false,
+    ).firstMatch(text.substring(start));
+
+    final end = endMatch != null ? start + endMatch.start : text.length;
+
+    return text.substring(start, end).trim();
   }
-
-  final start = markerIndex + marker.length;
-
-  final endMatch = RegExp(
-    r'Ritenute',
-    caseSensitive: false,
-  ).firstMatch(text.substring(start));
-
-  final end = endMatch != null ? start + endMatch.start : text.length;
-
-  return text.substring(start, end).trim();
-}
 
   List<PayslipEntry> _extractAccessoryEntries(String flatText) {
-  final results = <PayslipEntry>[];
+    final results = <PayslipEntry>[];
 
-  final normalized = flatText.replaceAll('\n', ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+    final normalized =
+        flatText.replaceAll('\n', ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
 
-  final separated = normalized.replaceAllMapped(
-    RegExp(
-      r'([0-9]{1,3}(?:\.[0-9]{3})*,[0-9]{2})(?=(A01B/[0-9]{4}|[A-Z0-9]{3,6}/[A-Z0-9]{2,4}))',
-      caseSensitive: false,
-    ),
-    (m) => '${m.group(1)}|||',
-  );
-
-  final chunks = separated
-      .split('|||')
-      .map((e) => e.trim())
-      .where((e) => e.isNotEmpty)
-      .toList();
-
-  final rowRegex = RegExp(
-    r'^(A01B/[0-9]{4}|[A-Z0-9]{3,6}/[A-Z0-9]{2,4})'
-    r'(.+?)'
-    r'-Qta\.([0-9.,]+)'
-    r'-Imp\.([0-9.,]+)'
-    r'-Rif\.([0-9]{2}/[0-9]{4})'
-    r'([0-9]{1,3}(?:\.[0-9]{3})*,[0-9]{2})$',
-    caseSensitive: false,
-    dotAll: true,
-  );
-
-  for (final chunk in chunks) {
-    final match = rowRegex.firstMatch(chunk);
-    if (match == null) continue;
-
-    final code = (match.group(1) ?? '').trim();
-    final rawDescription = (match.group(2) ?? '').trim();
-    final quantity = _parseLooseNumber(match.group(3) ?? '');
-    final unitAmount = _parseLooseNumber(match.group(4) ?? '');
-    final reference = (match.group(5) ?? '').trim();
-    final totalAmount = _parseEuro(match.group(6) ?? '');
-
-    if (code.isEmpty || rawDescription.isEmpty) continue;
-    if (quantity <= 0 || unitAmount <= 0 || totalAmount <= 0) continue;
-
-    results.add(
-      PayslipEntry(
-        code: code,
-        description: _normalizeAccessoryDescription(rawDescription),
-        amount: totalAmount,
-        quantity: quantity,
-        unitAmount: unitAmount,
-        reference: reference,
-        sectionType: PayslipSectionType.accessoryCompensation,
+    final separated = normalized.replaceAllMapped(
+      RegExp(
+        r'([0-9]{1,3}(?:\.[0-9]{3})*,[0-9]{2})(?=(A01B/[0-9]{4}|[A-Z0-9]{3,6}/[A-Z0-9]{2,4}))',
+        caseSensitive: false,
       ),
+      (m) => '${m.group(1)}|||',
     );
-  }
 
-  return _dedupeEntries(results);
-}
+    final chunks = separated
+        .split('|||')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+
+    final rowRegex = RegExp(
+      r'^(A01B/[0-9]{4}|[A-Z0-9]{3,6}/[A-Z0-9]{2,4})'
+      r'(.+?)'
+      r'-Qta\.([0-9.,]+)'
+      r'-Imp\.([0-9.,]+)'
+      r'-Rif\.([0-9]{2}/[0-9]{4})'
+      r'([0-9]{1,3}(?:\.[0-9]{3})*,[0-9]{2})$',
+      caseSensitive: false,
+      dotAll: true,
+    );
+
+    for (final chunk in chunks) {
+      final match = rowRegex.firstMatch(chunk);
+      if (match == null) continue;
+
+      final code = (match.group(1) ?? '').trim();
+      final rawDescription = (match.group(2) ?? '').trim();
+      final quantity = _parseLooseNumber(match.group(3) ?? '');
+      final unitAmount = _parseLooseNumber(match.group(4) ?? '');
+      final reference = (match.group(5) ?? '').trim();
+      final totalAmount = _parseEuro(match.group(6) ?? '');
+
+      if (code.isEmpty || rawDescription.isEmpty) continue;
+      if (quantity <= 0 || unitAmount <= 0 || totalAmount <= 0) continue;
+
+      results.add(
+        PayslipEntry(
+          code: code,
+          description: _normalizeAccessoryDescription(rawDescription),
+          amount: totalAmount,
+          quantity: quantity,
+          unitAmount: unitAmount,
+          reference: reference,
+          sectionType: PayslipSectionType.accessoryCompensation,
+        ),
+      );
+    }
+
+    return _dedupeEntries(results);
+  }
 
   List<PayslipEntry> _extractDeductionEntries(
     List<String> lines,
@@ -579,6 +581,10 @@ class PayslipParserService {
           "INDENNITA' PRESENZA SERVIZI ESTERNI",
       "INDENNITA'PERFESTIVITA'PARTICOLARI":
           "INDENNITA' PER FESTIVITA' PARTICOLARI",
+      "INDENNITA'CONTROLLODELTERRITORIOSERALE":
+          "INDENNITA' CONTROLLO DEL TERRITORIO SERALE",
+      "INDENNITA'CONTROLLODELTERRITORIONOTTURNO":
+          "INDENNITA' CONTROLLO DEL TERRITORIO NOTTURNO",
       'STRAORDINARIODIURNO': 'STRAORDINARIO DIURNO',
       'STRAORDINARIONOTTURNOOFESTIVO':
           'STRAORDINARIO NOTTURNO O FESTIVO',

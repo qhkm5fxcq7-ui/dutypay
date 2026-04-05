@@ -10,6 +10,10 @@ class MonthCalendarDayData {
   final bool hasTicket;
   final bool hasConforto;
 
+  /// Previsione SPMN visiva, separata dai turni reali.
+  /// Esempi: SERA, POM, MAT, NOTTE, SMONT, RIP, AGG
+  final String? predictedSpmnLabel;
+
   const MonthCalendarDayData({
     required this.date,
     required this.isInCurrentMonth,
@@ -19,12 +23,16 @@ class MonthCalendarDayData {
     this.absenceBadge,
     this.hasTicket = false,
     this.hasConforto = false,
+    this.predictedSpmnLabel,
   });
 
   bool get hasAmount => amount > 0;
 
   bool get hasAbsence =>
       absenceBadge != null && absenceBadge!.trim().isNotEmpty;
+
+  bool get hasPredictedSpmn =>
+      predictedSpmnLabel != null && predictedSpmnLabel!.trim().isNotEmpty;
 
   bool get hasContent => hasAmount || hasAbsence;
 }
@@ -82,6 +90,14 @@ class MonthCalendarCard extends StatelessWidget {
     return days.where((d) => d.isInCurrentMonth && d.hasContent).length;
   }
 
+  int _predictedDaysCount() {
+    return days
+        .where(
+          (d) => d.isInCurrentMonth && !d.hasContent && d.hasPredictedSpmn,
+        )
+        .length;
+  }
+
   String _normalizedAbsenceLabel(String? badge) {
     final value = (badge ?? '').trim().toUpperCase();
 
@@ -98,6 +114,34 @@ class MonthCalendarCard extends StatelessWidget {
       case 'RIP':
       case 'RIPOSO':
         return 'RIP';
+      default:
+        return value;
+    }
+  }
+
+  String _normalizedPredictedLabel(String? label) {
+    final value = (label ?? '').trim().toUpperCase();
+
+    switch (value) {
+      case 'SERA':
+        return 'SERA';
+      case 'POMERIGGIO':
+      case 'POM':
+        return 'POM';
+      case 'MATTINA':
+      case 'MAT':
+        return 'MAT';
+      case 'NOTTE':
+        return 'NOTTE';
+      case 'SMONTANTE':
+      case 'SMONT':
+        return 'SMONT';
+      case 'RIPOSO':
+      case 'RIP':
+        return 'RIP';
+      case 'AGGIORNAMENTO':
+      case 'AGG':
+        return 'AGG';
       default:
         return value;
     }
@@ -135,10 +179,67 @@ class MonthCalendarCard extends StatelessWidget {
     }
   }
 
+  _BadgeStyle? _predictedBadgeStyle(String? label) {
+    final value = _normalizedPredictedLabel(label);
+    if (value.isEmpty) return null;
+
+    switch (value) {
+      case 'SERA':
+        return const _BadgeStyle(
+          background: Color(0xFF14283A),
+          text: Color(0xFF9AD9FF),
+          border: Color(0xFF67B7FF),
+        );
+      case 'POM':
+        return const _BadgeStyle(
+          background: Color(0xFF2C2415),
+          text: Color(0xFFFFD98A),
+          border: Color(0xFFFFC14D),
+        );
+      case 'MAT':
+        return const _BadgeStyle(
+          background: Color(0xFF173124),
+          text: Color(0xFFB6F3D3),
+          border: Color(0xFF5CE1A8),
+        );
+      case 'NOTTE':
+        return const _BadgeStyle(
+          background: Color(0xFF24193C),
+          text: Color(0xFFD9C2FF),
+          border: Color(0xFF9D7BFF),
+        );
+      case 'SMONT':
+        return const _BadgeStyle(
+          background: Color(0xFF1E2631),
+          text: Color(0xFFD3DBE6),
+          border: Color(0xFF5E738C),
+        );
+      case 'RIP':
+        return const _BadgeStyle(
+          background: Color(0xFF1E2E16),
+          text: Color(0xFFDDF7A5),
+          border: Color(0xFF9ACF38),
+        );
+      case 'AGG':
+        return const _BadgeStyle(
+          background: Color(0xFF1C2F1E),
+          text: Color(0xFFB8F7C2),
+          border: Color(0xFF56D88D),
+        );
+      default:
+        return const _BadgeStyle(
+          background: Color(0xFF202834),
+          text: Color(0xFFD3DBE6),
+          border: Color(0xFF334152),
+        );
+    }
+  }
+
   Color _cellBackground(MonthCalendarDayData day) {
     if (day.isSelected) return const Color(0xFF132A22);
     if (!day.isInCurrentMonth) return const Color(0xFF111720);
     if (day.hasAbsence) return const Color(0xFF161D27);
+    if (!day.hasContent && day.hasPredictedSpmn) return const Color(0xFF131B24);
     return const Color(0xFF141C26);
   }
 
@@ -147,6 +248,9 @@ class MonthCalendarCard extends StatelessWidget {
     if (day.isToday) return const Color(0xFF67B7FF);
     if (!day.isInCurrentMonth) return const Color(0xFF202A37);
     if (day.hasAbsence) return const Color(0xFF324050);
+    if (!day.hasContent && day.hasPredictedSpmn) {
+      return const Color(0xFF355066);
+    }
     if (day.hasAmount || day.hasTicket || day.hasConforto) {
       return const Color(0xFF2A5A47);
     }
@@ -163,6 +267,7 @@ class MonthCalendarCard extends StatelessWidget {
     const weekdayLabels = ['L', 'M', 'M', 'G', 'V', 'S', 'D'];
     final monthTotal = _monthlyTotal();
     final workedDays = _workedDaysCount();
+    final predictedDays = _predictedDaysCount();
     final benefitTotal = ticketPastoTotal + genereDiConfortoTotal;
 
     return Column(
@@ -207,7 +312,7 @@ class MonthCalendarCard extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         const Text(
-          'Tocca un giorno per vedere subito i turni inseriti e il totale maturato.',
+          'Tocca un giorno per vedere subito i turni inseriti e il totale maturato. I preset SPMN previsti sono mostrati solo come anteprima.',
           style: TextStyle(
             fontSize: 13.4,
             color: _CalendarPalette.textSecondary,
@@ -287,6 +392,26 @@ class MonthCalendarCard extends StatelessWidget {
                   ),
                 ],
               ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: _TopInfoBlock(
+                      label: 'Previsione SPMN',
+                      value: '$predictedDays giorni',
+                      valueColor: const Color(0xFF9AD9FF),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: _TopInfoBlock(
+                      label: 'Legenda',
+                      value: 'reale > previsto',
+                      valueColor: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -337,6 +462,9 @@ class MonthCalendarCard extends StatelessWidget {
             final day = days[index];
             final normalizedBadge = _normalizedAbsenceLabel(day.absenceBadge);
             final badgeStyle = _badgeStyle(day.absenceBadge);
+            final predictedLabel =
+                _normalizedPredictedLabel(day.predictedSpmnLabel);
+            final predictedStyle = _predictedBadgeStyle(day.predictedSpmnLabel);
 
             return InkWell(
               onTap: () => onDayTap(day.date),
@@ -398,6 +526,40 @@ class MonthCalendarCard extends StatelessWidget {
                                 fontSize: 9.2,
                                 fontWeight: FontWeight.w900,
                                 color: badgeStyle.text,
+                                height: 1,
+                              ),
+                            ),
+                          ),
+                        ),
+                      )
+                    else if (!day.hasContent &&
+                        day.hasPredictedSpmn &&
+                        predictedStyle != null)
+                      SizedBox(
+                        width: double.infinity,
+                        height: 24,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: predictedStyle.background,
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(
+                                color: predictedStyle.border,
+                                width: 1.1,
+                              ),
+                            ),
+                            child: Text(
+                              predictedLabel,
+                              maxLines: 1,
+                              style: TextStyle(
+                                fontSize: 9.0,
+                                fontWeight: FontWeight.w900,
+                                color: predictedStyle.text,
                                 height: 1,
                               ),
                             ),

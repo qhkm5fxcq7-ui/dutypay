@@ -5,7 +5,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'models/shift.dart';
+import 'models/department.dart';
+import 'models/shift.dart' as shift_model;
 import 'models/user_pay_profile.dart';
 import 'quick_add_shift_page.dart';
 import 'services/duty_pay_engine.dart';
@@ -14,13 +15,33 @@ import 'services/shift_rate_calculator.dart';
 import 'services/shift_value_calculator.dart';
 
 class CalibratePayslipsPage extends StatefulWidget {
-  const CalibratePayslipsPage({super.key});
+  const CalibratePayslipsPage({
+    super.key,
+    required this.activeDepartment,
+  });
+
+  final Department activeDepartment;
 
   @override
   State<CalibratePayslipsPage> createState() => _CalibratePayslipsPageState();
 }
 
 class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
+  static const String _legacyPdfPathsKey = 'dutypay_pdf_paths_v1';
+  static const String _legacyShiftsKey = 'dutypay_shifts';
+  static const String _legacyRatesKey = 'dutypay_saved_rates_v1';
+  static const String _legacyPayProfileKey = 'dutypay_pay_profile';
+
+  String get _storageScope => widget.activeDepartment.id;
+
+  String get _prefsPdfPathsKey => 'dutypay_pdf_paths_v1_$_storageScope';
+  String get _prefsShiftsKey => 'dutypay_shifts_$_storageScope';
+  String get _prefsRatesKey => 'dutypay_saved_rates_v1_$_storageScope';
+  String get _prefsPayProfileKey => 'dutypay_pay_profile_$_storageScope';
+
+  bool get _isRepartoMobileScope =>
+      widget.activeDepartment == Department.repartoMobile;
+
   final PayslipParserService _parserService = const PayslipParserService();
   final DutyPayEngine _dutyPayEngine = const DutyPayEngine();
   final ShiftRateCalculator _shiftRateCalculator = const ShiftRateCalculator();
@@ -36,7 +57,7 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
   final List<String?> extractionErrors = [null, null, null];
   final List<bool> isExtracting = [false, false, false];
 
-  final List<Shift> shifts = [];
+  final List<shift_model.Shift> shifts = [];
 
   UserPayProfile? calibratedProfile;
   DutyPayEngineSnapshot? engineSnapshot;
@@ -45,11 +66,6 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
   bool isPicking = false;
   bool isRestoring = true;
   double extraIncome = 0;
-
-  static const String _prefsPdfPathsKey = 'dutypay_pdf_paths_v1';
-  static const String _prefsShiftsKey = 'dutypay_shifts';
-  static const String _prefsRatesKey = 'dutypay_saved_rates_v1';
-  static const String _prefsPayProfileKey = 'dutypay_pay_profile';
 
   @override
   void initState() {
@@ -61,6 +77,44 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
   void dispose() {
     _monthlyOvertimeLimitController.dispose();
     super.dispose();
+  }
+
+  Future<String?> _readScopedString({
+    required SharedPreferences prefs,
+    required String scopedKey,
+    required String legacyKey,
+  }) async {
+    final scoped = prefs.getString(scopedKey);
+    if (scoped != null) return scoped;
+
+    if (_isRepartoMobileScope) {
+      final legacy = prefs.getString(legacyKey);
+      if (legacy != null) {
+        await prefs.setString(scopedKey, legacy);
+        return legacy;
+      }
+    }
+
+    return null;
+  }
+
+  Future<List<String>?> _readScopedStringList({
+    required SharedPreferences prefs,
+    required String scopedKey,
+    required String legacyKey,
+  }) async {
+    final scoped = prefs.getStringList(scopedKey);
+    if (scoped != null) return scoped;
+
+    if (_isRepartoMobileScope) {
+      final legacy = prefs.getStringList(legacyKey);
+      if (legacy != null) {
+        await prefs.setStringList(scopedKey, legacy);
+        return legacy;
+      }
+    }
+
+    return null;
   }
 
   Future<void> _restorePersistedData() async {
@@ -112,7 +166,12 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
 
   Future<void> _loadSavedPdfSelectionsMetadataOnly() async {
     final prefs = await SharedPreferences.getInstance();
-    final savedPaths = prefs.getStringList(_prefsPdfPathsKey) ?? [];
+    final savedPaths = await _readScopedStringList(
+          prefs: prefs,
+          scopedKey: _prefsPdfPathsKey,
+          legacyKey: _legacyPdfPathsKey,
+        ) ??
+        [];
 
     for (int i = 0; i < 3; i++) {
       final path = i < savedPaths.length ? savedPaths[i] : null;
@@ -163,7 +222,12 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
     shifts.clear();
 
     try {
-      final rawJson = prefs.getString(_prefsShiftsKey);
+      final rawJson = await _readScopedString(
+        prefs: prefs,
+        scopedKey: _prefsShiftsKey,
+        legacyKey: _legacyShiftsKey,
+      );
+
       if (rawJson != null && rawJson.trim().isNotEmpty) {
         final decoded = jsonDecode(rawJson);
 
@@ -171,9 +235,9 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
           for (final item in decoded) {
             try {
               if (item is Map<String, dynamic>) {
-                shifts.add(Shift.fromJson(item));
+                shifts.add(shift_model.Shift.fromJson(item));
               } else if (item is Map) {
-                shifts.add(Shift.fromJson(Map<String, dynamic>.from(item)));
+                shifts.add(shift_model.Shift.fromJson(Map<String, dynamic>.from(item)));
               }
             } catch (_) {}
           }
@@ -183,20 +247,25 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
         }
       }
     } catch (_) {
-      // fallback legacy sotto
+      // fallback legacy list sotto
     }
 
     try {
-      final legacyList = prefs.getStringList(_prefsShiftsKey);
+      final legacyList = await _readScopedStringList(
+        prefs: prefs,
+        scopedKey: _prefsShiftsKey,
+        legacyKey: _legacyShiftsKey,
+      );
+
       if (legacyList == null || legacyList.isEmpty) return;
 
       for (final item in legacyList) {
         try {
           final decoded = jsonDecode(item);
           if (decoded is Map<String, dynamic>) {
-            shifts.add(Shift.fromJson(decoded));
+            shifts.add(shift_model.Shift.fromJson(decoded));
           } else if (decoded is Map) {
-            shifts.add(Shift.fromJson(Map<String, dynamic>.from(decoded)));
+            shifts.add(shift_model.Shift.fromJson(Map<String, dynamic>.from(decoded)));
           }
         } catch (_) {}
       }
@@ -219,7 +288,11 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
 
   Future<void> _loadSavedProfile() async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_prefsPayProfileKey);
+    final raw = await _readScopedString(
+      prefs: prefs,
+      scopedKey: _prefsPayProfileKey,
+      legacyKey: _legacyPayProfileKey,
+    );
 
     if (raw == null || raw.trim().isEmpty) {
       _monthlyOvertimeLimitController.text =
@@ -267,23 +340,27 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
     await prefs.remove(_prefsPayProfileKey);
   }
 
-Future<void> _loadSavedRates() async {
-  final prefs = await SharedPreferences.getInstance();
-  final raw = prefs.getString(_prefsRatesKey);
-
-  if (raw == null || raw.trim().isEmpty) return;
-
-  try {
-    final decoded = jsonDecode(raw);
-    if (decoded is! Map) return;
-
-    derivedRates = ShiftDerivedRates.fromMap(
-      Map<String, dynamic>.from(decoded),
+  Future<void> _loadSavedRates() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = await _readScopedString(
+      prefs: prefs,
+      scopedKey: _prefsRatesKey,
+      legacyKey: _legacyRatesKey,
     );
-  } catch (_) {
-    derivedRates = null;
+
+    if (raw == null || raw.trim().isEmpty) return;
+
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return;
+
+      derivedRates = ShiftDerivedRates.fromMap(
+        Map<String, dynamic>.from(decoded),
+      );
+    } catch (_) {
+      derivedRates = null;
+    }
   }
-}
 
   Future<void> _saveRates(ShiftDerivedRates rates) async {
     final prefs = await SharedPreferences.getInstance();
@@ -596,17 +673,16 @@ Future<void> _loadSavedRates() async {
       context,
       MaterialPageRoute(
         builder: (_) => QuickAddShiftPage(
-          rates: calibratedProfile,
+          activeDepartment: widget.activeDepartment,
+          rates: calibratedProfile ?? UserPayProfile.defaultProfile(),
           onAdd: (shift) => Navigator.of(context).pop(shift),
-          activeDepartmentId:
-    calibratedProfile?.departmentId ?? 'polizia_mobile',
         ),
       ),
     );
 
     if (!mounted) return;
 
-    if (result is Shift) {
+    if (result is shift_model.Shift){
       setState(() {
         shifts.add(result);
         shifts.sort((a, b) => b.serviceDate.compareTo(a.serviceDate));
@@ -616,7 +692,7 @@ Future<void> _loadSavedRates() async {
         );
       });
       await _saveShifts();
-    } else if (result is List<Shift>) {
+    } else if (result is List<shift_model.Shift>) {
       setState(() {
         shifts.addAll(result);
         shifts.sort((a, b) => b.serviceDate.compareTo(a.serviceDate));
@@ -1222,7 +1298,7 @@ Future<void> _loadSavedRates() async {
     );
   }
 
-    Widget _buildDerivedRatesCard() {
+  Widget _buildDerivedRatesCard() {
     final rates = derivedRates;
 
     if (rates == null) {
@@ -1411,18 +1487,18 @@ Future<void> _loadSavedRates() async {
     );
   }
 
-  String _labelForOpType(OpServiceType type) {
-    switch (type) {
-      case OpServiceType.none:
-        return 'Nessun OP';
-      case OpServiceType.inSede:
-        return 'OP in sede';
-      case OpServiceType.fuoriSedeOneTurno:
-        return 'OP fuori sede - 1 turno';
-      case OpServiceType.fuoriSedeIntera:
-        return 'OP fuori sede - intera';
-    }
+  String _labelForOpType(shift_model.OpServiceType type) {
+  switch (type) {
+    case shift_model.OpServiceType.none:
+      return 'Nessun OP';
+    case shift_model.OpServiceType.inSede:
+      return 'OP in sede';
+    case shift_model.OpServiceType.fuoriSedeOneTurno:
+      return 'OP fuori sede - 1 turno';
+    case shift_model.OpServiceType.fuoriSedeIntera:
+      return 'OP fuori sede - intera';
   }
+}
 
   Widget _buildShiftListCard() {
     if (shifts.isEmpty) {
@@ -1603,6 +1679,7 @@ Future<void> _loadSavedRates() async {
       ),
     );
   }
+
   void _showRatesInfoSheet() {
     showModalBottomSheet(
       context: context,
@@ -1758,6 +1835,7 @@ Future<void> _loadSavedRates() async {
         return 'Valore medio';
     }
   }
+
   @override
   Widget build(BuildContext context) {
     final loadedCount = selectedPdfNames.where((e) => e != null).length;
@@ -1784,83 +1862,83 @@ Future<void> _loadSavedRates() async {
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
                 children: [
                   Container(
-  padding: const EdgeInsets.all(18),
-  decoration: BoxDecoration(
-    borderRadius: BorderRadius.circular(20),
-    gradient: const LinearGradient(
-      colors: [
-        Color(0xFF0F2A22),
-        Color(0xFF111827),
-      ],
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-    ),
-    border: Border.all(
-      color: const Color(0xFF22C55E),
-      width: 1,
-    ),
-  ),
-  child: const Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        'Calibrazione DutyPay',
-        style: TextStyle(
-          color: Colors.white70,
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-      SizedBox(height: 8),
-      Text(
-        'Qui carichi i cedolini che permettono all’app di leggere i valori reali di straordinario e indennità.',
-        style: TextStyle(
-          fontSize: 17,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-      SizedBox(height: 10),
-      Text(
-        'Consigliato: carica 3 cedolini recenti. Dopo la calibrazione, la pagina Cedolino e il simulatore turni useranno questi dati per generare stime molto più affidabili.',
-        style: TextStyle(
-          fontSize: 14,
-          color: Colors.white70,
-          height: 1.45,
-        ),
-      ),
-    ],
-  ),
-),
-const SizedBox(height: 14),
-Container(
-  padding: const EdgeInsets.all(14),
-  decoration: BoxDecoration(
-    color: const Color(0xFF171A21),
-    borderRadius: BorderRadius.circular(16),
-    border: Border.all(color: Colors.white10),
-  ),
-  child: const Row(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Icon(
-        Icons.info_outline_rounded,
-        color: Color(0xFF67B7FF),
-        size: 18,
-      ),
-      SizedBox(width: 10),
-      Expanded(
-        child: Text(
-          'I cedolini vengono usati solo per estrarre le voci utili al calcolo. Se sostituisci un PDF o ricarichi la calibrazione, DutyPay aggiorna i valori reali mostrati nell’app.',
-          style: TextStyle(
-            fontSize: 13,
-            color: Colors.white70,
-            height: 1.4,
-          ),
-        ),
-      ),
-    ],
-  ),
-),
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      gradient: const LinearGradient(
+                        colors: [
+                          Color(0xFF0F2A22),
+                          Color(0xFF111827),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      border: Border.all(
+                        color: const Color(0xFF22C55E),
+                        width: 1,
+                      ),
+                    ),
+                    child: const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Calibrazione DutyPay',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Qui carichi i cedolini che permettono all’app di leggere i valori reali di straordinario e indennità.',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        SizedBox(height: 10),
+                        Text(
+                          'Consigliato: carica 3 cedolini recenti. Dopo la calibrazione, la pagina Cedolino e il simulatore turni useranno questi dati per generare stime molto più affidabili.',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.white70,
+                            height: 1.45,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF171A21),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white10),
+                    ),
+                    child: const Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.info_outline_rounded,
+                          color: Color(0xFF67B7FF),
+                          size: 18,
+                        ),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'I cedolini vengono usati solo per estrarre le voci utili al calcolo. Se sostituisci un PDF o ricarichi la calibrazione, DutyPay aggiorna i valori reali mostrati nell’app.',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.white70,
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 18),
                   _buildOvertimeLimitCard(),
                   const SizedBox(height: 24),

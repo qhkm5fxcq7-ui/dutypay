@@ -7,9 +7,19 @@ enum OpServiceType {
   fuoriSedeIntera,
 }
 
-class Shift {
-  static const String legacyDefaultDepartmentId = 'polizia_mobile';
+enum PolferTerritoryControlType {
+  none,
+  serale,
+  notturno,
+}
 
+enum PolferScaloMode {
+  none,
+  ridotta,
+  intera,
+}
+
+class Shift {
   final String description;
   final DateTime start;
   final DateTime end;
@@ -17,7 +27,6 @@ class Shift {
   /// Giorno operativo/di competenza da usare per calendario, conteggi e filtri.
   final DateTime serviceDate;
 
-  final String departmentId;
   final String orderPublic;
   final bool externalService;
   final String absence;
@@ -36,7 +45,31 @@ class Shift {
   final OpServiceType opServiceType;
   final double manualAmount;
   final String note;
+
+  final String spmnPresetCode;
+
   final double? workedHoursOverride;
+
+  // ===== POLFER =====
+  final PolferTerritoryControlType polferTerritoryControlType;
+
+  /// Modalità principale dello scalo:
+  /// - none
+  /// - ridotta
+  /// - intera
+  final PolferScaloMode polferScaloMode;
+
+  /// Se false, il sistema calcola automaticamente le ore giorno/notte
+  /// in base alle ore effettive del turno e le attribuisce tutte alla
+  /// modalità scelta (ridotta o intera).
+  ///
+  /// Se true, usa i 4 campi manuali sottostanti.
+  final bool polferScaloManualOverride;
+
+  final double polferScaloReducedDayHours;
+  final double polferScaloReducedNightHours;
+  final double polferScaloFullDayHours;
+  final double polferScaloFullNightHours;
 
   static const double standardHours = 6.0;
 
@@ -54,12 +87,19 @@ class Shift {
 
   static const double fallbackExternalServiceRate = 6.00;
 
+  static const double fallbackPolferTerritorySeraleRate = 5.00;
+  static const double fallbackPolferTerritoryNotturnoRate = 10.00;
+
+  static const double polferScaloReducedDayRate = 0.31;
+  static const double polferScaloReducedNightRate = 0.77;
+  static const double polferScaloFullDayRate = 1.00;
+  static const double polferScaloFullNightRate = 2.50;
+
   factory Shift({
     String description = '',
     DateTime? start,
     DateTime? end,
     DateTime? serviceDate,
-    String? departmentId,
     String orderPublic = 'Nessuno',
     bool externalService = false,
     String absence = 'Nessuna',
@@ -77,6 +117,15 @@ class Shift {
     OpServiceType opServiceType = OpServiceType.none,
     double manualAmount = 0.0,
     String note = '',
+    String spmnPresetCode = '',
+    PolferTerritoryControlType polferTerritoryControlType =
+        PolferTerritoryControlType.none,
+    PolferScaloMode polferScaloMode = PolferScaloMode.none,
+    bool polferScaloManualOverride = false,
+    double polferScaloReducedDayHours = 0.0,
+    double polferScaloReducedNightHours = 0.0,
+    double polferScaloFullDayHours = 0.0,
+    double polferScaloFullNightHours = 0.0,
   }) {
     final resolvedStart = start ?? date ?? DateTime.now();
     final resolvedWorkedHours = workedHours ?? standardHours;
@@ -88,9 +137,6 @@ class Shift {
     final resolvedServiceDate = _normalizeDate(
       serviceDate ?? _deriveServiceDate(resolvedStart, resolvedEnd),
     );
-
-    final resolvedDepartmentId =
-        _normalizeDepartmentId(departmentId) ?? legacyDefaultDepartmentId;
 
     final resolvedOrderPublic = _normalizeOrderPublic(
       orderPublic: orderPublic,
@@ -110,7 +156,6 @@ class Shift {
       start: resolvedStart,
       end: resolvedEnd,
       serviceDate: resolvedServiceDate,
-      departmentId: resolvedDepartmentId,
       orderPublic: resolvedOrderPublic,
       externalService: resolvedExternalService,
       absence: absence,
@@ -126,7 +171,15 @@ class Shift {
       opServiceType: opServiceType,
       manualAmount: manualAmount,
       note: note,
+      spmnPresetCode: spmnPresetCode,
       workedHoursOverride: workedHours,
+      polferTerritoryControlType: polferTerritoryControlType,
+      polferScaloMode: polferScaloMode,
+      polferScaloManualOverride: polferScaloManualOverride,
+      polferScaloReducedDayHours: polferScaloReducedDayHours,
+      polferScaloReducedNightHours: polferScaloReducedNightHours,
+      polferScaloFullDayHours: polferScaloFullDayHours,
+      polferScaloFullNightHours: polferScaloFullNightHours,
     );
   }
 
@@ -135,7 +188,6 @@ class Shift {
     required this.start,
     required this.end,
     required this.serviceDate,
-    required this.departmentId,
     required this.orderPublic,
     required this.externalService,
     required this.absence,
@@ -151,7 +203,15 @@ class Shift {
     required this.opServiceType,
     required this.manualAmount,
     required this.note,
+    required this.spmnPresetCode,
     required this.workedHoursOverride,
+    required this.polferTerritoryControlType,
+    required this.polferScaloMode,
+    required this.polferScaloManualOverride,
+    required this.polferScaloReducedDayHours,
+    required this.polferScaloReducedNightHours,
+    required this.polferScaloFullDayHours,
+    required this.polferScaloFullNightHours,
   });
 
   Shift copyWith({
@@ -159,7 +219,6 @@ class Shift {
     DateTime? start,
     DateTime? end,
     DateTime? serviceDate,
-    String? departmentId,
     String? orderPublic,
     bool? externalService,
     String? absence,
@@ -175,7 +234,15 @@ class Shift {
     OpServiceType? opServiceType,
     double? manualAmount,
     String? note,
+    String? spmnPresetCode,
     double? workedHoursOverride,
+    PolferTerritoryControlType? polferTerritoryControlType,
+    PolferScaloMode? polferScaloMode,
+    bool? polferScaloManualOverride,
+    double? polferScaloReducedDayHours,
+    double? polferScaloReducedNightHours,
+    double? polferScaloFullDayHours,
+    double? polferScaloFullNightHours,
   }) {
     final nextStart = start ?? this.start;
     final nextEnd = end ?? this.end;
@@ -185,8 +252,6 @@ class Shift {
       start: nextStart,
       end: nextEnd,
       serviceDate: _normalizeDate(serviceDate ?? this.serviceDate),
-      departmentId:
-          _normalizeDepartmentId(departmentId) ?? this.departmentId,
       orderPublic: orderPublic ?? this.orderPublic,
       externalService: externalService ?? this.externalService,
       absence: absence ?? this.absence,
@@ -206,7 +271,21 @@ class Shift {
       opServiceType: opServiceType ?? this.opServiceType,
       manualAmount: manualAmount ?? this.manualAmount,
       note: note ?? this.note,
+      spmnPresetCode: spmnPresetCode ?? this.spmnPresetCode,
       workedHoursOverride: workedHoursOverride ?? this.workedHoursOverride,
+      polferTerritoryControlType:
+          polferTerritoryControlType ?? this.polferTerritoryControlType,
+      polferScaloMode: polferScaloMode ?? this.polferScaloMode,
+      polferScaloManualOverride:
+          polferScaloManualOverride ?? this.polferScaloManualOverride,
+      polferScaloReducedDayHours:
+          polferScaloReducedDayHours ?? this.polferScaloReducedDayHours,
+      polferScaloReducedNightHours:
+          polferScaloReducedNightHours ?? this.polferScaloReducedNightHours,
+      polferScaloFullDayHours:
+          polferScaloFullDayHours ?? this.polferScaloFullDayHours,
+      polferScaloFullNightHours:
+          polferScaloFullNightHours ?? this.polferScaloFullNightHours,
     );
   }
 
@@ -360,6 +439,20 @@ class Shift {
     return _sanitizeRate(p.externalServiceRate, fallbackExternalServiceRate);
   }
 
+  double _resolvedTerritorySeraleRate(UserPayProfile p) {
+    return _sanitizeRate(
+      p.controlloTerritorioSerale,
+      fallbackPolferTerritorySeraleRate,
+    );
+  }
+
+  double _resolvedTerritoryNotturnoRate(UserPayProfile p) {
+    return _sanitizeRate(
+      p.controlloTerritorioNotturno,
+      fallbackPolferTerritoryNotturnoRate,
+    );
+  }
+
   double _resolvedGenereDiConfortoRate(UserPayProfile p) {
     return _sanitizeRate(p.genereDiConfortoRate, 1.02);
   }
@@ -498,6 +591,35 @@ class Shift {
     return notturnoCount * fallbackNightAllowance;
   }
 
+  double getPolferTerritoryControlAmount([UserPayProfile? profile]) {
+    if (hasAbsence) return 0.0;
+    if (polferTerritoryControlType == PolferTerritoryControlType.none) {
+      return 0.0;
+    }
+
+    final p = _effectiveProfile(profile);
+
+    switch (polferTerritoryControlType) {
+      case PolferTerritoryControlType.none:
+        return 0.0;
+      case PolferTerritoryControlType.serale:
+        return _resolvedTerritorySeraleRate(p);
+      case PolferTerritoryControlType.notturno:
+        return _resolvedTerritoryNotturnoRate(p);
+    }
+  }
+
+  String get polferTerritoryControlLabel {
+    switch (polferTerritoryControlType) {
+      case PolferTerritoryControlType.none:
+        return 'Nessuno';
+      case PolferTerritoryControlType.serale:
+        return 'Controllo del territorio serale';
+      case PolferTerritoryControlType.notturno:
+        return 'Controllo del territorio notturno';
+    }
+  }
+
   double getGenereDiConfortoAmount([UserPayProfile? profile]) {
     if (hasAbsence || !genereDiConforto) return 0.0;
     final p = _effectiveProfile(profile);
@@ -569,6 +691,92 @@ class Shift {
     return 'Extra manuale';
   }
 
+  // ===== POLFER SCALO / BASKET RFI =====
+
+  bool get hasPolferScalo => polferScaloMode != PolferScaloMode.none;
+
+  double get polferWorkedDayHours {
+    if (hasAbsence) return 0.0;
+    return _calculateBandHours(start, end, dayBand: true);
+  }
+
+  double get polferWorkedNightHours {
+    if (hasAbsence) return 0.0;
+    return _calculateBandHours(start, end, dayBand: false);
+  }
+
+  double get effectivePolferScaloReducedDayHours {
+    if (!hasPolferScalo) return 0.0;
+    if (polferScaloManualOverride) return polferScaloReducedDayHours;
+    return polferScaloMode == PolferScaloMode.ridotta
+        ? polferWorkedDayHours
+        : 0.0;
+  }
+
+  double get effectivePolferScaloReducedNightHours {
+    if (!hasPolferScalo) return 0.0;
+    if (polferScaloManualOverride) return polferScaloReducedNightHours;
+    return polferScaloMode == PolferScaloMode.ridotta
+        ? polferWorkedNightHours
+        : 0.0;
+  }
+
+  double get effectivePolferScaloFullDayHours {
+    if (!hasPolferScalo) return 0.0;
+    if (polferScaloManualOverride) return polferScaloFullDayHours;
+    return polferScaloMode == PolferScaloMode.intera
+        ? polferWorkedDayHours
+        : 0.0;
+  }
+
+  double get effectivePolferScaloFullNightHours {
+    if (!hasPolferScalo) return 0.0;
+    if (polferScaloManualOverride) return polferScaloFullNightHours;
+    return polferScaloMode == PolferScaloMode.intera
+        ? polferWorkedNightHours
+        : 0.0;
+  }
+
+  double get polferScaloAmount {
+    if (hasAbsence || !hasPolferScalo) return 0.0;
+
+    return (effectivePolferScaloReducedDayHours * polferScaloReducedDayRate) +
+        (effectivePolferScaloReducedNightHours * polferScaloReducedNightRate) +
+        (effectivePolferScaloFullDayHours * polferScaloFullDayRate) +
+        (effectivePolferScaloFullNightHours * polferScaloFullNightRate);
+  }
+
+  /// Lo scalo RFI/Trenitalia va fuori dalle accessorie T2
+  /// e viene gestito come basket separato.
+  double get polferScaloBasketAmount => polferScaloAmount;
+
+  String get polferScaloLabel {
+    final hasReduced =
+        effectivePolferScaloReducedDayHours > 0 ||
+            effectivePolferScaloReducedNightHours > 0;
+    final hasFull =
+        effectivePolferScaloFullDayHours > 0 ||
+            effectivePolferScaloFullNightHours > 0;
+
+    if (polferScaloManualOverride && hasReduced && hasFull) {
+      return 'Scalo ferroviario misto (basket RFI)';
+    }
+
+    if (hasReduced && !hasFull) {
+      return polferScaloManualOverride
+          ? 'Scalo ferroviario ridotto (manuale • basket RFI)'
+          : 'Scalo ferroviario ridotto (basket RFI)';
+    }
+
+    if (hasFull && !hasReduced) {
+      return polferScaloManualOverride
+          ? 'Scalo ferroviario intero (manuale • basket RFI)'
+          : 'Scalo ferroviario intero (basket RFI)';
+    }
+
+    return 'Scalo ferroviario (basket RFI)';
+  }
+
   List<Map<String, dynamic>> getBreakdown([UserPayProfile? profile]) {
     if (hasAbsence) {
       return [
@@ -585,6 +793,7 @@ class Shift {
     final festiveAmount = getFestiveAmount(profile);
     final specialHolidayAmount = getSpecialHolidayAmount(profile);
     final externalServiceAmount = getExternalServiceAmount(profile);
+    final territoryControlAmount = getPolferTerritoryControlAmount(profile);
     final nightAmount = getNightAllowanceAmount(profile);
     final comfortAmount = getGenereDiConfortoAmount(profile);
     final mealAmount = getTicketPastoAmount(profile);
@@ -642,6 +851,13 @@ class Shift {
         });
       }
 
+      if (territoryControlAmount > 0) {
+        items.add({
+          'label': polferTerritoryControlLabel,
+          'amount': territoryControlAmount,
+        });
+      }
+
       if (comfortAmount > 0) {
         items.add({
           'label': 'Genere di conforto',
@@ -660,6 +876,13 @@ class Shift {
         items.add({
           'label': effectiveManualExtraLabel,
           'amount': manual,
+        });
+      }
+
+      if (polferScaloAmount > 0) {
+        items.add({
+          'label': polferScaloLabel,
+          'amount': polferScaloAmount,
         });
       }
 
@@ -706,6 +929,13 @@ class Shift {
       });
     }
 
+    if (territoryControlAmount > 0) {
+      items.add({
+        'label': polferTerritoryControlLabel,
+        'amount': territoryControlAmount,
+      });
+    }
+
     if (comfortAmount > 0) {
       items.add({
         'label': 'Genere di conforto',
@@ -727,13 +957,20 @@ class Shift {
       });
     }
 
+    if (polferScaloAmount > 0) {
+      items.add({
+        'label': polferScaloLabel,
+        'amount': polferScaloAmount,
+      });
+    }
+
     return items;
   }
 
   double getTotalAmount([UserPayProfile? profile]) {
     if (hasAbsence) return 0.0;
 
-    return getSalaryBreakdown(profile).fold(
+    return getBreakdown(profile).fold(
       0.0,
       (sum, item) => sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
     );
@@ -747,9 +984,24 @@ class Shift {
 
       if (label == 'genere di conforto') return false;
       if (label == 'ticket pasto') return false;
+      if (label.contains('basket rfi')) return false;
 
       return true;
     }).toList();
+  }
+
+  double getRfiBasketAmount([UserPayProfile? profile]) {
+    return polferScaloBasketAmount;
+  }
+
+  List<Map<String, dynamic>> getRfiBasketBreakdown([UserPayProfile? profile]) {
+    if (hasAbsence || polferScaloBasketAmount <= 0) return const [];
+    return [
+      {
+        'label': polferScaloLabel,
+        'amount': polferScaloBasketAmount,
+      }
+    ];
   }
 
   double getWelfareAmount([UserPayProfile? profile]) {
@@ -768,6 +1020,7 @@ class Shift {
   double get overtimeAmount => getOvertimeAmount();
   double get orderPublicAmount => getOrderPublicAmount();
   double get externalServiceAmount => getExternalServiceAmount();
+  double get territoryControlAmount => getPolferTerritoryControlAmount();
   double get festiveAmount => getFestiveAmount();
   double get specialHolidayAmount => getSpecialHolidayAmount();
   double get extraManualAmount => getManualExtraAmount();
@@ -781,7 +1034,6 @@ class Shift {
       'start': start.toIso8601String(),
       'end': end.toIso8601String(),
       'serviceDate': serviceDate.toIso8601String(),
-      'departmentId': departmentId,
       'orderPublic': orderPublic,
       'externalService': externalService,
       'absence': absence,
@@ -797,7 +1049,15 @@ class Shift {
       'opServiceType': opServiceType.name,
       'manualAmount': manualAmount,
       'note': note,
+      'spmnPresetCode': spmnPresetCode,
       'workedHours': workedHoursOverride,
+      'polferTerritoryControlType': polferTerritoryControlType.name,
+      'polferScaloMode': polferScaloMode.name,
+      'polferScaloManualOverride': polferScaloManualOverride,
+      'polferScaloReducedDayHours': polferScaloReducedDayHours,
+      'polferScaloReducedNightHours': polferScaloReducedNightHours,
+      'polferScaloFullDayHours': polferScaloFullDayHours,
+      'polferScaloFullNightHours': polferScaloFullNightHours,
     };
   }
 
@@ -821,16 +1081,11 @@ class Shift {
         ? _normalizeDate(DateTime.parse(json['serviceDate'] as String))
         : _normalizeDate(_deriveServiceDate(parsedStart, parsedEnd));
 
-    final parsedDepartmentId =
-        _normalizeDepartmentId(json['departmentId']?.toString()) ??
-            legacyDefaultDepartmentId;
-
     return Shift._internal(
       description: json['description'] as String? ?? '',
       start: parsedStart,
       end: parsedEnd,
       serviceDate: parsedServiceDate,
-      departmentId: parsedDepartmentId,
       orderPublic: json['orderPublic'] as String? ??
           _normalizeOrderPublic(
             orderPublic: null,
@@ -854,15 +1109,24 @@ class Shift {
       opServiceType: _parseOpServiceType(json['opServiceType']?.toString()),
       manualAmount: _toDouble(json['manualAmount']),
       note: json['note']?.toString() ?? '',
+      spmnPresetCode: json['spmnPresetCode'] as String? ?? '',
       workedHoursOverride: parsedWorkedHours,
+      polferTerritoryControlType: _parsePolferTerritoryControlType(
+        json['polferTerritoryControlType']?.toString(),
+      ),
+      polferScaloMode: _parsePolferScaloMode(
+        json['polferScaloMode']?.toString(),
+      ),
+      polferScaloManualOverride:
+          json['polferScaloManualOverride'] as bool? ?? false,
+      polferScaloReducedDayHours:
+          _toDouble(json['polferScaloReducedDayHours']),
+      polferScaloReducedNightHours:
+          _toDouble(json['polferScaloReducedNightHours']),
+      polferScaloFullDayHours: _toDouble(json['polferScaloFullDayHours']),
+      polferScaloFullNightHours:
+          _toDouble(json['polferScaloFullNightHours']),
     );
-  }
-
-  static String? _normalizeDepartmentId(String? value) {
-    if (value == null) return null;
-    final trimmed = value.trim();
-    if (trimmed.isEmpty) return null;
-    return trimmed;
   }
 
   static String _normalizeOrderPublic({
@@ -932,6 +1196,93 @@ class Shift {
       default:
         return OpServiceType.none;
     }
+  }
+
+  static PolferTerritoryControlType _parsePolferTerritoryControlType(
+    String? value,
+  ) {
+    switch (value) {
+      case 'serale':
+        return PolferTerritoryControlType.serale;
+      case 'notturno':
+        return PolferTerritoryControlType.notturno;
+      default:
+        return PolferTerritoryControlType.none;
+    }
+  }
+
+  static PolferScaloMode _parsePolferScaloMode(String? value) {
+    switch (value) {
+      case 'ridotta':
+        return PolferScaloMode.ridotta;
+      case 'intera':
+        return PolferScaloMode.intera;
+      default:
+        return PolferScaloMode.none;
+    }
+  }
+
+  static double _calculateBandHours(
+    DateTime rangeStart,
+    DateTime rangeEnd, {
+    required bool dayBand,
+  }) {
+    if (!rangeEnd.isAfter(rangeStart)) return 0.0;
+
+    double totalMinutes = 0.0;
+    var cursor = DateTime(rangeStart.year, rangeStart.month, rangeStart.day);
+    final lastDay = DateTime(rangeEnd.year, rangeEnd.month, rangeEnd.day);
+
+    while (!cursor.isAfter(lastDay)) {
+      final dayStart = DateTime(cursor.year, cursor.month, cursor.day, 6, 0);
+      final dayEnd = DateTime(cursor.year, cursor.month, cursor.day, 22, 0);
+
+      if (dayBand) {
+        totalMinutes += _overlapMinutes(rangeStart, rangeEnd, dayStart, dayEnd);
+      } else {
+        final nightPart1Start =
+            DateTime(cursor.year, cursor.month, cursor.day, 0, 0);
+        final nightPart1End =
+            DateTime(cursor.year, cursor.month, cursor.day, 6, 0);
+
+        final nightPart2Start =
+            DateTime(cursor.year, cursor.month, cursor.day, 22, 0);
+        final nightPart2End = DateTime(
+          cursor.year,
+          cursor.month,
+          cursor.day,
+        ).add(const Duration(days: 1));
+
+        totalMinutes += _overlapMinutes(
+          rangeStart,
+          rangeEnd,
+          nightPart1Start,
+          nightPart1End,
+        );
+        totalMinutes += _overlapMinutes(
+          rangeStart,
+          rangeEnd,
+          nightPart2Start,
+          nightPart2End,
+        );
+      }
+
+      cursor = cursor.add(const Duration(days: 1));
+    }
+
+    return totalMinutes / 60.0;
+  }
+
+  static double _overlapMinutes(
+    DateTime aStart,
+    DateTime aEnd,
+    DateTime bStart,
+    DateTime bEnd,
+  ) {
+    final start = aStart.isAfter(bStart) ? aStart : bStart;
+    final end = aEnd.isBefore(bEnd) ? aEnd : bEnd;
+    if (!end.isAfter(start)) return 0.0;
+    return end.difference(start).inMinutes.toDouble();
   }
 
   static bool _matchesAnyDate(DateTime date, List<DateTime> dates) {

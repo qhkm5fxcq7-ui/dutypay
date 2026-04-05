@@ -1,47 +1,43 @@
 import 'package:flutter/material.dart';
 
+import 'models/department.dart';
 import 'models/shift.dart';
 import 'models/user_pay_profile.dart';
 
-class QuickAddShiftPage extends StatefulWidget {
-  final ValueChanged<dynamic> onAdd;
-  final UserPayProfile? rates;
-  final Shift? initialShift;
-  final DateTime? initialDate;
-  final String activeDepartmentId;
+enum SpmnPreset {
+  none,
+  sera,
+  pomeriggio,
+  mattina,
+  notte,
+  smontante,
+  riposo,
+  aggiornamento,
+}
 
+class QuickAddShiftPage extends StatefulWidget {
   const QuickAddShiftPage({
     super.key,
     required this.onAdd,
-    this.rates,
+    required this.rates,
+    required this.activeDepartment,
     this.initialShift,
     this.initialDate,
-    required this.activeDepartmentId,
+    this.initialSuggestedSpmnPresetCode,
   });
+
+  final void Function(Shift shift) onAdd;
+  final UserPayProfile rates;
+  final Department activeDepartment;
+  final Shift? initialShift;
+  final DateTime? initialDate;
+  final String? initialSuggestedSpmnPresetCode;
 
   @override
   State<QuickAddShiftPage> createState() => _QuickAddShiftPageState();
 }
 
 class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
-  String _normalizedAbsenceForSave(String value) {
-  switch (value.trim().toLowerCase()) {
-    case 'malattia':
-    case 'mal':
-    case 'c.s.':
-    case 'c.s':
-      return 'C.S.';
-    case 'ferie':
-    case 'c.o.':
-    case 'c.o':
-      return 'C.O.';
-    case 'riposo':
-    case 'rip':
-      return 'RIP';
-    default:
-      return value;
-  }
-}
   static const List<String> _orderPublicOptions = [
     'Nessuno',
     'In sede',
@@ -59,20 +55,40 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
   ];
 
   static const List<TimeOfDay> _quickTimes = [
+    TimeOfDay(hour: 6, minute: 55),
     TimeOfDay(hour: 7, minute: 0),
     TimeOfDay(hour: 8, minute: 0),
     TimeOfDay(hour: 12, minute: 0),
+    TimeOfDay(hour: 12, minute: 55),
     TimeOfDay(hour: 13, minute: 0),
     TimeOfDay(hour: 14, minute: 0),
     TimeOfDay(hour: 18, minute: 0),
+    TimeOfDay(hour: 18, minute: 55),
     TimeOfDay(hour: 19, minute: 0),
     TimeOfDay(hour: 23, minute: 0),
+    TimeOfDay(hour: 23, minute: 55),
+  ];
+
+  static const List<SpmnPreset> _spmnPresetOptions = [
+    SpmnPreset.none,
+    SpmnPreset.sera,
+    SpmnPreset.pomeriggio,
+    SpmnPreset.mattina,
+    SpmnPreset.notte,
+    SpmnPreset.smontante,
+    SpmnPreset.riposo,
+    SpmnPreset.aggiornamento,
   ];
 
   late final TextEditingController _descriptionController;
   late final TextEditingController _manualExtraAmountController;
   late final TextEditingController _manualExtraLabelController;
   late final TextEditingController _noteController;
+
+  late final TextEditingController _polferReducedDayController;
+  late final TextEditingController _polferReducedNightController;
+  late final TextEditingController _polferFullDayController;
+  late final TextEditingController _polferFullNightController;
 
   late DateTime _serviceDate;
   late DateTime _realStartDate;
@@ -82,6 +98,11 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
   late String _selectedOrderPublic;
   late String _selectedAbsence;
   late bool _externalService;
+
+  late PolferTerritoryControlType _polferTerritoryControlType;
+  late PolferScaloMode _polferScaloMode;
+  late bool _polferScaloManualOverride;
+
   bool _showAdvanced = false;
 
   late TimeOfDay _startTime;
@@ -92,17 +113,25 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
   bool _includeGenereDiConforto = false;
   bool _includeTicketPasto = false;
 
+  late SpmnPreset _selectedSpmnPreset;
+
   bool get _isEditing => widget.initialShift != null;
-    String get _resolvedDepartmentId {
-    return widget.initialShift?.departmentId ?? widget.activeDepartmentId;
-  }
   bool get _hasAbsence => _selectedAbsence != 'Nessuna';
-  bool get _startIsPreviousDay => !_isSameDay(_realStartDate, _serviceDate);
+  bool get _isPolfer => widget.activeDepartment == Department.polfer;
+  bool get _hasPolferScalo => _polferScaloMode != PolferScaloMode.none;
 
   bool get _absenceNeedsCustomDescription =>
       _selectedAbsence == 'Permesso' || _selectedAbsence == 'Altro';
 
-  UserPayProfile get _profile => widget.rates ?? UserPayProfile.defaultProfile();
+  bool get _isTuesdayUpdateCase =>
+      _selectedSpmnPreset == SpmnPreset.riposo &&
+      _serviceDate.weekday == DateTime.tuesday;
+
+  bool get _isSmontanteOrRiposoLocked =>
+      _selectedSpmnPreset == SpmnPreset.smontante ||
+      (_selectedSpmnPreset == SpmnPreset.riposo && !_isTuesdayUpdateCase);
+
+  UserPayProfile get _profile => widget.rates;
 
   double get _genereDiConfortoRate => _profile.genereDiConfortoRate;
   double get _ticketPastoRate => _profile.ticketPastoRate;
@@ -151,6 +180,30 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
       text: initialShift?.note ?? '',
     );
 
+    _polferReducedDayController = TextEditingController(
+      text: (initialShift?.polferScaloReducedDayHours ?? 0) > 0
+          ? initialShift!.polferScaloReducedDayHours.toStringAsFixed(2)
+          : '',
+    );
+
+    _polferReducedNightController = TextEditingController(
+      text: (initialShift?.polferScaloReducedNightHours ?? 0) > 0
+          ? initialShift!.polferScaloReducedNightHours.toStringAsFixed(2)
+          : '',
+    );
+
+    _polferFullDayController = TextEditingController(
+      text: (initialShift?.polferScaloFullDayHours ?? 0) > 0
+          ? initialShift!.polferScaloFullDayHours.toStringAsFixed(2)
+          : '',
+    );
+
+    _polferFullNightController = TextEditingController(
+      text: (initialShift?.polferScaloFullNightHours ?? 0) > 0
+          ? initialShift!.polferScaloFullNightHours.toStringAsFixed(2)
+          : '',
+    );
+
     _serviceDate = _normalizeDate(baseServiceDate);
     _realStartDate = _normalizeDate(baseStart);
     _absenceEndDate = _serviceDate;
@@ -163,12 +216,15 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
       _selectedOrderPublic = 'Nessuno';
     }
 
-    _selectedAbsence = initialShift?.absence ?? 'Nessuna';
-    if (!_absenceOptions.contains(_selectedAbsence)) {
-      _selectedAbsence = 'Altro';
-    }
-
+    _selectedAbsence = _initialAbsenceUiValue(initialShift?.absence ?? 'Nessuna');
     _externalService = initialShift?.externalService ?? false;
+
+    _polferTerritoryControlType =
+        initialShift?.polferTerritoryControlType ??
+            PolferTerritoryControlType.none;
+    _polferScaloMode = initialShift?.polferScaloMode ?? PolferScaloMode.none;
+    _polferScaloManualOverride =
+        initialShift?.polferScaloManualOverride ?? false;
 
     _includeGenereDiConforto = hadGenere;
     _includeTicketPasto = hadTicket;
@@ -178,11 +234,30 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
             cleanedManualLabel.trim().isNotEmpty ||
             initialShift.note.trim().isNotEmpty);
 
+    _selectedSpmnPreset = _inferInitialSpmnPreset();
+
     if (_hasAbsence) {
       _applyAbsenceConstraints();
       if (!_absenceNeedsCustomDescription &&
           _descriptionController.text.trim().isEmpty) {
-        _descriptionController.text = _defaultAbsenceDescription(_selectedAbsence);
+        _descriptionController.text =
+            _defaultAbsenceDescription(_selectedAbsence);
+      }
+    }
+
+    if (!_isEditing &&
+        _isPolfer &&
+        _selectedSpmnPreset == SpmnPreset.none &&
+        (widget.initialSuggestedSpmnPresetCode?.trim().isNotEmpty ?? false)) {
+      final suggested = _presetFromCode(widget.initialSuggestedSpmnPresetCode!);
+      if (suggested != SpmnPreset.none) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _applySpmnPreset(
+            suggested,
+            showFeedback: false,
+          );
+        });
       }
     }
   }
@@ -193,7 +268,249 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
     _manualExtraAmountController.dispose();
     _manualExtraLabelController.dispose();
     _noteController.dispose();
+    _polferReducedDayController.dispose();
+    _polferReducedNightController.dispose();
+    _polferFullDayController.dispose();
+    _polferFullNightController.dispose();
     super.dispose();
+  }
+
+  String _initialAbsenceUiValue(String value) {
+    switch (value.trim().toUpperCase()) {
+      case 'C.O.':
+      case 'C.O':
+      case 'FERIE':
+        return 'Ferie';
+      case 'C.S.':
+      case 'C.S':
+      case 'MAL':
+      case 'MALATTIA':
+        return 'Malattia';
+      case 'RIP':
+      case 'RIPOSO':
+        return 'Riposo';
+      case 'NESSUNA':
+        return 'Nessuna';
+      default:
+        return value;
+    }
+  }
+
+  SpmnPreset _presetFromCode(String code) {
+    switch (code.trim().toLowerCase()) {
+      case 'sera':
+        return SpmnPreset.sera;
+      case 'pomeriggio':
+        return SpmnPreset.pomeriggio;
+      case 'mattina':
+        return SpmnPreset.mattina;
+      case 'notte':
+        return SpmnPreset.notte;
+      case 'smontante':
+        return SpmnPreset.smontante;
+      case 'riposo':
+        return SpmnPreset.riposo;
+      case 'aggiornamento':
+        return SpmnPreset.aggiornamento;
+      default:
+        return SpmnPreset.none;
+    }
+  }
+
+  SpmnPreset _inferInitialSpmnPreset() {
+    final shift = widget.initialShift;
+    if (shift == null) return SpmnPreset.none;
+
+    final codePreset = _presetFromCode(shift.spmnPresetCode);
+    if (codePreset != SpmnPreset.none) return codePreset;
+
+    final desc = shift.description.trim().toLowerCase();
+    final absence = shift.absence.trim().toLowerCase();
+
+    if (desc == 'aggiornamento') return SpmnPreset.aggiornamento;
+    if (absence == 'riposo' || absence == 'rip') return SpmnPreset.riposo;
+    if (desc == 'smontante') return SpmnPreset.smontante;
+    if (desc == 'turno sera') return SpmnPreset.sera;
+    if (desc == 'turno pomeriggio') return SpmnPreset.pomeriggio;
+    if (desc == 'turno mattina') return SpmnPreset.mattina;
+    if (desc == 'turno notte') return SpmnPreset.notte;
+
+    return SpmnPreset.none;
+  }
+
+  String _spmnPresetLabel(SpmnPreset preset) {
+    switch (preset) {
+      case SpmnPreset.none:
+        return 'Nessuno';
+      case SpmnPreset.sera:
+        return 'Sera';
+      case SpmnPreset.pomeriggio:
+        return 'Pomeriggio';
+      case SpmnPreset.mattina:
+        return 'Mattina';
+      case SpmnPreset.notte:
+        return 'Notte';
+      case SpmnPreset.smontante:
+        return 'Smontante';
+      case SpmnPreset.riposo:
+        return 'Riposo';
+      case SpmnPreset.aggiornamento:
+        return 'Aggiornamento';
+    }
+  }
+
+  String _spmnPresetSummary(SpmnPreset preset) {
+    switch (preset) {
+      case SpmnPreset.none:
+        return 'Compilazione manuale.';
+      case SpmnPreset.sera:
+        return 'Orario preset: 18:55 → 00:08';
+      case SpmnPreset.pomeriggio:
+        return 'Orario preset: 12:55 → 19:08';
+      case SpmnPreset.mattina:
+        return 'Orario preset: 06:55 → 13:08';
+      case SpmnPreset.notte:
+        return 'Orario preset: 23:55 → 06:08';
+      case SpmnPreset.smontante:
+        return 'Giornata non operativa.';
+      case SpmnPreset.riposo:
+        return _serviceDate.weekday == DateTime.tuesday
+            ? 'Martedì: il riposo diventa aggiornamento 08:00 → 14:00'
+            : 'Riposo standard senza orari.';
+      case SpmnPreset.aggiornamento:
+        return 'Orario preset: 08:00 → 14:00';
+    }
+  }
+
+  void _showPresetAppliedMessage(String text) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(text)),
+    );
+  }
+
+  void _applySpmnPreset(
+    SpmnPreset preset, {
+    bool showFeedback = true,
+  }) {
+    setState(() {
+      _selectedSpmnPreset = preset;
+
+      switch (preset) {
+        case SpmnPreset.none:
+          break;
+
+        case SpmnPreset.sera:
+          _selectedAbsence = 'Nessuna';
+          _descriptionController.text = 'Turno Sera';
+          _realStartDate = _serviceDate;
+          _startTime = const TimeOfDay(hour: 18, minute: 55);
+          _endTime = const TimeOfDay(hour: 0, minute: 8);
+          break;
+
+        case SpmnPreset.pomeriggio:
+          _selectedAbsence = 'Nessuna';
+          _descriptionController.text = 'Turno Pomeriggio';
+          _realStartDate = _serviceDate;
+          _startTime = const TimeOfDay(hour: 12, minute: 55);
+          _endTime = const TimeOfDay(hour: 19, minute: 8);
+          break;
+
+        case SpmnPreset.mattina:
+          _selectedAbsence = 'Nessuna';
+          _descriptionController.text = 'Turno Mattina';
+          _realStartDate = _serviceDate;
+          _startTime = const TimeOfDay(hour: 6, minute: 55);
+          _endTime = const TimeOfDay(hour: 13, minute: 8);
+          break;
+
+        case SpmnPreset.notte:
+          _selectedAbsence = 'Nessuna';
+          _descriptionController.text = 'Turno Notte';
+          _realStartDate = _serviceDate;
+          _startTime = const TimeOfDay(hour: 23, minute: 55);
+          _endTime = const TimeOfDay(hour: 6, minute: 8);
+          break;
+
+        case SpmnPreset.smontante:
+          _selectedAbsence = 'Riposo';
+          _applyAbsenceConstraints();
+          _descriptionController.text = 'Smontante';
+          break;
+
+        case SpmnPreset.riposo:
+          if (_serviceDate.weekday == DateTime.tuesday) {
+            _selectedAbsence = 'Nessuna';
+            _descriptionController.text = 'Aggiornamento';
+            _realStartDate = _serviceDate;
+            _startTime = const TimeOfDay(hour: 8, minute: 0);
+            _endTime = const TimeOfDay(hour: 14, minute: 0);
+            _externalService = false;
+            _selectedOrderPublic = 'Nessuno';
+            _includeGenereDiConforto = false;
+            _includeTicketPasto = false;
+            _clearPolferFields();
+          } else {
+            _selectedAbsence = 'Riposo';
+            _applyAbsenceConstraints();
+            _descriptionController.text = 'Riposo';
+          }
+          break;
+
+        case SpmnPreset.aggiornamento:
+          _selectedAbsence = 'Nessuna';
+          _descriptionController.text = 'Aggiornamento';
+          _realStartDate = _serviceDate;
+          _startTime = const TimeOfDay(hour: 8, minute: 0);
+          _endTime = const TimeOfDay(hour: 14, minute: 0);
+          _externalService = false;
+          _selectedOrderPublic = 'Nessuno';
+          _includeGenereDiConforto = false;
+          _includeTicketPasto = false;
+          _clearPolferFields();
+          break;
+      }
+    });
+
+    if (!mounted || !showFeedback) return;
+
+    switch (preset) {
+      case SpmnPreset.none:
+        _showPresetAppliedMessage('Preset disattivato');
+        break;
+      case SpmnPreset.riposo:
+        if (_serviceDate.weekday == DateTime.tuesday) {
+          _showPresetAppliedMessage(
+            'Riposo trasformato in aggiornamento (08:00 - 14:00)',
+          );
+        } else {
+          _showPresetAppliedMessage('Preset applicato: Riposo');
+        }
+        break;
+      default:
+        _showPresetAppliedMessage(
+          'Preset applicato: ${_spmnPresetLabel(preset)}',
+        );
+        break;
+    }
+  }
+
+  String _normalizedAbsenceForSave(String value) {
+    switch (value.trim().toLowerCase()) {
+      case 'malattia':
+      case 'mal':
+      case 'c.s.':
+      case 'c.s':
+        return 'C.S.';
+      case 'ferie':
+      case 'c.o.':
+      case 'c.o':
+        return 'C.O.';
+      case 'riposo':
+      case 'rip':
+        return 'RIP';
+      default:
+        return value;
+    }
   }
 
   bool _containsGenereDiConforto(String label) {
@@ -294,6 +611,38 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
     }
   }
 
+  String _territoryControlLabel(PolferTerritoryControlType type) {
+    switch (type) {
+      case PolferTerritoryControlType.none:
+        return 'Nessuno';
+      case PolferTerritoryControlType.serale:
+        return 'Serale';
+      case PolferTerritoryControlType.notturno:
+        return 'Notturno';
+    }
+  }
+
+  String _scaloModeLabel(PolferScaloMode mode) {
+    switch (mode) {
+      case PolferScaloMode.none:
+        return 'Nessuno';
+      case PolferScaloMode.ridotta:
+        return 'Ridotta';
+      case PolferScaloMode.intera:
+        return 'Intera';
+    }
+  }
+
+  void _clearPolferFields() {
+    _polferTerritoryControlType = PolferTerritoryControlType.none;
+    _polferScaloMode = PolferScaloMode.none;
+    _polferScaloManualOverride = false;
+    _polferReducedDayController.text = '';
+    _polferReducedNightController.text = '';
+    _polferFullDayController.text = '';
+    _polferFullNightController.text = '';
+  }
+
   void _applyAbsenceConstraints() {
     _selectedOrderPublic = 'Nessuno';
     _externalService = false;
@@ -301,6 +650,7 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
     _manualExtraLabelController.text = '';
     _includeGenereDiConforto = false;
     _includeTicketPasto = false;
+    _clearPolferFields();
 
     if (_absenceEndDate.isBefore(_serviceDate)) {
       _absenceEndDate = _serviceDate;
@@ -331,30 +681,21 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
     return total;
   }
 
-  String _autoMealAndComfortLabel() {
-    final labels = <String>[];
-
-    if (_includeGenereDiConforto) {
-      labels.add('Genere di conforto');
-    }
-
-    if (_includeTicketPasto) {
-      labels.add('Ticket pasto');
-    }
-
-    return labels.join(' • ');
-  }
-
-    Shift _buildShiftPreview() {
+  Shift _buildShiftPreview() {
     final manualAmount = _parseDouble(_manualExtraAmountController.text);
     final manualLabel = _manualExtraLabelController.text.trim();
+
+    final reducedDay = _parseDouble(_polferReducedDayController.text);
+    final reducedNight = _parseDouble(_polferReducedNightController.text);
+    final fullDay = _parseDouble(_polferFullDayController.text);
+    final fullNight = _parseDouble(_polferFullNightController.text);
 
     if (_hasAbsence) {
       final description = _descriptionController.text.trim().isEmpty
           ? _defaultAbsenceDescription(_selectedAbsence)
           : _descriptionController.text.trim();
 
-            return Shift(
+      return Shift(
         description: description,
         start: DateTime(_serviceDate.year, _serviceDate.month, _serviceDate.day),
         end: DateTime(_serviceDate.year, _serviceDate.month, _serviceDate.day),
@@ -367,6 +708,16 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
         genereDiConforto: false,
         ticketPasto: false,
         note: _noteController.text.trim(),
+        polferTerritoryControlType: PolferTerritoryControlType.none,
+        polferScaloMode: PolferScaloMode.none,
+        polferScaloManualOverride: false,
+        polferScaloReducedDayHours: 0,
+        polferScaloReducedNightHours: 0,
+        polferScaloFullDayHours: 0,
+        polferScaloFullNightHours: 0,
+        spmnPresetCode: _selectedSpmnPreset == SpmnPreset.none
+            ? ''
+            : _selectedSpmnPreset.name,
       );
     }
 
@@ -377,20 +728,43 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
       end = end.add(const Duration(days: 1));
     }
 
-        return Shift(
+    return Shift(
       description: _descriptionController.text.trim(),
       start: start,
       end: end,
       serviceDate: _serviceDate,
-      departmentId: _resolvedDepartmentId,
       orderPublic: _selectedOrderPublic,
       externalService: _externalService,
-      absence: _normalizedAbsenceForSave(_selectedAbsence),
+      absence: 'Nessuna',
       manualExtraAmount: manualAmount,
       manualExtraLabel: manualLabel,
       genereDiConforto: _includeGenereDiConforto,
       ticketPasto: _includeTicketPasto,
       note: _noteController.text.trim(),
+      polferTerritoryControlType:
+          _isPolfer ? _polferTerritoryControlType : PolferTerritoryControlType.none,
+      polferScaloMode: _isPolfer ? _polferScaloMode : PolferScaloMode.none,
+      polferScaloManualOverride:
+          _isPolfer && _hasPolferScalo ? _polferScaloManualOverride : false,
+      polferScaloReducedDayHours:
+          _isPolfer && _hasPolferScalo && _polferScaloManualOverride
+              ? reducedDay
+              : 0.0,
+      polferScaloReducedNightHours:
+          _isPolfer && _hasPolferScalo && _polferScaloManualOverride
+              ? reducedNight
+              : 0.0,
+      polferScaloFullDayHours:
+          _isPolfer && _hasPolferScalo && _polferScaloManualOverride
+              ? fullDay
+              : 0.0,
+      polferScaloFullNightHours:
+          _isPolfer && _hasPolferScalo && _polferScaloManualOverride
+              ? fullNight
+              : 0.0,
+      spmnPresetCode: _selectedSpmnPreset == SpmnPreset.none
+          ? ''
+          : _selectedSpmnPreset.name,
     );
   }
 
@@ -423,10 +797,12 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
 
     if (picked == null) return;
 
+    final currentPreset = _selectedSpmnPreset;
+
     setState(() {
       _serviceDate = _normalizeDate(picked);
 
-      if (!_startIsPreviousDay || _hasAbsence) {
+      if (_hasAbsence || _realStartDate.isAfter(_serviceDate)) {
         _realStartDate = _serviceDate;
       }
 
@@ -434,6 +810,10 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
         _absenceEndDate = _serviceDate;
       }
     });
+
+    if (currentPreset != SpmnPreset.none) {
+      _applySpmnPreset(currentPreset, showFeedback: false);
+    }
   }
 
   Future<void> _pickRealStartDate() async {
@@ -467,6 +847,7 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
 
     setState(() {
       _realStartDate = _normalizeDate(picked);
+      _selectedSpmnPreset = SpmnPreset.none;
     });
   }
 
@@ -508,6 +889,7 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
     setState(() {
       _startTime = start;
       _endTime = _addSixHours(start);
+      _selectedSpmnPreset = SpmnPreset.none;
     });
   }
 
@@ -573,6 +955,7 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
 
     setState(() {
       _endTime = picked;
+      _selectedSpmnPreset = SpmnPreset.none;
     });
   }
 
@@ -822,12 +1205,444 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
     );
   }
 
-  String? _validateBeforeSave() {
+  Widget _buildSpmnFields() {
+    return _sectionCard(
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionHeader(
+            title: 'Preset turnazione SPMN',
+            subtitle:
+                'Seleziona il turno tipico oppure usa il suggerimento già proposto per il giorno scelto.',
+            icon: Icons.view_timeline_rounded,
+          ),
+          const SizedBox(height: 16),
+          IgnorePointer(
+            ignoring: _hasAbsence,
+            child: Opacity(
+              opacity: _hasAbsence ? 0.46 : 1,
+              child: DropdownButtonFormField<SpmnPreset>(
+                value: _selectedSpmnPreset,
+                dropdownColor: _QuickAddPalette.card,
+                decoration: const InputDecoration(
+                  labelText: 'Preset turno',
+                ),
+                items: _spmnPresetOptions
+                    .map(
+                      (item) => DropdownMenuItem<SpmnPreset>(
+                        value: item,
+                        child: Text(_spmnPresetLabel(item)),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value == null) return;
+                  _applySpmnPreset(value);
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: _QuickAddPalette.surface,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: _QuickAddPalette.cardBorder),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Dettaglio preset',
+                  style: TextStyle(
+                    fontSize: 13.4,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _spmnPresetSummary(_selectedSpmnPreset),
+                  style: const TextStyle(
+                    color: _QuickAddPalette.textSecondary,
+                    fontSize: 13.0,
+                    height: 1.45,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (_selectedSpmnPreset == SpmnPreset.notte) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _QuickAddPalette.info.withOpacity(0.10),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: _QuickAddPalette.info.withOpacity(0.24),
+                      ),
+                    ),
+                    child: const Text(
+                      'Fine turno il giorno successivo',
+                      style: TextStyle(
+                        color: _QuickAddPalette.info,
+                        fontSize: 12.8,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+                if (_isTuesdayUpdateCase) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _QuickAddPalette.primary.withOpacity(0.10),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: _QuickAddPalette.primary.withOpacity(0.24),
+                      ),
+                    ),
+                    child: const Text(
+                      'Martedì: il riposo diventa aggiornamento 08:00 - 14:00',
+                      style: TextStyle(
+                        color: _QuickAddPalette.primary,
+                        fontSize: 12.8,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPolferFields(Shift previewShift) {
+    final autoDay = previewShift.polferWorkedDayHours;
+    final autoNight = previewShift.polferWorkedNightHours;
+    final bool fieldsLocked = _hasAbsence || _isSmontanteOrRiposoLocked;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Accessorie Polizia di Stato',
+          style: TextStyle(
+            fontSize: 14.5,
+            fontWeight: FontWeight.w800,
+            color: _QuickAddPalette.info,
+          ),
+        ),
+        const SizedBox(height: 12),
+        IgnorePointer(
+          ignoring: fieldsLocked,
+          child: Opacity(
+            opacity: fieldsLocked ? 0.46 : 1,
+            child: _ModernSwitchTile(
+              value: _externalService,
+              title: 'Servizio esterno',
+              subtitle:
+                  'Attivalo quando il servizio Polizia di Stato lo prevede.',
+              onChanged: (value) {
+                setState(() {
+                  _externalService = value;
+                });
+              },
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        IgnorePointer(
+          ignoring: fieldsLocked,
+          child: Opacity(
+            opacity: fieldsLocked ? 0.46 : 1,
+            child: DropdownButtonFormField<PolferTerritoryControlType>(
+              value: _polferTerritoryControlType,
+              dropdownColor: _QuickAddPalette.card,
+              decoration: const InputDecoration(
+                labelText: 'Controllo del territorio',
+              ),
+              items: PolferTerritoryControlType.values
+                  .map(
+                    (item) => DropdownMenuItem<PolferTerritoryControlType>(
+                      value: item,
+                      child: Text(_territoryControlLabel(item)),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() {
+                  _polferTerritoryControlType = value;
+                });
+              },
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        IgnorePointer(
+          ignoring: fieldsLocked,
+          child: Opacity(
+            opacity: fieldsLocked ? 0.46 : 1,
+            child: DropdownButtonFormField<String>(
+              value: _selectedOrderPublic,
+              dropdownColor: _QuickAddPalette.card,
+              decoration: const InputDecoration(
+                labelText: 'Ordine pubblico',
+              ),
+              items: _orderPublicOptions
+                  .map(
+                    (item) => DropdownMenuItem<String>(
+                      value: item,
+                      child: Text(item),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() {
+                  _selectedOrderPublic = value;
+                });
+              },
+            ),
+          ),
+        ),
+        const SizedBox(height: 18),
+        const Divider(color: _QuickAddPalette.divider),
+        const SizedBox(height: 14),
+        const Text(
+          'Basket Trenitalia / RFI',
+          style: TextStyle(
+            fontSize: 14.5,
+            fontWeight: FontWeight.w800,
+            color: _QuickAddPalette.info,
+          ),
+        ),
+        const SizedBox(height: 12),
+        IgnorePointer(
+          ignoring: fieldsLocked,
+          child: Opacity(
+            opacity: fieldsLocked ? 0.46 : 1,
+            child: DropdownButtonFormField<PolferScaloMode>(
+              value: _polferScaloMode,
+              dropdownColor: _QuickAddPalette.card,
+              decoration: const InputDecoration(
+                labelText: 'Vigilanza scalo',
+              ),
+              items: PolferScaloMode.values
+                  .map(
+                    (item) => DropdownMenuItem<PolferScaloMode>(
+                      value: item,
+                      child: Text(_scaloModeLabel(item)),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() {
+                  _polferScaloMode = value;
+                  if (value == PolferScaloMode.none) {
+                    _polferScaloManualOverride = false;
+                    _polferReducedDayController.text = '';
+                    _polferReducedNightController.text = '';
+                    _polferFullDayController.text = '';
+                    _polferFullNightController.text = '';
+                  }
+                });
+              },
+            ),
+          ),
+        ),
+        if (_hasPolferScalo && !_hasAbsence && !_isSmontanteOrRiposoLocked) ...[
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: _QuickAddPalette.surface,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: _QuickAddPalette.cardBorder),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Calcolo automatico Trenitalia / RFI',
+                  style: TextStyle(
+                    fontSize: 13.4,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Ore effettive turno 06-22: ${autoDay.toStringAsFixed(2)}h\n'
+                  'Ore effettive turno 22-06: ${autoNight.toStringAsFixed(2)}h',
+                  style: const TextStyle(
+                    color: _QuickAddPalette.textSecondary,
+                    fontSize: 12.8,
+                    height: 1.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Se non personalizzi, DutyPay usa automaticamente queste ore per calcolare il basket Trenitalia / RFI.',
+                  style: TextStyle(
+                    color: _QuickAddPalette.textSecondary,
+                    fontSize: 12.6,
+                    height: 1.45,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          _ModernSwitchTile(
+            value: _polferScaloManualOverride,
+            title: 'Personalizza il calcolo',
+            subtitle:
+                'Attivalo solo se il turno è stato misto o anomalo e vuoi inserire manualmente le quote ridotte e intere.',
+            onChanged: (value) {
+              setState(() {
+                _polferScaloManualOverride = value;
+                if (!value) {
+                  _polferReducedDayController.text = '';
+                  _polferReducedNightController.text = '';
+                  _polferFullDayController.text = '';
+                  _polferFullNightController.text = '';
+                }
+              });
+            },
+          ),
+          if (_polferScaloManualOverride) ...[
+            const SizedBox(height: 12),
+            TextField(
+              controller: _polferReducedDayController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                labelText: 'Ridotta giorno',
+                hintText: 'Es. 2,00',
+              ),
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _polferReducedNightController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                labelText: 'Ridotta notte',
+                hintText: 'Es. 1,50',
+              ),
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _polferFullDayController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                labelText: 'Intera giorno',
+                hintText: 'Es. 3,00',
+              ),
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _polferFullNightController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                labelText: 'Intera notte',
+                hintText: 'Es. 1,00',
+              ),
+              onChanged: (_) => setState(() {}),
+            ),
+          ],
+        ],
+      ],
+    );
+  }
+
+  Widget _buildDepartmentSpecificFields(Shift previewShift) {
+    if (_isPolfer) {
+      return _buildPolferFields(previewShift);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        IgnorePointer(
+          ignoring: _hasAbsence,
+          child: Opacity(
+            opacity: _hasAbsence ? 0.46 : 1,
+            child: DropdownButtonFormField<String>(
+              value: _selectedOrderPublic,
+              dropdownColor: _QuickAddPalette.card,
+              decoration: const InputDecoration(
+                labelText: 'Ordine pubblico',
+              ),
+              items: _orderPublicOptions
+                  .map(
+                    (item) => DropdownMenuItem<String>(
+                      value: item,
+                      child: Text(item),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() {
+                  _selectedOrderPublic = value;
+                });
+              },
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        IgnorePointer(
+          ignoring: _hasAbsence,
+          child: Opacity(
+            opacity: _hasAbsence ? 0.46 : 1,
+            child: _ModernSwitchTile(
+              value: _externalService,
+              title: 'Servizio esterno',
+              subtitle:
+                  'Applica l’indennità servizi esterni quando prevista.',
+              onChanged: (value) {
+                setState(() {
+                  _externalService = value;
+                });
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String? _validateBeforeSave(Shift previewShift) {
     final description = _descriptionController.text.trim();
     final manualExtra = _parseDouble(_manualExtraAmountController.text);
+    final reducedDay = _parseDouble(_polferReducedDayController.text);
+    final reducedNight = _parseDouble(_polferReducedNightController.text);
+    final fullDay = _parseDouble(_polferFullDayController.text);
+    final fullNight = _parseDouble(_polferFullNightController.text);
 
     if (manualExtra < 0) {
       return 'L’importo extra non può essere negativo';
+    }
+
+    if (reducedDay < 0 || reducedNight < 0 || fullDay < 0 || fullNight < 0) {
+      return 'Le ore scalo non possono essere negative';
     }
 
     if (_hasAbsence) {
@@ -860,13 +1675,34 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
       return 'Il turno supera 24 ore: controlla date e orari';
     }
 
+    if (_isPolfer && _hasPolferScalo && _polferScaloManualOverride) {
+      final totalManual = reducedDay + reducedNight + fullDay + fullNight;
+
+      if (totalManual <= 0) {
+        return 'Inserisci almeno una quota oraria manuale per lo scalo';
+      }
+
+      if (totalManual > duration) {
+        return 'Le ore scalo manuali superano la durata del turno';
+      }
+    }
+
+    if (_isPolfer &&
+        _hasPolferScalo &&
+        !_polferScaloManualOverride &&
+        previewShift.polferScaloAmount <= 0) {
+      return 'Controlla il turno: non risultano ore valide per il calcolo automatico dello scalo';
+    }
+
     return null;
   }
 
   Future<void> _save() async {
     if (_isSaving) return;
 
-    final error = _validateBeforeSave();
+    final previewShift = _buildShiftPreview();
+    final error = _validateBeforeSave(previewShift);
+
     if (error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(error)),
@@ -886,13 +1722,12 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
         DateTime current = _serviceDate;
 
         while (!current.isAfter(_absenceEndDate)) {
-                              shifts.add(
+          shifts.add(
             Shift(
               description: shift.description,
               start: DateTime(current.year, current.month, current.day, 0, 0),
               end: DateTime(current.year, current.month, current.day, 0, 0),
               serviceDate: current,
-              departmentId: _resolvedDepartmentId,
               orderPublic: 'Nessuno',
               externalService: false,
               absence: _normalizedAbsenceForSave(_selectedAbsence),
@@ -901,6 +1736,16 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
               genereDiConforto: false,
               ticketPasto: false,
               note: shift.note,
+              polferTerritoryControlType: PolferTerritoryControlType.none,
+              polferScaloMode: PolferScaloMode.none,
+              polferScaloManualOverride: false,
+              polferScaloReducedDayHours: 0,
+              polferScaloReducedNightHours: 0,
+              polferScaloFullDayHours: 0,
+              polferScaloFullNightHours: 0,
+              spmnPresetCode: _selectedSpmnPreset == SpmnPreset.none
+                  ? ''
+                  : _selectedSpmnPreset.name,
             ),
           );
 
@@ -913,6 +1758,7 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
       }
 
       widget.onAdd(shift);
+      return;
     } finally {
       if (mounted) {
         setState(() {
@@ -930,6 +1776,7 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
     final workedHours = previewShift.workedHours;
     final overtimeHours = previewShift.overtimeHours;
     final autoExtra = _autoMealAndComfortAmount();
+    final fieldsLockedByPreset = _isSmontanteOrRiposoLocked;
 
     return Scaffold(
       appBar: AppBar(
@@ -1013,13 +1860,19 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
               ),
               const SizedBox(height: 16),
 
+              if (_isPolfer) ...[
+                _buildSpmnFields(),
+                const SizedBox(height: 16),
+              ],
+
               _sectionCard(
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _sectionHeader(
                       title: 'Dettagli servizio',
-                      subtitle: 'Compila i dati principali del turno in modo semplice e veloce.',
+                      subtitle:
+                          'Compila i dati principali del turno in modo semplice e veloce.',
                       icon: Icons.badge_outlined,
                     ),
                     const SizedBox(height: 16),
@@ -1039,7 +1892,13 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
                                 : 'Compilata automaticamente')
                             : 'Es. Volante, Ordine Pubblico, Ufficio',
                       ),
-                      onChanged: (_) => setState(() {}),
+                      onChanged: (_) {
+                        setState(() {
+                          if (_selectedSpmnPreset != SpmnPreset.none) {
+                            _selectedSpmnPreset = SpmnPreset.none;
+                          }
+                        });
+                      },
                     ),
                     const SizedBox(height: 14),
                     _pickerTile(
@@ -1054,7 +1913,7 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
                       value: _formatDate(_realStartDate),
                       onTap: _pickRealStartDate,
                       icon: Icons.event_rounded,
-                      enabled: !_hasAbsence,
+                      enabled: !_hasAbsence && !fieldsLockedByPreset,
                     ),
                     const SizedBox(height: 12),
                     _pickerTile(
@@ -1062,7 +1921,7 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
                       value: _formatTimeOfDay(_startTime),
                       onTap: _openStartTimeSheet,
                       icon: Icons.flash_on_rounded,
-                      enabled: !_hasAbsence,
+                      enabled: !_hasAbsence && !fieldsLockedByPreset,
                     ),
                     const SizedBox(height: 12),
                     _pickerTile(
@@ -1070,7 +1929,7 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
                       value: _formatTimeOfDay(_endTime),
                       onTap: _pickEndTime,
                       icon: Icons.access_time_rounded,
-                      enabled: !_hasAbsence,
+                      enabled: !_hasAbsence && !fieldsLockedByPreset,
                     ),
                   ],
                 ),
@@ -1083,55 +1942,12 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
                   children: [
                     _sectionHeader(
                       title: 'Indennità e condizioni',
-                      subtitle: 'Attiva solo ciò che spetta davvero per questo servizio.',
+                      subtitle:
+                          'Attiva solo ciò che spetta davvero per questo servizio.',
                       icon: Icons.tune_rounded,
                     ),
                     const SizedBox(height: 16),
-                    IgnorePointer(
-                      ignoring: _hasAbsence,
-                      child: Opacity(
-                        opacity: _hasAbsence ? 0.46 : 1,
-                        child: DropdownButtonFormField<String>(
-                          value: _selectedOrderPublic,
-                          dropdownColor: _QuickAddPalette.card,
-                          decoration: const InputDecoration(
-                            labelText: 'Ordine pubblico',
-                          ),
-                          items: _orderPublicOptions
-                              .map(
-                                (item) => DropdownMenuItem<String>(
-                                  value: item,
-                                  child: Text(item),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (value) {
-                            if (value == null) return;
-                            setState(() {
-                              _selectedOrderPublic = value;
-                            });
-                          },
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    IgnorePointer(
-                      ignoring: _hasAbsence,
-                      child: Opacity(
-                        opacity: _hasAbsence ? 0.46 : 1,
-                        child: _ModernSwitchTile(
-                          value: _externalService,
-                          title: 'Servizio esterno',
-                          subtitle:
-                              'Applica l’indennità servizi esterni quando prevista.',
-                          onChanged: (value) {
-                            setState(() {
-                              _externalService = value;
-                            });
-                          },
-                        ),
-                      ),
-                    ),
+                    _buildDepartmentSpecificFields(previewShift),
                     const SizedBox(height: 10),
                     IgnorePointer(
                       ignoring: _hasAbsence,
@@ -1188,6 +2004,9 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
                         if (value == null) return;
                         setState(() {
                           _selectedAbsence = value;
+                          _selectedSpmnPreset =
+                              value == 'Riposo' ? SpmnPreset.riposo : SpmnPreset.none;
+
                           if (_hasAbsence) {
                             _applyAbsenceConstraints();
                           } else {
@@ -1199,6 +2018,7 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
                             _includeGenereDiConforto = false;
                             _includeTicketPasto = false;
                             _descriptionController.text = '';
+                            _clearPolferFields();
                           }
                         });
                       },
@@ -1293,7 +2113,8 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
                           opacity: _hasAbsence ? 0.46 : 1,
                           child: TextField(
                             controller: _manualExtraAmountController,
-                            keyboardType: const TextInputType.numberWithOptions(
+                            keyboardType:
+                                const TextInputType.numberWithOptions(
                               decimal: true,
                             ),
                             decoration: const InputDecoration(

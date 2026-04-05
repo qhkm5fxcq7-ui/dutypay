@@ -406,7 +406,6 @@ class PayslipParsedData {
 
 class UserPayProfile {
   final String? rank;
-  final String departmentId;
 
   final double overtimeDayRate;
   final double overtimeNightOrHolidayRate;
@@ -417,6 +416,8 @@ class UserPayProfile {
   final double orderPublicPernotto;
 
   final double externalServiceRate;
+  final double controlloTerritorioSerale;
+  final double controlloTerritorioNotturno;
   final double holidayAllowance;
   final double specialHolidayAllowance;
 
@@ -445,7 +446,6 @@ class UserPayProfile {
 
   const UserPayProfile({
     this.rank,
-    required this.departmentId,
     required this.overtimeDayRate,
     this.straordinarioNetMultiplier = 0.67,
     required this.overtimeNightOrHolidayRate,
@@ -454,6 +454,8 @@ class UserPayProfile {
     required this.orderPublicFuoriSede,
     required this.orderPublicPernotto,
     required this.externalServiceRate,
+    required this.controlloTerritorioSerale,
+    required this.controlloTerritorioNotturno,
     required this.holidayAllowance,
     required this.specialHolidayAllowance,
     required this.monthlyOvertimePayableHoursLimit,
@@ -477,7 +479,6 @@ class UserPayProfile {
   factory UserPayProfile.defaultProfile() {
     return UserPayProfile(
       rank: null,
-      departmentId: 'polizia_mobile',
       overtimeDayRate: 12.0,
       overtimeNightOrHolidayRate: 13.5,
       overtimeNightAndHolidayRate: 15.0,
@@ -485,6 +486,8 @@ class UserPayProfile {
       orderPublicFuoriSede: 10.0,
       orderPublicPernotto: 15.0,
       externalServiceRate: 6.0,
+      controlloTerritorioSerale: 3.60,
+      controlloTerritorioNotturno: 7.20,
       holidayAllowance: 8.0,
       specialHolidayAllowance: 10.0,
       monthlyOvertimePayableHoursLimit: 55.0,
@@ -514,7 +517,6 @@ class UserPayProfile {
 
   UserPayProfile copyWith({
     String? rank,
-    String? departmentId,
     double? overtimeDayRate,
     double? overtimeNightOrHolidayRate,
     double? overtimeNightAndHolidayRate,
@@ -522,6 +524,8 @@ class UserPayProfile {
     double? orderPublicFuoriSede,
     double? orderPublicPernotto,
     double? externalServiceRate,
+    double? controlloTerritorioSerale,
+    double? controlloTerritorioNotturno,
     double? holidayAllowance,
     double? specialHolidayAllowance,
     double? monthlyOvertimePayableHoursLimit,
@@ -544,7 +548,6 @@ class UserPayProfile {
   }) {
     return UserPayProfile(
       rank: rank ?? this.rank,
-      departmentId: departmentId ?? this.departmentId,
       overtimeDayRate: overtimeDayRate ?? this.overtimeDayRate,
       overtimeNightOrHolidayRate:
           overtimeNightOrHolidayRate ?? this.overtimeNightOrHolidayRate,
@@ -554,6 +557,10 @@ class UserPayProfile {
       orderPublicFuoriSede: orderPublicFuoriSede ?? this.orderPublicFuoriSede,
       orderPublicPernotto: orderPublicPernotto ?? this.orderPublicPernotto,
       externalServiceRate: externalServiceRate ?? this.externalServiceRate,
+      controlloTerritorioSerale:
+          controlloTerritorioSerale ?? this.controlloTerritorioSerale,
+      controlloTerritorioNotturno:
+          controlloTerritorioNotturno ?? this.controlloTerritorioNotturno,
       holidayAllowance: holidayAllowance ?? this.holidayAllowance,
       specialHolidayAllowance:
           specialHolidayAllowance ?? this.specialHolidayAllowance,
@@ -587,7 +594,6 @@ class UserPayProfile {
   Map<String, dynamic> toJson() {
     return {
       'rank': rank,
-      'departmentId': departmentId,
       'overtimeDayRate': overtimeDayRate,
       'overtimeNightOrHolidayRate': overtimeNightOrHolidayRate,
       'overtimeNightAndHolidayRate': overtimeNightAndHolidayRate,
@@ -595,6 +601,8 @@ class UserPayProfile {
       'orderPublicFuoriSede': orderPublicFuoriSede,
       'orderPublicPernotto': orderPublicPernotto,
       'externalServiceRate': externalServiceRate,
+      'controlloTerritorioSerale': controlloTerritorioSerale,
+      'controlloTerritorioNotturno': controlloTerritorioNotturno,
       'holidayAllowance': holidayAllowance,
       'specialHolidayAllowance': specialHolidayAllowance,
       'monthlyOvertimePayableHoursLimit': monthlyOvertimePayableHoursLimit,
@@ -620,7 +628,6 @@ class UserPayProfile {
   factory UserPayProfile.fromJson(Map<String, dynamic> json) {
     return UserPayProfile(
       rank: json['rank'] as String?,
-      departmentId: (json['departmentId'] ?? 'polizia_mobile') as String,
       overtimeDayRate: (json['overtimeDayRate'] as num?)?.toDouble() ?? 12.0,
       overtimeNightOrHolidayRate:
           (json['overtimeNightOrHolidayRate'] as num?)?.toDouble() ?? 13.5,
@@ -634,6 +641,10 @@ class UserPayProfile {
           (json['orderPublicPernotto'] as num?)?.toDouble() ?? 15.0,
       externalServiceRate:
           (json['externalServiceRate'] as num?)?.toDouble() ?? 6.0,
+      controlloTerritorioSerale:
+          (json['controlloTerritorioSerale'] as num?)?.toDouble() ?? 3.60,
+      controlloTerritorioNotturno:
+          (json['controlloTerritorioNotturno'] as num?)?.toDouble() ?? 7.20,
       holidayAllowance:
           (json['holidayAllowance'] as num?)?.toDouble() ?? 8.0,
       specialHolidayAllowance:
