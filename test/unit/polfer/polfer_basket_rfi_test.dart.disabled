@@ -1,0 +1,133 @@
+import 'package:flutter_test/flutter_test.dart';
+
+import '../../../lib/domain/usecases/build_shift_computation_usecase.dart';
+import '../../../lib/presentation/models/department.dart';
+import '../../../lib/presentation/models/shift.dart';
+import '../../../lib/presentation/models/user_pay_profile.dart';
+
+void main() {
+  group('Polfer basket RFI', () {
+    const useCase = BuildShiftComputationUseCase();
+    final profile = UserPayProfile.defaultProfile();
+
+    test('turno sera standard mostra la sola quota notturna ordinaria senza straordinario', () {
+      final shift = Shift(
+        start: DateTime(2026, 4, 1, 18, 55),
+        end: DateTime(2026, 4, 2, 0, 8),
+        spmnPresetCode: 'sera',
+        absence: 'Nessuna',
+      );
+
+      final result = useCase.execute(
+        shift: shift,
+        profile: profile,
+        department: Department.polfer,
+      );
+
+      final labels = result.breakdown
+          .map((e) => e['label'] as String? ?? '')
+          .toList();
+
+      expect(result.overtimeHours, closeTo(0.0, 0.001));
+      expect(
+        labels.any((label) => label.contains('Indennità servizio notturno')),
+        isTrue,
+      );
+      expect(result.totalAmount, closeTo(9.1733333, 0.01));
+    });
+
+    test('turno notte standard mostra la sola quota notturna ordinaria senza straordinario', () {
+      final shift = Shift(
+        start: DateTime(2026, 4, 1, 23, 55),
+        end: DateTime(2026, 4, 2, 7, 8),
+        spmnPresetCode: 'notte',
+        absence: 'Nessuna',
+      );
+
+      final result = useCase.execute(
+        shift: shift,
+        profile: profile,
+        department: Department.polfer,
+      );
+
+      final labels = result.breakdown
+          .map((e) => e['label'] as String? ?? '')
+          .toList();
+
+      expect(result.overtimeHours, closeTo(0.0, 0.001));
+      expect(
+        labels.any((label) => label.contains('Indennità servizio notturno')),
+        isTrue,
+      );
+      expect(result.totalAmount, closeTo(26.1633333, 0.01));
+    });
+
+    test('scalo ridotto resta nel breakdown del turno', () {
+      final shift = Shift(
+        start: DateTime(2026, 4, 1, 6, 55),
+        end: DateTime(2026, 4, 1, 13, 8),
+        polferScaloMode: PolferScaloMode.ridotta,
+        absence: 'Nessuna',
+      );
+
+      final result = useCase.execute(
+        shift: shift,
+        profile: profile,
+        department: Department.polfer,
+      );
+
+      final labels = result.breakdown
+          .map((e) => e['label'] as String? ?? '')
+          .toList();
+
+      expect(
+        labels.any((label) => label.contains('Scalo ferroviario ridotto')),
+        isTrue,
+      );
+      expect(result.totalAmount, greaterThan(0));
+    });
+
+    test('il basket RFI deve restare separato dalle accessorie ordinarie', () {
+      final shift = Shift(
+        start: DateTime(2026, 4, 1, 6, 55),
+        end: DateTime(2026, 4, 1, 13, 8),
+        polferScaloMode: PolferScaloMode.ridotta,
+        absence: 'Nessuna',
+      );
+
+      final result = useCase.execute(
+        shift: shift,
+        profile: profile,
+        department: Department.polfer,
+      );
+
+      final expectedScaloAmount = shift.polferScaloAmount;
+
+      expect(expectedScaloAmount, greaterThan(0));
+
+      // Questo test codifica la regola di business attesa:
+      // il basket RFI deve essere separato dalle accessorie ordinarie.
+      // Se oggi fallisce, segnala esattamente il bug da correggere.
+      expect(result.totalAmount - result.extraAmount, closeTo(expectedScaloAmount, 0.001));
+    });
+
+    test('assenza restituisce totale zero e breakdown vuoto', () {
+      final shift = Shift(
+        start: DateTime(2026, 4, 1, 6, 55),
+        end: DateTime(2026, 4, 1, 13, 8),
+        absence: 'RIP',
+      );
+
+      final result = useCase.execute(
+        shift: shift,
+        profile: profile,
+        department: Department.polfer,
+      );
+
+      expect(result.overtimeHours, 0.0);
+      expect(result.totalAmount, 0.0);
+      expect(result.extraAmount, 0.0);
+      expect(result.breakdown, isEmpty);
+    });
+  });
+}

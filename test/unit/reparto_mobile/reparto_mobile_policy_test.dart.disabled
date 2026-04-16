@@ -1,0 +1,147 @@
+import 'package:flutter_test/flutter_test.dart';
+
+import '../../../lib/domain/engine/policies/reparto_mobile_policy.dart';
+import '../../../lib/presentation/models/shift.dart';
+import '../../../lib/presentation/models/user_pay_profile.dart';
+
+void main() {
+  group('RepartoMobilePolicy', () {
+    const policy = RepartoMobilePolicy();
+    final profile = UserPayProfile.defaultProfile();
+
+    test(
+      '15:00 -> 02:00 non festivo segmenta 1h diurno e 4h notturno',
+      () {
+        final shift = Shift(
+          start: DateTime(2026, 4, 10, 15, 0),
+          end: DateTime(2026, 4, 11, 2, 0),
+          orderPublic: 'Fuori sede',
+          absence: 'Nessuna',
+        );
+
+        final result = policy.calculateShift(shift, profile);
+
+        expect(result.workedHours, closeTo(11.0, 0.001));
+        expect(result.ordinaryHours, closeTo(6.0, 0.001));
+        expect(result.overtimeHours, closeTo(5.0, 0.001));
+
+        expect(result.overtimeDayHours, closeTo(1.0, 0.001));
+        expect(result.overtimeNightHours, closeTo(4.0, 0.001));
+        expect(result.overtimeHolidayDayHours, closeTo(0.0, 0.001));
+        expect(result.overtimeNightHolidayHours, closeTo(0.0, 0.001));
+
+        final labels = result.breakdown
+            .map((e) => e['label'] as String? ?? '')
+            .toList();
+
+        expect(
+          labels.any((label) => label.contains('Straordinario diurno')),
+          isTrue,
+        );
+        expect(
+          labels.any((label) => label.contains('Straordinario notturno')),
+          isTrue,
+        );
+      },
+    );
+
+    test(
+      '15:00 -> 02:00 con passaggio a domenica segmenta 1h diurno, 2h notturno e 2h notturno festivo',
+      () {
+        final shift = Shift(
+          start: DateTime(2026, 4, 11, 15, 0),
+          end: DateTime(2026, 4, 12, 2, 0),
+          orderPublic: 'Fuori sede',
+          absence: 'Nessuna',
+        );
+
+        final result = policy.calculateShift(shift, profile);
+
+        expect(result.workedHours, closeTo(11.0, 0.001));
+        expect(result.ordinaryHours, closeTo(6.0, 0.001));
+        expect(result.overtimeHours, closeTo(5.0, 0.001));
+
+        expect(result.overtimeDayHours, closeTo(1.0, 0.001));
+        expect(result.overtimeNightHours, closeTo(2.0, 0.001));
+        expect(result.overtimeHolidayDayHours, closeTo(0.0, 0.001));
+        expect(result.overtimeNightHolidayHours, closeTo(2.0, 0.001));
+
+        final labels = result.breakdown
+            .map((e) => e['label'] as String? ?? '')
+            .toList();
+
+        expect(
+          labels.any((label) => label.contains('Straordinario diurno')),
+          isTrue,
+        );
+        expect(
+          labels.any((label) => label.contains('Straordinario notturno (')),
+          isTrue,
+        );
+        expect(
+          labels.any((label) => label.contains('Straordinario notturno festivo')),
+          isTrue,
+        );
+      },
+    );
+
+    test(
+      '05:30 -> 18:30 produce 0.5h notturne ordinarie e 7h di straordinario diurno',
+      () {
+        final shift = Shift(
+          start: DateTime(2026, 4, 2, 5, 30),
+          end: DateTime(2026, 4, 2, 18, 30),
+          orderPublic: 'Fuori sede',
+          absence: 'Nessuna',
+        );
+
+        final result = policy.calculateShift(shift, profile);
+
+        expect(result.workedHours, closeTo(13.0, 0.001));
+        expect(result.ordinaryHours, closeTo(6.0, 0.001));
+        expect(result.overtimeHours, closeTo(7.0, 0.001));
+
+        expect(result.nightOrdinaryHours, closeTo(0.5, 0.001));
+        expect(result.overtimeDayHours, closeTo(7.0, 0.001));
+        expect(result.overtimeNightHours, closeTo(0.0, 0.001));
+        expect(result.overtimeHolidayDayHours, closeTo(0.0, 0.001));
+        expect(result.overtimeNightHolidayHours, closeTo(0.0, 0.001));
+
+        final labels = result.breakdown
+            .map((e) => e['label'] as String? ?? '')
+            .toList();
+
+        expect(
+          labels.any((label) => label.contains('Straordinario diurno')),
+          isTrue,
+        );
+        expect(
+          labels.any((label) => label.contains('Indennità servizio notturno')),
+          isTrue,
+        );
+      },
+    );
+
+    test(
+      '06:55 -> 13:08 in RM genera circa 0.2h di straordinario diurno',
+      () {
+        final shift = Shift(
+          start: DateTime(2026, 4, 1, 6, 55),
+          end: DateTime(2026, 4, 1, 13, 8),
+          absence: 'Nessuna',
+        );
+
+        final result = policy.calculateShift(shift, profile);
+
+        expect(result.workedHours, closeTo(6.2166667, 0.001));
+        expect(result.ordinaryHours, closeTo(6.0, 0.001));
+        expect(result.overtimeHours, closeTo(0.2166667, 0.001));
+
+        expect(result.overtimeDayHours, closeTo(0.2166667, 0.001));
+        expect(result.overtimeNightHours, closeTo(0.0, 0.001));
+        expect(result.overtimeHolidayDayHours, closeTo(0.0, 0.001));
+        expect(result.overtimeNightHolidayHours, closeTo(0.0, 0.001));
+      },
+    );
+  });
+}

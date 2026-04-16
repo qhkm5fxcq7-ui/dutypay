@@ -7,6 +7,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'core/services/data_backup_service.dart';
 import 'features/home/widgets/month_calendar_card.dart';
 import 'features/payslip/presentation/payslip_page.dart';
+import 'features/shifts/application/models/daily_shift_computation.dart';
+import 'features/shifts/application/models/daily_shift_result.dart';
+import 'features/shifts/application/models/monthly_summary.dart';
+import 'features/shifts/application/usecases/build_daily_shift_result_usecase.dart';
+import 'features/shifts/application/usecases/build_monthly_summary_usecase.dart';
+import 'features/shifts/application/usecases/build_shift_computation_usecase.dart';
+import 'features/shifts/domain/engine/models/basket_payment.dart';
+import 'features/shifts/domain/engine/models/payslip_projection_result.dart';
+import 'features/shifts/domain/engine/models/precision_status.dart';
+import 'features/shifts/domain/engine/models/rfi_basket_payment.dart';
 import 'features/shifts/presentation/calibrate_payslips_page.dart';
 import 'features/shifts/presentation/department_selection_page.dart';
 import 'features/shifts/presentation/models/department.dart';
@@ -149,15 +159,11 @@ class _DutyPayAppState extends State<DutyPayApp> {
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(
-            color: DutyPayPalette.cardBorder,
-          ),
+          borderSide: const BorderSide(color: DutyPayPalette.cardBorder),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(
-            color: DutyPayPalette.cardBorder,
-          ),
+          borderSide: const BorderSide(color: DutyPayPalette.cardBorder),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
@@ -181,8 +187,9 @@ class _DutyPayAppState extends State<DutyPayApp> {
         iconTheme: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return IconThemeData(
-            color:
-                selected ? DutyPayPalette.primary : DutyPayPalette.textSecondary,
+            color: selected
+                ? DutyPayPalette.primary
+                : DutyPayPalette.textSecondary,
             size: 22,
           );
         }),
@@ -243,19 +250,14 @@ class _DutyPayAppState extends State<DutyPayApp> {
         debugShowCheckedModeBanner: false,
         theme: theme,
         locale: const Locale('it'),
-        supportedLocales: const [
-          Locale('it'),
-          Locale('en'),
-        ],
+        supportedLocales: const [Locale('it'), Locale('en')],
         localizationsDelegates: const [
           GlobalMaterialLocalizations.delegate,
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
         ],
         home: const Scaffold(
-          body: Center(
-            child: CircularProgressIndicator(),
-          ),
+          body: Center(child: CircularProgressIndicator()),
         ),
       );
     }
@@ -265,10 +267,7 @@ class _DutyPayAppState extends State<DutyPayApp> {
       debugShowCheckedModeBanner: false,
       theme: theme,
       locale: const Locale('it'),
-      supportedLocales: const [
-        Locale('it'),
-        Locale('en'),
-      ],
+      supportedLocales: const [Locale('it'), Locale('en')],
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
@@ -363,9 +362,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   decoration: BoxDecoration(
                     color: DutyPayPalette.card,
                     borderRadius: BorderRadius.circular(32),
-                    border: Border.all(
-                      color: DutyPayPalette.cardBorder,
-                    ),
+                    border: Border.all(color: DutyPayPalette.cardBorder),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.25),
@@ -478,13 +475,12 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
   static const String _legacyMonthNotesStorageKey = 'dutypay_month_notes';
 
   String get _storageScope => widget.activeDepartment.id;
-  String get rfiBasketPaymentsStorageKey =>
-      'dutypay_rfi_basket_payments_$_storageScope';
-
   String get shiftsStorageKey => 'dutypay_shifts_$_storageScope';
   String get payProfileStorageKey => 'dutypay_pay_profile_$_storageScope';
   String get basketPaymentsStorageKey =>
       'dutypay_basket_payments_$_storageScope';
+  String get rfiBasketPaymentsStorageKey =>
+      'dutypay_rfi_basket_payments_$_storageScope';
   String get monthNotesStorageKey => 'dutypay_month_notes_$_storageScope';
 
   bool get _isRepartoMobileScope =>
@@ -492,6 +488,12 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
 
   final PayslipProjectionService _projectionService =
       const PayslipProjectionService();
+  final BuildShiftComputationUseCase _buildShiftComputationUseCase =
+      const BuildShiftComputationUseCase();
+  final BuildDailyShiftResultUseCase _buildDailyShiftResultUseCase =
+      const BuildDailyShiftResultUseCase();
+  final BuildMonthlySummaryUseCase _buildMonthlySummaryUseCase =
+      const BuildMonthlySummaryUseCase();
 
   final List<Shift> shifts = [];
   final List<BasketPayment> basketPayments = [];
@@ -505,6 +507,7 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
   late DateTime selectedPayslipMonth;
 
   UserPayProfile payProfile = UserPayProfile.defaultProfile();
+  String searchQuery = '';
 
   @override
   void initState() {
@@ -517,7 +520,7 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
   }
 
   @override
-  void didUpdateWidget(covariant DutyPayHomePage oldWidget) {
+  void didUpdateWidget(DutyPayHomePage oldWidget) {
     super.didUpdateWidget(oldWidget);
 
     if (oldWidget.activeDepartment != widget.activeDepartment) {
@@ -527,6 +530,7 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
         basketPayments.clear();
         rfiBasketPayments.clear();
         payProfile = UserPayProfile.defaultProfile();
+        searchQuery = '';
 
         final now = DateTime.now();
         selectedMonth = DateTime(now.year, now.month);
@@ -724,7 +728,7 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
               ),
             )
             .toList()
-          ..sort((a, b) => a.paymentMonth.compareTo(b.paymentMonth));
+          ..sort((a, b) => a.sourceMonth.compareTo(b.sourceMonth));
       }
     } catch (_) {}
 
@@ -749,17 +753,13 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
 
   Future<void> _saveBasketPayments() async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = jsonEncode(
-      basketPayments.map((e) => e.toJson()).toList(),
-    );
+    final raw = jsonEncode(basketPayments.map((e) => e.toJson()).toList());
     await prefs.setString(basketPaymentsStorageKey, raw);
   }
 
   Future<void> _saveRfiBasketPayments() async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = jsonEncode(
-      rfiBasketPayments.map((e) => e.toJson()).toList(),
-    );
+    final raw = jsonEncode(rfiBasketPayments.map((e) => e.toJson()).toList());
     await prefs.setString(rfiBasketPaymentsStorageKey, raw);
   }
 
@@ -778,6 +778,7 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
       payslipMonth: payment.paymentMonth,
       allShifts: shifts,
       payProfile: payProfile,
+      department: widget.activeDepartment,
       basketPayments: basketPayments,
       rfiBasketPayments: rfiBasketPayments,
     );
@@ -803,538 +804,568 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
   }
 
   Future<void> addRfiBasketPayment(
-    DateTime paymentMonth,
-    double hoursPaid,
+    DateTime sourceMonth,
+    DateTime paidInMonth,
     String note,
   ) async {
+    final normalizedSourceMonth = DateTime(sourceMonth.year, sourceMonth.month);
+    final normalizedPaidInMonth = DateTime(paidInMonth.year, paidInMonth.month);
+
+    final alreadyExists = rfiBasketPayments.any(
+      (item) =>
+          item.sourceMonth.year == normalizedSourceMonth.year &&
+          item.sourceMonth.month == normalizedSourceMonth.month,
+    );
+
+    if (alreadyExists) {
+      throw Exception('Questo mese RFI risulta già scaricato');
+    }
+
     final payment = RfiBasketPayment(
-      paymentMonth: DateTime(paymentMonth.year, paymentMonth.month),
-      hoursPaid: hoursPaid,
+      sourceMonth: normalizedSourceMonth,
+      paidInMonth: normalizedPaidInMonth,
       note: note,
     );
 
-    final projectionForMonth = _projectionService.projectPayslip(
-      payslipMonth: payment.paymentMonth,
-      allShifts: shifts,
-      payProfile: payProfile,
-      basketPayments: basketPayments,
-      rfiBasketPayments: rfiBasketPayments,
-    );
-
-    final availableHours = projectionForMonth.currentRfiBasketResidualHours;
-
-    if (availableHours <= 0) {
-      throw Exception('Non ci sono ore disponibili nel basket RFI');
-    }
-
-    if (payment.hoursPaid > availableHours) {
-      throw Exception(
-        'Non puoi scaricare più di ${availableHours.toStringAsFixed(1)} ore',
-      );
-    }
-
     setState(() {
       rfiBasketPayments.add(payment);
-      rfiBasketPayments.sort((a, b) => a.paymentMonth.compareTo(b.paymentMonth));
+      rfiBasketPayments.sort((a, b) => a.sourceMonth.compareTo(b.sourceMonth));
     });
 
     await _saveRfiBasketPayments();
   }
 
   Future<void> addShift(Shift shift) async {
-    setState(() {
-      shifts.add(shift);
-      selectedMonth = DateTime(shift.serviceDate.year, shift.serviceDate.month);
-      selectedDay = _normalizeDate(shift.serviceDate);
-      shifts.sort((a, b) => b.start.compareTo(a.start));
-    });
+  setState(() {
+    shifts.add(shift);
+    selectedMonth = DateTime(shift.serviceDate.year, shift.serviceDate.month);
+    selectedDay = _normalizeDate(shift.serviceDate);
+    shifts.sort((a, b) => b.start.compareTo(a.start));
+  });
 
-    await saveShifts();
+  await saveShifts();
+}
+
+Future<void> updateShift(int index, Shift shift) async {
+  setState(() {
+    shifts[index] = shift;
+    selectedMonth = DateTime(shift.serviceDate.year, shift.serviceDate.month);
+    selectedDay = _normalizeDate(shift.serviceDate);
+    shifts.sort((a, b) => b.start.compareTo(a.start));
+  });
+
+  await saveShifts();
+}
+
+Future<void> removeShift(int index) async {
+  setState(() {
+    shifts.removeAt(index);
+  });
+
+  await saveShifts();
+}
+
+DateTime _normalizeDate(DateTime date) {
+  return DateTime(date.year, date.month, date.day);
+}
+
+bool _isSameDay(DateTime a, DateTime b) {
+  return a.year == b.year && a.month == b.month && a.day == b.day;
+}
+
+bool _isSameMonth(DateTime a, DateTime b) {
+  return a.year == b.year && a.month == b.month;
+}
+
+int _daysInMonth(DateTime month) {
+  return DateTime(month.year, month.month + 1, 0).day;
+}
+
+String _buildSearchText(Shift shift) {
+  return [
+    shift.description,
+    shift.effectiveOrderPublicLabel,
+    shift.absence,
+    shift.note,
+    shift.manualExtraLabel,
+  ].join(' ').toLowerCase();
+}
+
+DailyShiftComputation _buildSingleShiftComputation(Shift shift) {
+  final data = _buildShiftComputationUseCase.execute(
+    shift: shift,
+    profile: payProfile,
+    department: widget.activeDepartment,
+  );
+
+  return DailyShiftComputation(
+    overtimeHours: data.overtimeHours,
+    totalAmount: data.totalAmount,
+    extraAmount: data.extraAmount,
+    breakdown: data.breakdown,
+  );
+}
+
+DailyShiftResult _buildDailyShiftResult(List<Shift> dayShifts) {
+  return _buildDailyShiftResultUseCase.execute(
+    shifts: dayShifts,
+    profile: payProfile,
+    department: widget.activeDepartment,
+  );
+}
+
+DailyShiftResult _buildDailyShiftResultForDate(DateTime date) {
+  final dayShifts = filteredShifts
+      .where((shift) => _isSameDay(shift.serviceDate, date))
+      .toList();
+
+  return _buildDailyShiftResult(dayShifts);
+}
+
+Iterable<DailyShiftResult> _buildDailyResultsForRange(
+  Iterable<Shift> input,
+) sync* {
+  final grouped = _groupShiftsByServiceDay(input);
+
+  for (final dayShifts in grouped.values) {
+    if (dayShifts.isEmpty) continue;
+    yield _buildDailyShiftResult(dayShifts);
+  }
+}
+
+Map<String, List<Shift>> _groupShiftsByServiceDay(Iterable<Shift> input) {
+  final grouped = <String, List<Shift>>{};
+
+  for (final shift in input) {
+    final day = _normalizeDate(shift.serviceDate);
+    final key = _calendarKey(day);
+    grouped.putIfAbsent(key, () => []).add(shift);
   }
 
-  Future<void> updateShift(int index, Shift shift) async {
-    setState(() {
-      shifts[index] = shift;
-      selectedMonth = DateTime(shift.serviceDate.year, shift.serviceDate.month);
-      selectedDay = _normalizeDate(shift.serviceDate);
-      shifts.sort((a, b) => b.start.compareTo(a.start));
-    });
+  return grouped;
+}
 
-    await saveShifts();
-  }
+double _salaryOnlyAmount(Shift shift) {
+  final computation = _buildSingleShiftComputation(shift);
+  return computation.extraAmount;
+}
 
-  Future<void> removeShift(int index) async {
-    setState(() {
-      shifts.removeAt(index);
-    });
+List<Shift> get filteredShifts {
+  return shifts.where((shift) {
+    return shift.serviceDate.year == selectedMonth.year &&
+        shift.serviceDate.month == selectedMonth.month;
+  }).toList();
+}
 
-    await saveShifts();
-  }
+List<Shift> get yearlySearchResults {
+  final query = searchQuery.trim().toLowerCase();
+  if (query.isEmpty) return [];
 
-  DateTime _normalizeDate(DateTime date) {
-    return DateTime(date.year, date.month, date.day);
-  }
+  final now = DateTime.now();
 
-  bool _isSameDay(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month && a.day == b.day;
-  }
+  final annualBase = shifts.where((shift) {
+    return shift.serviceDate.year == now.year;
+  }).toList();
 
-  bool _isSameMonth(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month;
-  }
+  final results = annualBase.where((shift) {
+    return _buildSearchText(shift).contains(query);
+  }).toList()
+    ..sort((a, b) => b.serviceDate.compareTo(a.serviceDate));
 
-  int _daysInMonth(DateTime month) {
-    return DateTime(month.year, month.month + 1, 0).day;
-  }
+  return results;
+}
 
-  double _salaryOnlyAmount(Shift shift) {
-    return shift.getTotalAmount(payProfile);
-  }
+MonthlySummary get monthlySummary {
+  return _buildMonthlySummaryUseCase.execute(
+    shifts: shifts,
+    selectedMonth: selectedMonth,
+    profile: payProfile,
+    department: widget.activeDepartment,
+  );
+}
 
-  List<Shift> get filteredShifts {
-    return shifts.where((shift) {
-      return shift.serviceDate.year == selectedMonth.year &&
-          shift.serviceDate.month == selectedMonth.month;
-    }).toList();
-  }
+List<Shift> get selectedDayShifts {
+  return filteredShifts
+      .where((shift) => _isSameDay(shift.serviceDate, selectedDay))
+      .toList()
+    ..sort((a, b) => a.start.compareTo(b.start));
+}
 
-  List<Shift> get selectedDayShifts {
-    return filteredShifts
-        .where((shift) => _isSameDay(shift.serviceDate, selectedDay))
-        .toList()
-      ..sort((a, b) => a.start.compareTo(b.start));
-  }
+double get totalMonth => monthlySummary.totalAmount;
+double get monthlyOvertimeHours => monthlySummary.totalOvertimeHours;
+double get todayTotal => monthlySummary.todayTotal;
+double get weekTotal => monthlySummary.weekTotal;
+int get workedDaysCount => monthlySummary.workedDays;
+double get averagePerWorkedDay => monthlySummary.averagePerDay;
+double get projectedExtraFuture => monthlySummary.projectedExtraFuture;
+double get monthlyRfiBasketAmount => monthlySummary.rfiBasketAmount;
 
-  double get totalMonth {
-    return filteredShifts.fold(
-      0.0,
-      (sum, shift) => sum + _salaryOnlyAmount(shift),
-    );
-  }
+int get monthlyTicketPastoCount {
+  return filteredShifts.where((shift) => shift.ticketPasto).length;
+}
 
-  int get monthlyTicketPastoCount {
-    return filteredShifts.where((shift) => shift.ticketPasto).length;
-  }
+int get monthlyGenereDiConfortoCount {
+  return filteredShifts.where((shift) => shift.genereDiConforto).length;
+}
 
-  double get monthlyOvertimeHours {
-    return filteredShifts.fold(
-      0.0,
-      (sum, shift) => sum + shift.overtimeHours,
-    );
-  }
+double get monthlyTicketPastoTotal {
+  return filteredShifts.fold<double>(
+    0.0,
+    (sum, shift) =>
+        sum + (shift.ticketPasto ? payProfile.ticketPastoRate : 0.0),
+  );
+}
 
-  int get monthlyGenereDiConfortoCount {
-    return filteredShifts.where((shift) => shift.genereDiConforto).length;
-  }
+double get monthlyGenereDiConfortoTotal {
+  return filteredShifts.fold<double>(
+    0.0,
+    (sum, shift) =>
+        sum +
+        (shift.genereDiConforto ? payProfile.genereDiConfortoRate : 0.0),
+  );
+}
 
-  double get monthlyTicketPastoTotal {
-    return filteredShifts.fold<double>(
-      0.0,
-      (sum, shift) =>
-          sum + (shift.ticketPasto ? payProfile.ticketPastoRate : 0.0),
-    );
-  }
+double _dailyTotal(DateTime date) {
+  return _buildDailyShiftResultForDate(date).totalAmount;
+}
 
-  double get monthlyGenereDiConfortoTotal {
-    return filteredShifts.fold<double>(
-      0.0,
-      (sum, shift) =>
-          sum +
-          (shift.genereDiConforto ? payProfile.genereDiConfortoRate : 0.0),
-    );
-  }
+bool _hasTicketInDate(DateTime date) {
+  return filteredShifts.any(
+    (shift) => _isSameDay(shift.serviceDate, date) && shift.ticketPasto,
+  );
+}
 
-  double get todayTotal {
-    final now = DateTime.now();
+bool _hasConfortoInDate(DateTime date) {
+  return filteredShifts.any(
+    (shift) => _isSameDay(shift.serviceDate, date) && shift.genereDiConforto,
+  );
+}
 
-    return shifts.where((shift) {
-      return shift.serviceDate.year == now.year &&
-          shift.serviceDate.month == now.month &&
-          shift.serviceDate.day == now.day;
-    }).fold(
-      0.0,
-      (sum, shift) => sum + _salaryOnlyAmount(shift),
-    );
-  }
+bool _hasConfortoCdgInDate(DateTime date) {
+  return filteredShifts.any(
+    (shift) =>
+        _isSameDay(shift.serviceDate, date) && shift.genereDiConfortoCdg,
+  );
+}
 
-  double get weekTotal {
-    final now = DateTime.now();
-    final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+bool _hasWorkedShiftInDate(DateTime date) {
+  return filteredShifts.any(
+    (shift) => _isSameDay(shift.serviceDate, date) && !shift.hasAbsence,
+  );
+}
 
-    return shifts.where((shift) {
-      final day = shift.serviceDate;
-      return day.isAfter(startOfWeek.subtract(const Duration(seconds: 1))) &&
-          day.isBefore(now.add(const Duration(days: 1)));
-    }).fold(
-      0.0,
-      (sum, shift) => sum + _salaryOnlyAmount(shift),
-    );
-  }
+String? _absenceBadgeForDate(DateTime date) {
+  final dayShifts = filteredShifts
+      .where((shift) => _isSameDay(shift.serviceDate, date))
+      .toList();
 
-  int get workedDaysCount {
-    final uniqueDays = <String>{};
+  if (dayShifts.isEmpty) return null;
 
-    for (final shift in filteredShifts) {
-      if (shift.hasAbsence) continue;
+  bool hasCongedoOrdinario = false;
+  bool hasMalattia = false;
+  bool hasRiposo = false;
+  bool hasFestivo = false;
+  bool hasGenericAbsence = false;
 
-      final day = shift.serviceDate;
-      final key =
-          '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
+  for (final shift in dayShifts) {
+    final rawAbsence = shift.absence.trim();
+    final absence = rawAbsence.toLowerCase();
 
-      uniqueDays.add(key);
-    }
+    if (rawAbsence.isEmpty || absence == 'nessuna') continue;
 
-    return uniqueDays.length;
-  }
-
-  double get averagePerWorkedDay {
-    if (workedDaysCount == 0) return 0.0;
-    return totalMonth / workedDaysCount;
-  }
-
-  int get daysInSelectedMonth {
-    return DateTime(selectedMonth.year, selectedMonth.month + 1, 0).day;
-  }
-
-  int get remainingDaysInSelectedMonth {
-    final now = DateTime.now();
-
-    final isCurrentMonth =
-        selectedMonth.year == now.year && selectedMonth.month == now.month;
-
-    if (!isCurrentMonth) return 0;
-
-    final remaining = daysInSelectedMonth - now.day;
-    return remaining > 0 ? remaining : 0;
-  }
-
-  double get projectedExtraFuture {
-    if (workedDaysCount == 0) return 0.0;
-    return averagePerWorkedDay * remainingDaysInSelectedMonth;
-  }
-
-  double _dailyTotal(DateTime date) {
-    return filteredShifts
-        .where((shift) => _isSameDay(shift.serviceDate, date))
-        .fold(0.0, (sum, shift) => sum + _salaryOnlyAmount(shift));
-  }
-
-  bool _hasTicketInDate(DateTime date) {
-    return filteredShifts.any(
-      (shift) => _isSameDay(shift.serviceDate, date) && shift.ticketPasto,
-    );
-  }
-
-  bool _hasConfortoInDate(DateTime date) {
-    return filteredShifts.any(
-      (shift) => _isSameDay(shift.serviceDate, date) && shift.genereDiConforto,
-    );
-  }
-
-  String? _absenceBadgeForDate(DateTime date) {
-    final dayShifts = filteredShifts
-        .where((shift) => _isSameDay(shift.serviceDate, date))
-        .toList();
-
-    if (dayShifts.isEmpty) return null;
-
-    bool hasCongedoOrdinario = false;
-    bool hasMalattia = false;
-    bool hasRiposo = false;
-
-    for (final shift in dayShifts) {
-      final absence = shift.absence.trim().toLowerCase();
-
-      if (absence == 'ferie' ||
-          absence == 'congedo ordinario' ||
-          absence == 'c.o.' ||
-          absence == 'c.o') {
-        hasCongedoOrdinario = true;
-      } else if (absence == 'malattia' ||
-          absence == 'c.s.' ||
-          absence == 'c.s' ||
-          absence == 'mal') {
-        hasMalattia = true;
-      } else if (absence == 'riposo' || absence == 'rip') {
-        hasRiposo = true;
-      }
-    }
-
-    if (hasCongedoOrdinario) return 'C.O.';
-    if (hasMalattia) return 'C.S.';
-    if (hasRiposo) return 'RIP';
-
-    return null;
-  }
-
-  String? _extractSpmnLabelFromShift(Shift shift) {
-    final code = shift.spmnPresetCode.trim().toLowerCase();
-    switch (code) {
-      case 'sera':
-        return 'SERA';
-      case 'pomeriggio':
-        return 'POM';
-      case 'mattina':
-        return 'MAT';
-      case 'notte':
-        return 'NOTTE';
-      case 'smontante':
-        return 'SMONT';
-      case 'riposo':
-        return 'RIP';
-      case 'aggiornamento':
-        return 'AGG';
-      default:
-        return null;
-    }
-  }
-
-  String? _nextSpmnLabel(String current) {
-    switch (current) {
-      case 'SERA':
-        return 'POM';
-      case 'POM':
-        return 'MAT';
-      case 'MAT':
-        return 'NOTTE';
-      case 'NOTTE':
-        return 'SMONT';
-      case 'SMONT':
-        return 'RIP';
-      case 'RIP':
-        return 'SERA';
-      case 'AGG':
-        return 'SERA';
-      default:
-        return null;
+    if (absence == 'ferie' ||
+        absence == 'congedo ordinario' ||
+        absence == 'c.o.' ||
+        absence == 'c.o') {
+      hasCongedoOrdinario = true;
+    } else if (absence == 'malattia' ||
+        absence == 'c.s.' ||
+        absence == 'c.s' ||
+        absence == 'mal') {
+      hasMalattia = true;
+    } else if (absence == 'riposo' || absence == 'rip') {
+      hasRiposo = true;
+    } else if (absence == 'festivo' ||
+        absence == 'festa' ||
+        absence == 'fest') {
+      hasFestivo = true;
+    } else {
+      hasGenericAbsence = true;
     }
   }
 
-  String _resolvePredictedSpmnLabelForDate({
-    required String baseNextLabel,
-    required int daysAfterAnchor,
-    required DateTime targetDate,
-  }) {
-    String current = baseNextLabel;
+  if (hasCongedoOrdinario) return 'C.O.';
+  if (hasMalattia) return 'C.S.';
+  if (hasRiposo) return 'RIP';
+  if (hasFestivo) return 'FEST';
+  if (hasGenericAbsence) return 'ASS.';
 
-    for (int i = 0; i < daysAfterAnchor; i++) {
-      current = _nextSpmnLabel(current) ?? current;
-    }
+  return null;
+}
 
-    if (current == 'RIP' && targetDate.weekday == DateTime.tuesday) {
+String? _extractSpmnLabelFromShift(Shift shift) {
+  if (shift.hasAbsence) return null;
+
+  final code = shift.spmnPresetCode.trim().toLowerCase();
+  switch (code) {
+    case 'sera':
+      return 'SERA';
+    case 'pomeriggio':
+      return 'POM';
+    case 'mattina':
+      return 'MAT';
+    case 'notte':
+      return 'NOTTE';
+    case 'riposo':
+      return 'RIP';
+    case 'aggiornamento':
       return 'AGG';
-    }
+    default:
+      return null;
+  }
+}
 
-    return current;
+String? _nextSpmnLabel(String current) {
+  switch (current) {
+    case 'SERA':
+      return 'POM';
+    case 'POM':
+      return 'MAT';
+    case 'MAT':
+      return 'NOTTE';
+    case 'NOTTE':
+      return 'RIP';
+    case 'RIP':
+      return 'SERA';
+    case 'AGG':
+      return 'SERA';
+    default:
+      return null;
+  }
+}
+
+String _resolvePredictedSpmnLabelForDate({
+  required String baseNextLabel,
+  required int daysAfterAnchor,
+  required DateTime targetDate,
+}) {
+  String current = baseNextLabel;
+
+  for (int i = 0; i < daysAfterAnchor; i++) {
+    current = _nextSpmnLabel(current) ?? current;
   }
 
-  Map<String, String> _buildPredictedSpmnCalendarMap() {
-    if (shifts.isEmpty) return {};
-
-    final spmnSource = shifts
-        .where((shift) => _extractSpmnLabelFromShift(shift) != null)
-        .toList()
-      ..sort((a, b) => a.serviceDate.compareTo(b.serviceDate));
-
-    if (spmnSource.isEmpty) return {};
-
-    final anchorShift = spmnSource.last;
-    final anchorLabel = _extractSpmnLabelFromShift(anchorShift);
-
-    if (anchorLabel == null) return {};
-
-    final nextLabel = _nextSpmnLabel(anchorLabel);
-    if (nextLabel == null) return {};
-
-    final predictionMap = <String, String>{};
-    final anchorDate = _normalizeDate(anchorShift.serviceDate);
-
-    for (int offset = 1; offset <= 70; offset++) {
-      final targetDate = anchorDate.add(Duration(days: offset));
-      final key =
-          '${targetDate.year}-${targetDate.month.toString().padLeft(2, '0')}-${targetDate.day.toString().padLeft(2, '0')}';
-
-      final hasRealShift = shifts.any(
-        (shift) => _isSameDay(shift.serviceDate, targetDate),
-      );
-      if (hasRealShift) continue;
-
-      predictionMap[key] = _resolvePredictedSpmnLabelForDate(
-        baseNextLabel: nextLabel,
-        daysAfterAnchor: offset - 1,
-        targetDate: targetDate,
-      );
-    }
-
-    return predictionMap;
+  if (current == 'RIP' && targetDate.weekday == DateTime.tuesday) {
+    return 'AGG';
   }
 
-  String _calendarKey(DateTime date) {
-    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-  }
+  return current;
+}
 
-  String? _nextSpmnPresetCode(String currentCode, DateTime nextServiceDate) {
-    switch (currentCode) {
-      case 'sera':
-        return 'pomeriggio';
-      case 'pomeriggio':
-        return 'mattina';
-      case 'mattina':
-        return 'notte';
-      case 'notte':
-        return 'smontante';
-      case 'smontante':
-        return 'riposo';
-      case 'riposo':
-        return nextServiceDate.weekday == DateTime.tuesday
-            ? 'aggiornamento'
-            : 'sera';
-      case 'aggiornamento':
-        return 'sera';
-      default:
-        return null;
-    }
-  }
+Map<String, String> _buildPredictedSpmnCalendarMap() {
+  if (widget.activeDepartment != Department.polfer) return {};
+  if (shifts.isEmpty) return {};
 
-  String? _suggestedSpmnPresetCodeForDate(DateTime targetDate) {
-    if (widget.activeDepartment != Department.polfer) return null;
+  final spmnSource = shifts
+      .where(
+        (shift) =>
+            !shift.hasAbsence && _extractSpmnLabelFromShift(shift) != null,
+      )
+      .toList()
+    ..sort((a, b) => a.serviceDate.compareTo(b.serviceDate));
 
-    final normalizedTarget = _normalizeDate(targetDate);
+  if (spmnSource.isEmpty) return {};
 
-    final previousSpmnShifts = shifts
-        .where((shift) {
-          final code = shift.spmnPresetCode.trim().toLowerCase();
-          return code.isNotEmpty &&
-              shift.serviceDate.isBefore(normalizedTarget);
-        })
-        .toList()
-      ..sort((a, b) => a.serviceDate.compareTo(b.serviceDate));
+  final anchorShift = spmnSource.last;
+  final anchorLabel = _extractSpmnLabelFromShift(anchorShift);
+  if (anchorLabel == null) return {};
 
-    if (previousSpmnShifts.isEmpty) return null;
+  final nextLabel = _nextSpmnLabel(anchorLabel);
+  if (nextLabel == null) return {};
 
-    final anchor = previousSpmnShifts.last;
-    String? currentCode = anchor.spmnPresetCode.trim().toLowerCase();
+  final predictionMap = <String, String>{};
+  final anchorDate = _normalizeDate(anchorShift.serviceDate);
 
-    if (currentCode.isEmpty) return null;
+  for (int offset = 1; offset <= 70; offset++) {
+    final targetDate = anchorDate.add(Duration(days: offset));
+    final key = _calendarKey(targetDate);
 
-    DateTime cursor = _normalizeDate(anchor.serviceDate);
+    final dayHasAnyRecord = shifts.any(
+      (shift) => _isSameDay(shift.serviceDate, targetDate),
+    );
 
-    while (cursor.isBefore(normalizedTarget)) {
-      final nextDay = cursor.add(const Duration(days: 1));
-      currentCode = _nextSpmnPresetCode(currentCode!, nextDay);
-      if (currentCode == null || currentCode.isEmpty) return null;
-      cursor = nextDay;
-    }
+    if (dayHasAnyRecord) continue;
 
-    return currentCode;
-  }
-
-  List<MonthCalendarDayData> get calendarDays {
-    final firstDayOfMonth = DateTime(selectedMonth.year, selectedMonth.month, 1);
-    final startWeekday = firstDayOfMonth.weekday;
-    final gridStart =
-        firstDayOfMonth.subtract(Duration(days: startWeekday - 1));
-
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-
-    final predictedSpmnMap = _buildPredictedSpmnCalendarMap();
-
-    return List.generate(42, (index) {
-      final date = gridStart.add(Duration(days: index));
-      final isInCurrentMonth = date.month == selectedMonth.month;
-      final dayKey = _calendarKey(date);
-
-      return MonthCalendarDayData(
-        date: date,
-        isInCurrentMonth: isInCurrentMonth,
-        amount: isInCurrentMonth ? _dailyTotal(date) : 0.0,
-        isSelected: _isSameDay(date, selectedDay),
-        isToday: _isSameDay(date, today),
-        absenceBadge: isInCurrentMonth ? _absenceBadgeForDate(date) : null,
-        hasTicket: _hasTicketInDate(date),
-        hasConforto: _hasConfortoInDate(date),
-        predictedSpmnLabel: isInCurrentMonth ? predictedSpmnMap[dayKey] : null,
-      );
-    });
-  }
-
-  PayslipProjectionResult get payslipProjection {
-    return _projectionService.projectPayslip(
-      payslipMonth: selectedPayslipMonth,
-      allShifts: shifts,
-      payProfile: payProfile,
-      basketPayments: basketPayments,
-      rfiBasketPayments: rfiBasketPayments,
+    predictionMap[key] = _resolvePredictedSpmnLabelForDate(
+      baseNextLabel: nextLabel,
+      daysAfterAnchor: offset - 1,
+      targetDate: targetDate,
     );
   }
 
-  PrecisionStatus get payslipPrecisionStatus {
-    return _projectionService.calculatePrecision(
-      allShifts: shifts,
-    );
+  return predictionMap;
+}
+
+String _calendarKey(DateTime date) {
+  return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+}
+
+String? _nextSpmnPresetCode(String currentCode, DateTime nextServiceDate) {
+  switch (currentCode) {
+    case 'sera':
+      return 'pomeriggio';
+    case 'pomeriggio':
+      return 'mattina';
+    case 'mattina':
+      return 'notte';
+    case 'notte':
+      return 'riposo';
+    case 'riposo':
+      return nextServiceDate.weekday == DateTime.tuesday
+          ? 'aggiornamento'
+          : 'sera';
+    case 'aggiornamento':
+      return 'sera';
+    default:
+      return null;
+  }
+}
+
+String? _suggestedSpmnPresetCodeForDate(DateTime targetDate) {
+  if (widget.activeDepartment != Department.polfer) return null;
+
+  final normalizedTarget = _normalizeDate(targetDate);
+
+  final previousSpmnShifts = shifts.where((shift) {
+    final code = shift.spmnPresetCode.trim().toLowerCase();
+    return code.isNotEmpty && shift.serviceDate.isBefore(normalizedTarget);
+  }).toList()
+    ..sort((a, b) => a.serviceDate.compareTo(b.serviceDate));
+
+  if (previousSpmnShifts.isEmpty) return null;
+
+  final anchor = previousSpmnShifts.last;
+  String? currentCode = anchor.spmnPresetCode.trim().toLowerCase();
+
+  if (currentCode.isEmpty) return null;
+
+  DateTime cursor = _normalizeDate(anchor.serviceDate);
+
+  while (cursor.isBefore(normalizedTarget)) {
+    final nextDay = cursor.add(const Duration(days: 1));
+    currentCode = _nextSpmnPresetCode(currentCode!, nextDay);
+    if (currentCode == null || currentCode.isEmpty) return null;
+    cursor = nextDay;
   }
 
-  _MonthlyLiveProjection _buildMonthlyLiveProjection({
-    required DateTime month,
-    required double fixedBaseNet,
-  }) {
-    final monthShifts = shifts.where((shift) {
-      return shift.serviceDate.year == month.year &&
-          shift.serviceDate.month == month.month;
-    }).toList();
+  return currentCode;
+}
 
-    final extraGross = monthShifts.fold<double>(
-      0.0,
-      (sum, shift) => sum + _salaryOnlyAmount(shift),
+List<MonthCalendarDayData> get calendarDays {
+  final firstDayOfMonth = DateTime(selectedMonth.year, selectedMonth.month, 1);
+  final startWeekday = firstDayOfMonth.weekday;
+  final gridStart = firstDayOfMonth.subtract(Duration(days: startWeekday - 1));
+
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+
+  final predictedSpmnMap = _buildPredictedSpmnCalendarMap();
+
+  return List.generate(42, (index) {
+    final date = gridStart.add(Duration(days: index));
+    final isInCurrentMonth = date.month == selectedMonth.month;
+    final dayKey = _calendarKey(date);
+
+    return MonthCalendarDayData(
+      date: date,
+      isInCurrentMonth: isInCurrentMonth,
+      amount: isInCurrentMonth ? _dailyTotal(date) : 0.0,
+      isSelected: _isSameDay(date, selectedDay),
+      isToday: _isSameDay(date, today),
+      absenceBadge: isInCurrentMonth ? _absenceBadgeForDate(date) : null,
+      hasTicket: _hasTicketInDate(date),
+      hasConforto: _hasConfortoInDate(date),
+      hasConfortoCdg: _hasConfortoCdgInDate(date),
+      predictedSpmnLabel: isInCurrentMonth ? predictedSpmnMap[dayKey] : null,
+      hasWorkedShift: isInCurrentMonth ? _hasWorkedShiftInDate(date) : false,
     );
+  });
+}
 
-    final effectiveTaxRate = payProfile.effectiveTaxRate.isFinite &&
-            payProfile.effectiveTaxRate >= 0
-        ? payProfile.effectiveTaxRate.clamp(0.0, 0.45)
-        : 0.2625;
+PayslipProjectionResult get payslipProjection {
+  return _projectionService.projectPayslip(
+    payslipMonth: selectedPayslipMonth,
+    allShifts: shifts,
+    payProfile: payProfile,
+    department: widget.activeDepartment,
+    basketPayments: basketPayments,
+    rfiBasketPayments: rfiBasketPayments,
+  );
+}
 
-    final extraNet = extraGross * (1 - effectiveTaxRate);
-    final taxes = extraGross - extraNet;
+PrecisionStatus get payslipPrecisionStatus {
+  return _projectionService.calculatePrecision(allShifts: shifts);
+}
 
-    final uniqueWorkedDays = <String>{};
-    for (final shift in monthShifts) {
-      if (shift.hasAbsence) continue;
+_MonthlyLiveProjection _buildMonthlyLiveProjection({
+  required DateTime month,
+  required double fixedBaseNet,
+}) {
+  final monthShifts = shifts.where((shift) {
+    return shift.serviceDate.year == month.year &&
+        shift.serviceDate.month == month.month;
+  }).toList();
 
-      final day = shift.serviceDate;
-      final key =
-          '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
-      uniqueWorkedDays.add(key);
-    }
+  final extraGross = monthShifts.fold<double>(
+    0.0,
+    (sum, shift) => sum + _salaryOnlyAmount(shift),
+  );
 
-    final workedDays = uniqueWorkedDays.length;
-    final totalDays = _daysInMonth(month);
-    final avgPerDay = workedDays > 0 ? extraNet / workedDays : 0.0;
+  final effectiveTaxRate =
+      payProfile.effectiveTaxRate.isFinite && payProfile.effectiveTaxRate >= 0
+          ? payProfile.effectiveTaxRate.clamp(0.0, 0.45)
+          : 0.2625;
 
-    final now = DateTime.now();
-    final currentMonth = DateTime(now.year, now.month);
-    final isCurrentMonth = _isSameMonth(month, currentMonth);
+  final extraNet = extraGross * (1 - effectiveTaxRate);
+  final taxes = extraGross - extraNet;
 
-    final remainingDays = isCurrentMonth
-        ? ((totalDays - now.day) > 0 ? (totalDays - now.day) : 0)
-        : 0;
-
-    final projectedTotal = isCurrentMonth && workedDays > 0
-        ? fixedBaseNet + extraNet + (avgPerDay * remainingDays)
-        : fixedBaseNet + extraNet;
-
-    return _MonthlyLiveProjection(
-      baseNet: fixedBaseNet,
-      extraGross: extraGross,
-      extraNet: extraNet,
-      taxes: taxes,
-      workedDays: workedDays,
-      totalDays: totalDays,
-      avgPerDay: avgPerDay,
-      projectedTotal: projectedTotal,
-      isCurrentMonth: isCurrentMonth,
-    );
+  final uniqueWorkedDays = <String>{};
+  for (final shift in monthShifts) {
+    if (shift.hasAbsence) continue;
+    final day = shift.serviceDate;
+    final key =
+        '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
+    uniqueWorkedDays.add(key);
   }
+
+  final workedDays = uniqueWorkedDays.length;
+  final totalDays = _daysInMonth(month);
+  final avgPerDay = workedDays > 0 ? extraNet / workedDays : 0.0;
+
+  final now = DateTime.now();
+  final currentMonth = DateTime(now.year, now.month);
+  final isCurrentMonth = _isSameMonth(month, currentMonth);
+
+  final remainingDays = isCurrentMonth
+      ? ((totalDays - now.day) > 0 ? (totalDays - now.day) : 0)
+      : 0;
+
+  final projectedTotal = isCurrentMonth && workedDays > 0
+      ? fixedBaseNet + extraNet + (avgPerDay * remainingDays)
+      : fixedBaseNet + extraNet;
+
+  return _MonthlyLiveProjection(
+    baseNet: fixedBaseNet,
+    extraGross: extraGross,
+    extraNet: extraNet,
+    taxes: taxes,
+    workedDays: workedDays,
+    totalDays: totalDays,
+    avgPerDay: avgPerDay,
+    projectedTotal: projectedTotal,
+    isCurrentMonth: isCurrentMonth,
+  );
+}
 
   void _goToPreviousMonth() {
     setState(() {
@@ -1382,8 +1413,7 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
         shifts.sort((a, b) => b.start.compareTo(a.start));
         if (newShift.isNotEmpty) {
           final first = newShift.first;
-          selectedMonth =
-              DateTime(first.serviceDate.year, first.serviceDate.month);
+          selectedMonth = DateTime(first.serviceDate.year, first.serviceDate.month);
           selectedDay = _normalizeDate(first.serviceDate);
         }
       });
@@ -1537,6 +1567,46 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
 
     return 'Servizio: $serviceDay/$serviceMonth/$serviceYear • Start: $startDay/$startMonth/$startYear • $startHour:$startMinute';
   }
+    String _formatShiftTime(DateTime value) {
+    final hh = value.hour.toString().padLeft(2, '0');
+    final mm = value.minute.toString().padLeft(2, '0');
+    return '$hh:$mm';
+  }
+
+  String _formatShiftDuration(DateTime start, DateTime end) {
+    final duration = end.difference(start);
+
+    if (duration.inMinutes <= 0) return '';
+
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes % 60;
+
+    if (minutes == 0) return '${hours}h';
+    return '${hours}h ${minutes}m';
+  }
+
+  String _buildShiftTimeRangeLabel(Shift shift) {
+    if (shift.absence != 'Nessuna') {
+      final serviceDay = shift.serviceDate.day.toString().padLeft(2, '0');
+      final serviceMonth = shift.serviceDate.month.toString().padLeft(2, '0');
+      final serviceYear = shift.serviceDate.year.toString();
+      return '$serviceDay/$serviceMonth/$serviceYear';
+    }
+
+    final serviceDay = shift.serviceDate.day.toString().padLeft(2, '0');
+    final serviceMonth = shift.serviceDate.month.toString().padLeft(2, '0');
+    final serviceYear = shift.serviceDate.year.toString();
+
+    final startText = _formatShiftTime(shift.start);
+    final endText = _formatShiftTime(shift.end);
+    final durationText = _formatShiftDuration(shift.start, shift.end);
+
+    if (durationText.isEmpty) {
+      return '$serviceDay/$serviceMonth/$serviceYear • $startText → $endText';
+    }
+
+    return '$serviceDay/$serviceMonth/$serviceYear • $startText → $endText ($durationText)';
+  }
 
   String _formatMonthYear(DateTime date) {
     const months = [
@@ -1627,10 +1697,7 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
         notesMap[key] = text;
       }
 
-      await prefs.setString(
-        monthNotesStorageKey,
-        jsonEncode(notesMap),
-      );
+      await prefs.setString(monthNotesStorageKey, jsonEncode(notesMap));
 
       if (!mounted) return;
       setState(() {});
@@ -1719,7 +1786,7 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
       ),
     );
   }
-
+  
   Widget _buildBreakdownRow(String label, double amount) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -1749,18 +1816,26 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
     );
   }
 
-  Widget _buildShiftCard(Shift shift, int index) {
+  Widget _buildShiftCard(
+    Shift shift, {
+    DailyShiftComputation? computation,
+  }) {
     final shiftIndex = shifts.indexOf(shift);
     final orderPublicAmount = shift.getOrderPublicAmount(payProfile);
-    final totalAmount = _salaryOnlyAmount(shift);
-    final extraAmount = totalAmount - orderPublicAmount;
-    final breakdown = shift.getBreakdown(payProfile);
+    final effectiveComputation =
+        computation ?? _buildSingleShiftComputation(shift);
+
+    final totalAmount = effectiveComputation.totalAmount;
+    final extraAmount = effectiveComputation.extraAmount;
+    final breakdown = effectiveComputation.breakdown;
 
     final hasAbsence = shift.hasAbsence;
     final isExternal = shift.externalService;
     final hasOrderPublic =
         shift.effectiveOrderPublicLabel.trim().toLowerCase() != 'nessuno';
-
+    final hasTicket = shift.ticketPasto;
+final hasConforto = shift.genereDiConforto;
+final hasConfortoCdg = shift.genereDiConfortoCdg;
     Future<void> confirmDelete() async {
       final shouldDelete = await showDialog<bool>(
             context: context,
@@ -1878,8 +1953,8 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
               ],
             ),
             const SizedBox(height: 10),
-            Text(
-              _formatShiftDate(shift),
+                        Text(
+              _buildShiftTimeRangeLabel(shift),
               style: const TextStyle(
                 fontSize: 13.2,
                 color: DutyPayPalette.textSecondary,
@@ -1919,8 +1994,8 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
                 Expanded(
                   child: _statTile(
                     label: 'Straordinario',
-                    value: shift.overtimeHours > 0
-                        ? '${shift.overtimeHours.toStringAsFixed(1)}h'
+                    value: effectiveComputation.overtimeHours > 0
+                        ? '${effectiveComputation.overtimeHours.toStringAsFixed(1)}h'
                         : 'Nessuno',
                     icon: Icons.schedule_rounded,
                   ),
@@ -1928,7 +2003,7 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: _statTile(
-                    label: 'Extra generati',
+                    label: 'Valore servizio',
                     value: _formatCurrency(extraAmount),
                     valueColor: DutyPayPalette.primary,
                     icon: Icons.trending_up_rounded,
@@ -1948,25 +2023,35 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Dettaglio calcolo',
+                                        const Text(
+                      'Dettaglio servizio',
                       style: TextStyle(
                         fontSize: 13,
                         color: DutyPayPalette.textSecondary,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Valori stimati del servizio',
+                      style: TextStyle(
+                        fontSize: 12.2,
+                        color: DutyPayPalette.textHint,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                     const SizedBox(height: 10),
                     ...breakdown.map((item) {
                       final label = item['label'] as String;
-                      final amount =
-                          (item['amount'] as num?)?.toDouble() ?? 0.0;
+                      final amount = (item['amount'] as num?)?.toDouble() ?? 0.0;
                       return _buildBreakdownRow(label, amount);
                     }),
                   ],
                 ),
               ),
             ],
+            if (orderPublicAmount > 0 && extraAmount >= 0)
+              const SizedBox.shrink(),
           ],
         ),
       ),
@@ -1974,129 +2059,161 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
   }
 
   Widget _buildTurnsHeader() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(30),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF1A2030),
-            Color(0xFF111723),
-          ],
-        ),
-        border: Border.all(
-          color: const Color(0xFF2B364C),
-          width: 1.2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.24),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
+  return Container(
+    padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(30),
+      gradient: const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Color(0xFF1A2030),
+          Color(0xFF111723),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Bentornato, ${widget.userName}',
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -0.8,
+      border: Border.all(
+        color: const Color(0xFF2B364C),
+        width: 1.2,
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.24),
+          blurRadius: 24,
+          offset: const Offset(0, 12),
+        ),
+      ],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Bentornato, ${widget.userName}',
+          style: const TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.w900,
+            letterSpacing: -0.8,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Reparto attivo: ${_activeDepartmentLabel()}',
+          style: const TextStyle(
+            fontSize: 14.5,
+            color: DutyPayPalette.info,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Inserisci i turni, controlla il calendario e capisci subito quanto stai accumulando.',
+          style: TextStyle(
+            fontSize: 14.5,
+            color: DutyPayPalette.textSecondary,
+            height: 1.5,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 18),
+        Row(
+          children: [
+            Expanded(
+              child: _statTile(
+                label: 'Oggi',
+                value: _formatCurrency(todayTotal),
+                valueColor: DutyPayPalette.primary,
+                icon: Icons.today_rounded,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _statTile(
+                label: 'Settimana',
+                value: _formatCurrency(weekTotal),
+                valueColor: DutyPayPalette.info,
+                icon: Icons.date_range_rounded,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: _statTile(
+                label: 'Giorni lavorati',
+                value: workedDaysCount.toString(),
+                icon: Icons.calendar_month_rounded,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _statTile(
+                label: 'Media giornaliera',
+                value: _formatCurrency(averagePerWorkedDay),
+                valueColor: DutyPayPalette.warning,
+                icon: Icons.analytics_outlined,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: DutyPayPalette.primary.withOpacity(0.09),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: DutyPayPalette.primary.withOpacity(0.22),
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Reparto attivo: ${_activeDepartmentLabel()}',
-            style: const TextStyle(
-              fontSize: 14.5,
-              color: DutyPayPalette.info,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Inserisci i turni, controlla il calendario e capisci subito quanto stai accumulando.',
-            style: TextStyle(
-              fontSize: 14.5,
-              color: DutyPayPalette.textSecondary,
-              height: 1.5,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 18),
-          Row(
+          child: Row(
             children: [
-              Expanded(
-                child: _statTile(
-                  label: 'Oggi',
-                  value: _formatCurrency(todayTotal),
-                  valueColor: DutyPayPalette.primary,
-                  icon: Icons.today_rounded,
-                ),
+              const Icon(
+                Icons.trending_up_rounded,
+                color: DutyPayPalette.primary,
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: _statTile(
-                  label: 'Settimana',
-                  value: _formatCurrency(weekTotal),
-                  valueColor: DutyPayPalette.info,
-                  icon: Icons.date_range_rounded,
+                child: Text(
+                  workedDaysCount == 0
+                      ? 'Aggiungi i primi turni per vedere una proiezione del ritmo mensile.'
+                      : 'Se mantieni questo ritmo, potresti aggiungere circa ${_formatCurrency(projectedExtraFuture)} entro fine mese.',
+                  style: const TextStyle(
+                    fontSize: 13.8,
+                    fontWeight: FontWeight.w700,
+                    color: DutyPayPalette.primary,
+                    height: 1.4,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: _statTile(
-                  label: 'Giorni lavorati',
-                  value: workedDaysCount.toString(),
-                  icon: Icons.calendar_month_rounded,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _statTile(
-                  label: 'Media giornaliera',
-                  value: _formatCurrency(averagePerWorkedDay),
-                  valueColor: DutyPayPalette.warning,
-                  icon: Icons.analytics_outlined,
-                ),
-              ),
-            ],
-          ),
+        ),
+        if (widget.activeDepartment == Department.polfer) ...[
           const SizedBox(height: 14),
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: DutyPayPalette.primary.withOpacity(0.09),
+              color: DutyPayPalette.info.withOpacity(0.09),
               borderRadius: BorderRadius.circular(18),
               border: Border.all(
-                color: DutyPayPalette.primary.withOpacity(0.22),
+                color: DutyPayPalette.info.withOpacity(0.22),
               ),
             ),
             child: Row(
               children: [
                 const Icon(
-                  Icons.trending_up_rounded,
-                  color: DutyPayPalette.primary,
+                  Icons.account_balance_wallet_outlined,
+                  color: DutyPayPalette.info,
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    workedDaysCount == 0
-                        ? 'Aggiungi i primi turni per vedere una proiezione del ritmo mensile.'
-                        : 'Se mantieni questo ritmo, potresti aggiungere circa ${_formatCurrency(projectedExtraFuture)} entro fine mese.',
+                    'Basket RFI del mese: ${_formatCurrency(monthlyRfiBasketAmount)}',
                     style: const TextStyle(
                       fontSize: 13.8,
                       fontWeight: FontWeight.w700,
-                      color: DutyPayPalette.primary,
+                      color: DutyPayPalette.info,
                       height: 1.4,
                     ),
                   ),
@@ -2104,63 +2221,64 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
               ],
             ),
           ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () async {
-                    try {
-                      await DataBackupService.exportData();
-
-                      if (!mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Backup esportato con successo'),
-                        ),
-                      );
-                    } catch (e) {
-                      if (!mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Errore export: $e')),
-                      );
-                    }
-                  },
-                  icon: const Icon(Icons.download_rounded),
-                  label: const Text('Esporta dati'),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () async {
-                    try {
-                      await DataBackupService.importData();
-                      await loadData();
-
-                      if (!mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Backup importato con successo'),
-                        ),
-                      );
-                    } catch (e) {
-                      if (!mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Errore import: $e')),
-                      );
-                    }
-                  },
-                  icon: const Icon(Icons.upload_file_rounded),
-                  label: const Text('Importa dati'),
-                ),
-              ),
-            ],
-          ),
         ],
-      ),
-    );
-  }
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  try {
+                    await DataBackupService.exportData();
+
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Backup esportato con successo'),
+                      ),
+                    );
+                  } catch (e) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Errore export: $e')),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.download_rounded),
+                label: const Text('Esporta dati'),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  try {
+                    await DataBackupService.importData();
+                    await loadData();
+
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Backup importato con successo'),
+                      ),
+                    );
+                  } catch (e) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Errore import: $e')),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.upload_file_rounded),
+                label: const Text('Importa dati'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _buildCalendarHeader() {
     return Row(
@@ -2214,11 +2332,11 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
     );
   }
 
-  Widget _buildSelectedDaySection() {
-    final selectedDayTotal = selectedDayShifts.fold<double>(
-      0.0,
-      (sum, shift) => sum + _salaryOnlyAmount(shift),
-    );
+    Widget _buildSelectedDaySection() {
+    final dayResult = _buildDailyShiftResultForDate(selectedDay);
+    final dayComputations = dayResult.computations;
+    final selectedDayTotal = dayResult.totalAmount;
+    final selectedDayRfiBasket = dayResult.rfiBasketAmount;
 
     return Container(
       width: double.infinity,
@@ -2247,24 +2365,45 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
             ),
           ),
           const SizedBox(height: 10),
-          Row(
+          Column(
             children: [
-              Expanded(
-                child: _statTile(
-                  label: 'Turni del giorno',
-                  value: selectedDayShifts.length.toString(),
-                  icon: Icons.list_alt_rounded,
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: _statTile(
+                      label: 'Turni del giorno',
+                      value: selectedDayShifts.length.toString(),
+                      icon: Icons.list_alt_rounded,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _statTile(
+                      label: 'Totale giorno',
+                      value: _formatCurrency(selectedDayTotal),
+                      valueColor: DutyPayPalette.primary,
+                      icon: Icons.euro_rounded,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _statTile(
-                  label: 'Totale giorno',
-                  value: _formatCurrency(selectedDayTotal),
-                  valueColor: DutyPayPalette.primary,
-                  icon: Icons.euro_rounded,
+              if (widget.activeDepartment == Department.polfer) ...[
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _statTile(
+                        label: 'Basket RFI giorno',
+                        value: _formatCurrency(selectedDayRfiBasket),
+                        valueColor: DutyPayPalette.info,
+                        icon: Icons.account_balance_wallet_outlined,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    const Expanded(child: SizedBox()),
+                  ],
                 ),
-              ),
+              ],
             ],
           ),
           const SizedBox(height: 16),
@@ -2277,9 +2416,11 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(color: DutyPayPalette.cardBorder),
               ),
-              child: const Text(
-                'Nessun turno per questo giorno.',
-                style: TextStyle(
+              child: Text(
+                searchQuery.trim().isEmpty
+                    ? 'Nessun turno per questo giorno.'
+                    : 'Nessun turno trovato per questa ricerca nel giorno selezionato.',
+                style: const TextStyle(
                   color: DutyPayPalette.textSecondary,
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -2287,9 +2428,12 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
               ),
             )
           else
-            ...selectedDayShifts.asMap().entries.map(
-                  (entry) => _buildShiftCard(entry.value, entry.key),
-                ),
+            ...selectedDayShifts.map(
+              (shift) => _buildShiftCard(
+                shift,
+                computation: dayComputations[shift],
+              ),
+            ),
         ],
       ),
     );
@@ -2315,6 +2459,122 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
           child: ListView(
             children: [
               _buildTurnsHeader(),
+              const SizedBox(height: 18),
+              TextField(
+                onChanged: (value) {
+                  setState(() {
+                    searchQuery = value;
+                  });
+                },
+                decoration: InputDecoration(
+                  hintText: 'Cerca servizio, OP, assenza o note',
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  suffixIcon: searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.close_rounded),
+                          onPressed: () {
+                            setState(() {
+                              searchQuery = '';
+                            });
+                          },
+                        )
+                      : null,
+                ),
+              ),
+              if (searchQuery.trim().isNotEmpty) ...[
+  const SizedBox(height: 14),
+  Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: DutyPayPalette.card,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: DutyPayPalette.cardBorder),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Risultati ricerca ${DateTime.now().year}',
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (yearlySearchResults.isEmpty)
+          const Text(
+            'Nessun risultato trovato nell’anno in corso.',
+            style: TextStyle(
+              color: DutyPayPalette.textSecondary,
+              fontSize: 13.5,
+              fontWeight: FontWeight.w600,
+            ),
+          )
+        else
+          ...yearlySearchResults.map(
+            (shift) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: InkWell(
+                onTap: () {
+                  setState(() {
+                    selectedMonth = DateTime(
+                      shift.serviceDate.year,
+                      shift.serviceDate.month,
+                    );
+                    selectedDay = _normalizeDate(shift.serviceDate);
+                  });
+                },
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: DutyPayPalette.surface,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: DutyPayPalette.cardBorder),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              shift.description.isEmpty
+                                  ? 'Turno senza descrizione'
+                                  : shift.description,
+                              style: const TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _formatShiftDate(shift),
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                color: DutyPayPalette.textSecondary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      const Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        size: 14,
+                        color: DutyPayPalette.textSecondary,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    ),
+  ),
+],
               const SizedBox(height: 18),
               _buildCalendarHeader(),
               const SizedBox(height: 12),

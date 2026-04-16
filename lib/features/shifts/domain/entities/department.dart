@@ -1,0 +1,4 @@
+enum Department {
+  repartoMobile,
+  polfer,
+}

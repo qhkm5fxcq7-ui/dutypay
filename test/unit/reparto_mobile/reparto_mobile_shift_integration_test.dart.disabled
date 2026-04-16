@@ -1,0 +1,57 @@
+import 'package:flutter_test/flutter_test.dart';
+
+import '../../../lib/domain/usecases/build_shift_computation_usecase.dart';
+import '../../../lib/presentation/models/department.dart';
+import '../../../lib/presentation/models/shift.dart';
+import '../../../lib/presentation/models/user_pay_profile.dart';
+
+void main() {
+  group('Reparto Mobile integration', () {
+    const useCase = BuildShiftComputationUseCase();
+    final profile = UserPayProfile.defaultProfile();
+
+    test('aggiunge Ordine Pubblico Fuori sede nel breakdown finale', () {
+      final shift = Shift(
+        start: DateTime(2026, 4, 10, 15, 0),
+        end: DateTime(2026, 4, 11, 2, 0),
+        orderPublic: 'Fuori sede',
+        absence: 'Nessuna',
+      );
+
+      final result = useCase.execute(
+        shift: shift,
+        profile: profile,
+        department: Department.repartoMobile,
+      );
+
+      final labels = result.breakdown
+          .map((e) => e['label'] as String? ?? '')
+          .toList();
+
+      expect(
+        labels.any((label) => label.contains('Ordine pubblico Fuori sede')),
+        isTrue,
+      );
+      expect(result.totalAmount, greaterThan(0));
+    });
+
+    test('assenza restituisce totale zero e breakdown vuoto', () {
+      final shift = Shift(
+        start: DateTime(2026, 4, 1, 6, 55),
+        end: DateTime(2026, 4, 1, 13, 8),
+        absence: 'C.O.',
+      );
+
+      final result = useCase.execute(
+        shift: shift,
+        profile: profile,
+        department: Department.repartoMobile,
+      );
+
+      expect(result.overtimeHours, 0.0);
+      expect(result.totalAmount, 0.0);
+      expect(result.extraAmount, 0.0);
+      expect(result.breakdown, isEmpty);
+    });
+  });
+}

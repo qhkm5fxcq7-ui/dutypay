@@ -3,6 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../shifts/presentation/services/payslip_projection_service.dart';
+import '../../shifts/domain/engine/models/rfi_basket_open_entry.dart';
+import '../../shifts/domain/engine/models/rfi_basket_paid_entry.dart';
+import '../../shifts/domain/engine/models/basket_carry_entry.dart';
+import '../../shifts/domain/engine/models/precision_status.dart';
+import '../../shifts/domain/engine/models/payslip_projection_result.dart';
+import '../../shifts/domain/engine/models/basket_payment.dart';
+import '../../shifts/domain/engine/models/rfi_basket_payment.dart';
 
 class PayslipPage extends StatefulWidget {
   const PayslipPage({
@@ -36,10 +43,10 @@ class PayslipPage extends StatefulWidget {
   )? onAddBasketPayment;
 
   final FutureOr<void> Function(
-    DateTime paymentMonth,
-    double hoursPaid,
-    String note,
-  )? onAddRfiBasketPayment;
+  DateTime sourceMonth,
+  DateTime paymentMonth,
+  String note,
+)? onAddRfiBasketPayment;
 
   @override
   State<PayslipPage> createState() => _PayslipPageState();
@@ -209,12 +216,12 @@ class _PayslipPageState extends State<PayslipPage> {
                 value: _currency(baseNet),
               ),
               _SummaryRowData(
-                label: 'Accessorie PdS stimate',
+                label: 'Accessorie stimate',
                 value: _currency(netAccessories),
                 tone: _RowTone.positive,
               ),
             ],
-            footerLabel: 'Totale stimato mese',
+            footerLabel: 'Netto previsto',
             footerValue: _currency(estimatedNet),
           ),
           const SizedBox(height: 16),
@@ -229,304 +236,301 @@ class _PayslipPageState extends State<PayslipPage> {
             paidThisMonthHours: basketPaidThisMonthHours,
             paidThisMonthGross: basketPaidThisMonthGross,
             onAddPayment: widget.onAddBasketPayment == null
-                ? null
-                : () => _openBasketDialog(
-                      residualHours: basketHours,
-                      month: _pageMonth,
-                    ),
+    ? null
+    : () => _openBasketDialog(
+          residualHours: basketHours,
+          month: _pageMonth,
+        ),
           ),
           const SizedBox(height: 16),
-          _BasketCard(
-            title: 'Basket RFI',
-            subtitle:
-                'Scalo ferroviario separato dalle accessorie Polizia di Stato.',
-            residualHours: rfiResidualHours,
-            residualGross: rfiResidualGross,
-            recoveredHours: rfiBasketHours,
-            recoveredGross: rfiBasketGross,
-            paidThisMonthHours: rfiPaidThisMonthHours,
-            paidThisMonthGross: rfiPaidThisMonthGross,
-            onAddPayment: widget.onAddRfiBasketPayment == null
-                ? null
-                : () => _openRfiBasketDialog(
-                      residualHours: rfiResidualHours,
-                      month: _pageMonth,
-                    ),
+          _RfiBasketCard(
+  title: 'Basket RFI',
+  subtitle:
+      'Scalo ferroviario separato dalle accessorie Polizia di Stato.',
+  residualGross: rfiResidualGross,
+  maturedGross: rfiBasketGross,
+  paidThisMonthGross: rfiPaidThisMonthGross,
+  onAddPayment: widget.onAddRfiBasketPayment == null ||
+          projection.openRfiBasketEntries.isEmpty
+      ? null
+      : () => _openSelectRfiSourceMonthDialog(
+            projection.openRfiBasketEntries,
           ),
-          const SizedBox(height: 16),
-          _PremiumCard(
-            padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _SectionHeader(
-                  title: 'Da dove arriva questa stima',
-                  subtitle:
-                      'Numeri ordinati e leggibili, senza tecnicismi inutili.',
-                  trailing: IconButton(
-                    onPressed: () {
-                      setState(() {
-                        _detailsExpanded = !_detailsExpanded;
-                      });
-                    },
-                    icon: Icon(
-                      _detailsExpanded
-                          ? Icons.keyboard_arrow_up_rounded
-                          : Icons.keyboard_arrow_down_rounded,
-                      color: _DutyPayColors.textSecondary,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                _BreakdownLine(
-                  label: 'Base netta',
-                  value: _currency(baseNet),
-                ),
-                const SizedBox(height: 10),
-                _BreakdownLine(
-                  label: 'Accessorie nette stimate',
-                  value: _currency(netAccessories),
-                  valueColor: _DutyPayColors.info,
-                ),
-                const SizedBox(height: 10),
-                _BreakdownLine(
-                  label: 'Trattenute ricorrenti',
-                  value: '- ${_currency(recurringDeductions)}',
-                  valueColor: _DutyPayColors.danger,
-                ),
-                const SizedBox(height: 14),
-                const Divider(height: 1, color: _DutyPayColors.divider),
-                const SizedBox(height: 14),
-                _BreakdownLine(
-                  label: 'Totale finale stimato',
-                  value: _currency(estimatedNet),
-                  isLarge: true,
-                  valueColor: Colors.white,
-                ),
-                AnimatedCrossFade(
-                  duration: const Duration(milliseconds: 220),
-                  firstChild: const SizedBox.shrink(),
-                  secondChild: Padding(
-                    padding: const EdgeInsets.only(top: 16),
-                    child: Column(
-                      children: [
-                        const Divider(
-                          height: 1,
-                          color: _DutyPayColors.divider,
-                        ),
-                        const SizedBox(height: 16),
-                        _BreakdownLine(
-                          label: 'Extra lordi inseriti',
-                          value: _currency(extraGross),
-                        ),
-                        const SizedBox(height: 10),
-                        _BreakdownLine(
-                          label: 'Tasse stimate sugli extra',
-                          value: '- ${_currency(extraTaxes)}',
-                          valueColor: _DutyPayColors.warning,
-                        ),
-                        const SizedBox(height: 10),
-                        _BreakdownLine(
-                          label: 'Extra netti',
-                          value: _currency(extraNetBuilt),
-                          valueColor: _DutyPayColors.positive,
-                        ),
-                        const SizedBox(height: 10),
-                        _BreakdownLine(
-                          label: 'Differenza rispetto al cedolino stimato',
-                          value: _signedCurrency(difference),
-                          valueColor: difference >= 0
-                              ? _DutyPayColors.positive
-                              : _DutyPayColors.danger,
-                        ),
-                      ],
-                    ),
-                  ),
-                  crossFadeState: _detailsExpanded
-                      ? CrossFadeState.showSecond
-                      : CrossFadeState.showFirst,
-                ),
-              ],
-            ),
+),
+const SizedBox(height: 16),
+_PremiumCard(
+  padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      _SectionHeader(
+        title: 'Da dove arriva questa stima',
+        subtitle:
+            'Numeri ordinati e leggibili, senza tecnicismi inutili.',
+        trailing: IconButton(
+          onPressed: () {
+            setState(() {
+              _detailsExpanded = !_detailsExpanded;
+            });
+          },
+          icon: Icon(
+            _detailsExpanded
+                ? Icons.keyboard_arrow_up_rounded
+                : Icons.keyboard_arrow_down_rounded,
+            color: _DutyPayColors.textSecondary,
           ),
-          const SizedBox(height: 16),
-          _PremiumCard(
-            padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _SectionHeader(
-                  title: 'Accessorie e ritardo di pagamento',
-                  subtitle:
-                      'Ti mostriamo il mese giusto su cui stai realmente maturando.',
-                  trailing: IconButton(
-                    onPressed: () {
-                      setState(() {
-                        _infoExpanded = !_infoExpanded;
-                      });
-                    },
-                    icon: Icon(
-                      _infoExpanded
-                          ? Icons.keyboard_arrow_up_rounded
-                          : Icons.keyboard_arrow_down_rounded,
-                      color: _DutyPayColors.textSecondary,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                _InfoPill(
-                  icon: Icons.schedule_rounded,
-                  label: 'Mese accessorie considerato',
-                  value: _monthYearLabel(accessoriesReferenceMonth),
-                ),
-                const SizedBox(height: 10),
-                _InfoPill(
-                  icon: Icons.analytics_outlined,
-                  label: 'Metodo usato',
-                  value: usingHistoricalAverage
-                      ? 'Media storica'
-                      : 'Mese di riferimento',
-                ),
-                const SizedBox(height: 10),
-                _InfoPill(
-                  icon: Icons.account_balance_wallet_outlined,
-                  label: 'Accessorie nette stimate',
-                  value: _currency(netAccessories),
-                ),
-                const SizedBox(height: 14),
-                InkWell(
-                  onTap: () {
-                    setState(() {
-                      _advancedAccessoriesExpanded =
-                          !_advancedAccessoriesExpanded;
-                    });
-                  },
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 13,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _DutyPayColors.surface,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: _DutyPayColors.cardBorder),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.tune_rounded,
-                          size: 18,
-                          color: _DutyPayColors.info,
-                        ),
-                        const SizedBox(width: 10),
-                        const Expanded(
-                          child: Text(
-                            'Dettagli avanzati',
-                            style: TextStyle(
-                              color: _DutyPayColors.textPrimary,
-                              fontSize: 13.8,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        Icon(
-                          _advancedAccessoriesExpanded
-                              ? Icons.keyboard_arrow_up_rounded
-                              : Icons.keyboard_arrow_down_rounded,
-                          color: _DutyPayColors.textSecondary,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                AnimatedCrossFade(
-                  duration: const Duration(milliseconds: 220),
-                  firstChild: const SizedBox.shrink(),
-                  secondChild: Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: Column(
-                      children: [
-                        _InfoPill(
-                          icon: Icons.calendar_view_month_rounded,
-                          label: 'Turni nel mese di riferimento',
-                          value: '$referenceShiftCount',
-                        ),
-                        const SizedBox(height: 10),
-                        _InfoPill(
-                          icon: Icons.payments_outlined,
-                          label: 'Accessorie lorde liquidate',
-                          value: _currency(accessoriesGrossLiquidated),
-                        ),
-                        const SizedBox(height: 10),
-                        _InfoPill(
-                          icon: Icons.calculate_outlined,
-                          label: 'Accessorie lorde usate',
-                          value: _currency(accessoriesGrossUsed),
-                        ),
-                        const SizedBox(height: 10),
-                        _InfoPill(
-                          icon: Icons.layers_outlined,
-                          label: 'Accessorie NON straordinario',
-                          value: _currency(projection.nonOvertimeGross),
-                        ),
-                        const SizedBox(height: 10),
-                        _InfoPill(
-                          icon: Icons.flash_on_outlined,
-                          label: 'Straordinari lordi',
-                          value: _currency(
-                            projection.overtimeGrossFromReferenceMonth,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        _InfoPill(
-                          icon: Icons.train_outlined,
-                          label: 'Basket RFI',
-                          value: _currency(rfiBasketGross),
-                        ),
-                      ],
-                    ),
-                  ),
-                  crossFadeState: _advancedAccessoriesExpanded
-                      ? CrossFadeState.showSecond
-                      : CrossFadeState.showFirst,
-                ),
-                AnimatedCrossFade(
-                  duration: const Duration(milliseconds: 220),
-                  firstChild: const SizedBox.shrink(),
-                  secondChild: Padding(
-                    padding: const EdgeInsets.only(top: 14),
-                    child: Text(
-                      historicalReferenceText,
-                      style: const TextStyle(
-                        color: _DutyPayColors.textSecondary,
-                        fontSize: 13.5,
-                        height: 1.45,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  crossFadeState: _infoExpanded
-                      ? CrossFadeState.showSecond
-                      : CrossFadeState.showFirst,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          if (precision != null)
-            _PrecisionCard(
-              precision: precision,
-            ),
-          const SizedBox(height: 18),
-          _MinimalActionRow(
-            onOpenCalibration: widget.onOpenCalibration,
-          ),
-        ],
+        ),
       ),
-    );
-  }
+      const SizedBox(height: 14),
+      _BreakdownLine(
+        label: 'Base netta',
+        value: _currency(baseNet),
+      ),
+      const SizedBox(height: 10),
+      _BreakdownLine(
+        label: 'Accessorie stimate',
+        value: _currency(netAccessories),
+        valueColor: _DutyPayColors.info,
+      ),
+      const SizedBox(height: 10),
+      _BreakdownLine(
+        label: 'Trattenute ricorrenti',
+        value: '- ${_currency(recurringDeductions)}',
+        valueColor: _DutyPayColors.danger,
+      ),
+      const SizedBox(height: 14),
+      const Divider(height: 1, color: _DutyPayColors.divider),
+      const SizedBox(height: 14),
+      _BreakdownLine(
+        label: 'Totale finale stimato',
+        value: _currency(estimatedNet),
+        isLarge: true,
+        valueColor: Colors.white,
+      ),
+      AnimatedCrossFade(
+        duration: const Duration(milliseconds: 220),
+        firstChild: const SizedBox.shrink(),
+        secondChild: Padding(
+          padding: const EdgeInsets.only(top: 16),
+          child: Column(
+            children: [
+              const Divider(
+                height: 1,
+                color: _DutyPayColors.divider,
+              ),
+              const SizedBox(height: 16),
+              _BreakdownLine(
+                label: 'Extra lordi inseriti',
+                value: _currency(extraGross),
+              ),
+              const SizedBox(height: 10),
+              _BreakdownLine(
+                label: 'Tasse stimate sugli extra',
+                value: '- ${_currency(extraTaxes)}',
+                valueColor: _DutyPayColors.warning,
+              ),
+              const SizedBox(height: 10),
+              _BreakdownLine(
+                label: 'Extra netti',
+                value: _currency(extraNetBuilt),
+                valueColor: _DutyPayColors.positive,
+              ),
+              const SizedBox(height: 10),
+              _BreakdownLine(
+                label: 'Differenza rispetto al cedolino stimato',
+                value: _signedCurrency(difference),
+                valueColor: difference >= 0
+                    ? _DutyPayColors.positive
+                    : _DutyPayColors.danger,
+              ),
+            ],
+          ),
+        ),
+        crossFadeState: _detailsExpanded
+            ? CrossFadeState.showSecond
+            : CrossFadeState.showFirst,
+      ),
+    ],
+  ),
+),
+const SizedBox(height: 16),
+_PremiumCard(
+  padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      _SectionHeader(
+        title: 'Accessorie e ritardo di pagamento',
+        subtitle:
+            'Ti mostriamo il mese giusto su cui stai realmente maturando.',
+        trailing: IconButton(
+          onPressed: () {
+            setState(() {
+              _infoExpanded = !_infoExpanded;
+            });
+          },
+          icon: Icon(
+            _infoExpanded
+                ? Icons.keyboard_arrow_up_rounded
+                : Icons.keyboard_arrow_down_rounded,
+            color: _DutyPayColors.textSecondary,
+          ),
+        ),
+      ),
+      const SizedBox(height: 14),
+      _InfoPill(
+        icon: Icons.schedule_rounded,
+        label: 'Mese accessorie considerato',
+        value: _monthYearLabel(accessoriesReferenceMonth),
+      ),
+      const SizedBox(height: 10),
+      _InfoPill(
+        icon: Icons.analytics_outlined,
+        label: 'Metodo usato',
+        value: usingHistoricalAverage
+            ? 'Media storica'
+            : 'Mese di riferimento',
+      ),
+      const SizedBox(height: 10),
+      _InfoPill(
+        icon: Icons.account_balance_wallet_outlined,
+        label: 'Accessorie stimate',
+        value: _currency(netAccessories),
+      ),
+      const SizedBox(height: 14),
+      InkWell(
+        onTap: () {
+          setState(() {
+            _advancedAccessoriesExpanded =
+                !_advancedAccessoriesExpanded;
+          });
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 13,
+          ),
+          decoration: BoxDecoration(
+            color: _DutyPayColors.surface,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: _DutyPayColors.cardBorder),
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.tune_rounded,
+                size: 18,
+                color: _DutyPayColors.info,
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Dettagli avanzati',
+                  style: TextStyle(
+                    color: _DutyPayColors.textPrimary,
+                    fontSize: 13.8,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Icon(
+                _advancedAccessoriesExpanded
+                    ? Icons.keyboard_arrow_up_rounded
+                    : Icons.keyboard_arrow_down_rounded,
+                color: _DutyPayColors.textSecondary,
+              ),
+            ],
+          ),
+        ),
+      ),
+      AnimatedCrossFade(
+        duration: const Duration(milliseconds: 220),
+        firstChild: const SizedBox.shrink(),
+        secondChild: Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: Column(
+            children: [
+              _InfoPill(
+                icon: Icons.calendar_view_month_rounded,
+                label: 'Turni nel mese di riferimento',
+                value: '$referenceShiftCount',
+              ),
+              const SizedBox(height: 10),
+              _InfoPill(
+                icon: Icons.payments_outlined,
+                label: 'Accessorie lorde liquidate',
+                value: _currency(accessoriesGrossLiquidated),
+              ),
+              const SizedBox(height: 10),
+              _InfoPill(
+                icon: Icons.calculate_outlined,
+                label: 'Accessorie lorde usate',
+                value: _currency(accessoriesGrossUsed),
+              ),
+              const SizedBox(height: 10),
+              _InfoPill(
+                icon: Icons.layers_outlined,
+                label: 'Accessorie NON straordinario',
+                value: _currency(projection.nonOvertimeGross),
+              ),
+              const SizedBox(height: 10),
+              _InfoPill(
+                icon: Icons.flash_on_outlined,
+                label: 'Straordinari lordi',
+                value: _currency(
+                  projection.overtimeGrossFromReferenceMonth,
+                ),
+              ),
+              const SizedBox(height: 10),
+              _InfoPill(
+                icon: Icons.train_outlined,
+                label: 'Basket RFI',
+                value: _currency(rfiBasketGross),
+              ),
+            ],
+          ),
+        ),
+        crossFadeState: _advancedAccessoriesExpanded
+            ? CrossFadeState.showSecond
+            : CrossFadeState.showFirst,
+      ),
+      AnimatedCrossFade(
+        duration: const Duration(milliseconds: 220),
+        firstChild: const SizedBox.shrink(),
+        secondChild: Padding(
+          padding: const EdgeInsets.only(top: 14),
+          child: Text(
+            historicalReferenceText,
+            style: const TextStyle(
+              color: _DutyPayColors.textSecondary,
+              fontSize: 13.5,
+              height: 1.45,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        crossFadeState: _infoExpanded
+            ? CrossFadeState.showSecond
+            : CrossFadeState.showFirst,
+      ),
+    ],
+  ),
+),
+const SizedBox(height: 16),
+if (precision != null)
+  _PrecisionCard(
+    precision: precision,
+  ),
+const SizedBox(height: 18),
+_MinimalActionRow(
+  onOpenCalibration: widget.onOpenCalibration,
+),
+      ],
+    ),
+  );
+}
 
   Future<void> _openBasketDialog({
     required double residualHours,
@@ -540,19 +544,374 @@ class _PayslipPageState extends State<PayslipPage> {
       successMessage: 'Pagamento basket registrato correttamente.',
     );
   }
+  Future<void> _openSelectRfiSourceMonthDialog(
+  List<RfiBasketOpenEntry> entries,
+) async {
+  await showDialog<void>(
+    context: context,
+    barrierColor: Colors.black.withOpacity(0.72),
+    builder: (dialogContext) {
+      return Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(
+          horizontal: 18,
+          vertical: 24,
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            color: _DutyPayColors.card,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(
+              color: _DutyPayColors.cardBorder,
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.28),
+                blurRadius: 30,
+                offset: const Offset(0, 16),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Seleziona mese RFI da liquidare',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 19,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.2,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Qui scegli il mese sorgente che è stato effettivamente pagato.',
+                style: TextStyle(
+                  color: _DutyPayColors.textSecondary,
+                  fontSize: 13.5,
+                  height: 1.4,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 18),
+              ...entries.map(
+                (entry) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: InkWell(
+                    onTap: () async {
+                      Navigator.of(dialogContext).pop();
+                      await _openRfiMonthPaymentDialog(
+                        title: 'Registra pagamento basket RFI',
+                        sourceMonth: entry.sourceMonth,
+                        onSubmit: widget.onAddRfiBasketPayment,
+                        successMessage:
+                            'Pagamento basket RFI registrato correttamente.',
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(18),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 15,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _DutyPayColors.surface,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: _DutyPayColors.cardBorder,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.calendar_month_rounded,
+                            color: _DutyPayColors.info,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _monthYearLabel(entry.sourceMonth),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14.2,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            _currency(entry.grossAmount),
+                            style: const TextStyle(
+                              color: _DutyPayColors.warning,
+                              fontSize: 13.8,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: _GhostButton(
+                  label: 'Chiudi',
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+  Future<void> _openRfiMonthPaymentDialog({
+  required String title,
+  required DateTime sourceMonth,
+  required FutureOr<void> Function(
+    DateTime sourceMonth,
+    DateTime paymentMonth,
+    String note,
+  )? onSubmit,
+  required String successMessage,
+}) async {
+  final noteController = TextEditingController();
 
-  Future<void> _openRfiBasketDialog({
-    required double residualHours,
-    required DateTime month,
-  }) async {
-    await _openHoursPaymentDialog(
-      title: 'Registra pagamento basket RFI',
-      residualHours: residualHours,
-      month: month,
-      onSubmit: widget.onAddRfiBasketPayment,
-      successMessage: 'Pagamento basket RFI registrato correttamente.',
-    );
-  }
+  DateTime selectedPaymentMonth = DateTime(
+    _pageMonth.year,
+    _pageMonth.month,
+  );
+
+  String? errorText;
+  bool saving = false;
+
+  await showDialog<void>(
+    context: context,
+    barrierColor: Colors.black.withOpacity(0.72),
+    builder: (dialogContext) {
+      return StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          Future<void> submit() async {
+            if (onSubmit == null) return;
+
+            setDialogState(() {
+              saving = true;
+              errorText = null;
+            });
+
+            try {
+              await onSubmit(
+                DateTime(sourceMonth.year, sourceMonth.month),
+                DateTime(
+                  selectedPaymentMonth.year,
+                  selectedPaymentMonth.month,
+                ),
+                noteController.text.trim(),
+              );
+
+              if (mounted) {
+                Navigator.of(dialogContext).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(successMessage)),
+                );
+              }
+            } catch (_) {
+              setDialogState(() {
+                saving = false;
+                errorText = 'Impossibile salvare il pagamento.';
+              });
+            }
+          }
+
+          Future<void> pickPaymentMonth() async {
+            final picked = await showDatePicker(
+              context: dialogContext,
+              initialDate: selectedPaymentMonth,
+              firstDate: DateTime(sourceMonth.year, sourceMonth.month),
+              lastDate: DateTime(sourceMonth.year + 5, 12),
+              initialDatePickerMode: DatePickerMode.year,
+              builder: (context, child) {
+                return Theme(
+                  data: Theme.of(context).copyWith(
+                    colorScheme: const ColorScheme.dark(
+                      primary: _DutyPayColors.primary,
+                      secondary: _DutyPayColors.info,
+                      surface: _DutyPayColors.card,
+                    ),
+                    dialogTheme: DialogThemeData(
+                      backgroundColor: _DutyPayColors.card,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                    ),
+                  ),
+                  child: child!,
+                );
+              },
+            );
+
+            if (picked == null) return;
+
+            setDialogState(() {
+              selectedPaymentMonth = DateTime(picked.year, picked.month);
+            });
+          }
+
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(
+              horizontal: 18,
+              vertical: 24,
+            ),
+            child: Container(
+              decoration: BoxDecoration(
+                color: _DutyPayColors.card,
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(
+                  color: _DutyPayColors.cardBorder,
+                  width: 1.2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.28),
+                    blurRadius: 30,
+                    offset: const Offset(0, 16),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 19,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Mese sorgente: ${_monthYearLabel(sourceMonth)}',
+                    style: const TextStyle(
+                      color: _DutyPayColors.textSecondary,
+                      fontSize: 13.5,
+                      height: 1.4,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  InkWell(
+                    onTap: saving ? null : pickPaymentMonth,
+                    borderRadius: BorderRadius.circular(18),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _DutyPayColors.surface,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: _DutyPayColors.cardBorder,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.calendar_month_rounded,
+                            color: _DutyPayColors.info,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Mese di pagamento: ${_monthYearLabel(selectedPaymentMonth)}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14.2,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _DialogTextField(
+                    controller: noteController,
+                    label: 'Nota (facoltativa)',
+                    hintText: 'Es. saldo mese precedente',
+                    maxLines: 2,
+                  ),
+                  if (errorText != null) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _DutyPayColors.danger.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: _DutyPayColors.danger.withOpacity(0.28),
+                        ),
+                      ),
+                      child: Text(
+                        errorText!,
+                        style: const TextStyle(
+                          color: _DutyPayColors.danger,
+                          fontSize: 13.2,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _GhostButton(
+                          label: 'Annulla',
+                          onPressed: saving
+                              ? null
+                              : () => Navigator.of(dialogContext).pop(),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _PrimaryButton(
+                          label: saving ? 'Salvataggio...' : 'Conferma',
+                          icon: Icons.check_rounded,
+                          onPressed: saving ? null : submit,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    },
+  );
+}
+
 
   Future<void> _openHoursPaymentDialog({
     required String title,
@@ -914,24 +1273,26 @@ class _PayslipPageState extends State<PayslipPage> {
   }
 
   double _readRfiBasketGross(PayslipProjectionResult projection) {
-    final dynamic p = projection;
-    return _readFirstDouble(
-      [
-        () => p.rfiBasketGrossFromReferenceMonth,
-      ],
-      fallback: 0,
-    );
-  }
+  final dynamic p = projection;
+  return _readFirstDouble(
+    [
+      () => p.rfiMaturedGrossForMonth,
+      () => p.rfiBasketGrossFromReferenceMonth,
+    ],
+    fallback: 0,
+  );
+}
 
   double _readRfiBasketHours(PayslipProjectionResult projection) {
-    final dynamic p = projection;
-    return _readFirstDouble(
-      [
-        () => p.rfiBasketHoursFromReferenceMonth,
-      ],
-      fallback: 0,
-    );
-  }
+  final dynamic p = projection;
+  return _readFirstDouble(
+    [
+      () => p.rfiMaturedHoursForMonth,
+      () => p.rfiBasketHoursFromReferenceMonth,
+    ],
+    fallback: 0,
+  );
+}
 
   double _readRfiBasketResidualHours(PayslipProjectionResult projection) {
     final dynamic p = projection;
@@ -1254,7 +1615,7 @@ class _HeroNetCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Stima cedolino',
+            'Netto previsto',
             style: TextStyle(
               color: _DutyPayColors.textSecondary,
               fontSize: 14,
@@ -1262,7 +1623,7 @@ class _HeroNetCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 18),
-          Container(
+                    Container(
             padding: const EdgeInsets.symmetric(
               horizontal: 12,
               vertical: 10,
@@ -1284,7 +1645,7 @@ class _HeroNetCard extends StatelessWidget {
                 SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Numero principale in evidenza, dettagli ordinati sotto.',
+                    'Il netto previsto deriva da una proiezione fiscale basata sui cedolini caricati.',
                     style: TextStyle(
                       color: _DutyPayColors.textSecondary,
                       fontSize: 12.8,
@@ -1573,6 +1934,156 @@ class _BasketCard extends StatelessWidget {
             label: hasResidual
                 ? 'Registra pagamento basket'
                 : 'Nessuna ora disponibile',
+            icon: hasResidual
+                ? Icons.add_task_rounded
+                : Icons.lock_outline_rounded,
+            onPressed: hasResidual ? onAddPayment : null,
+          ),
+        ],
+      ),
+    );
+  }
+}
+class _RfiBasketCard extends StatelessWidget {
+  const _RfiBasketCard({
+    required this.title,
+    required this.subtitle,
+    required this.residualGross,
+    required this.maturedGross,
+    required this.paidThisMonthGross,
+    required this.onAddPayment,
+  });
+
+  final String title;
+  final String subtitle;
+  final double residualGross;
+  final double maturedGross;
+  final double paidThisMonthGross;
+  final VoidCallback? onAddPayment;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool hasResidual = residualGross > 0;
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: hasResidual
+              ? const [
+                  Color(0xFF1B1A14),
+                  Color(0xFF12110E),
+                ]
+              : const [
+                  Color(0xFF15181E),
+                  Color(0xFF101318),
+                ],
+        ),
+        border: Border.all(
+          color: hasResidual
+              ? const Color(0xFF4A3B15)
+              : const Color(0xFF273142),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.22),
+            blurRadius: 22,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: hasResidual
+                      ? const Color(0x1AF59E0B)
+                      : const Color(0x143B82F6),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  Icons.inventory_2_outlined,
+                  color: hasResidual
+                      ? _DutyPayColors.warning
+                      : _DutyPayColors.info,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        color: _DutyPayColors.textSecondary,
+                        fontSize: 13.2,
+                        height: 1.35,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: _MetricBlock(
+                  label: 'Totale generato',
+                  value: _PayslipPageState._currency(maturedGross),
+                  tone: _MetricTone.positive,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _MetricBlock(
+                  label: 'Disponibile da pagare',
+                  value: _PayslipPageState._currency(residualGross),
+                  tone: hasResidual ? _MetricTone.warning : _MetricTone.neutral,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _MetricBlock(
+                  label: 'Pagamenti registrati nel mese',
+                  value: _PayslipPageState._currency(paidThisMonthGross),
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(child: SizedBox()),
+            ],
+          ),
+          const SizedBox(height: 18),
+          _PrimaryButton(
+            label: hasResidual
+                ? 'Registra pagamento basket'
+                : 'Nessun importo disponibile',
             icon: hasResidual
                 ? Icons.add_task_rounded
                 : Icons.lock_outline_rounded,
@@ -2376,7 +2887,7 @@ class _CedolinoDisclaimerCard extends StatelessWidget {
                 ),
                 SizedBox(height: 6),
                 Text(
-                  'Questa schermata mostra una proiezione del cedolino mensile costruita sui turni inseriti e sui cedolini caricati. Le cifre mostrate sono stime operative basate sui dati disponibili e diventano più affidabili dopo la calibrazione. La pagina aiuta a pianificare il mese, ma non sostituisce il cedolino ufficiale NoiPA.',
+                  'Questa schermata mostra una proiezione fiscale del cedolino mensile costruita sui turni inseriti e sui cedolini caricati. Le accessorie sono trattate come stime lorde, mentre il netto previsto viene calcolato a valle della proiezione fiscale. La pagina aiuta a pianificare il mese, ma non sostituisce il cedolino ufficiale NoiPA.',
                   style: TextStyle(
                     color: _DutyPayColors.textSecondary,
                     fontSize: 13.2,

@@ -3,6 +3,12 @@ import 'package:flutter/material.dart';
 import 'models/department.dart';
 import 'models/shift.dart';
 import 'models/user_pay_profile.dart';
+import '../domain/engine/policies/reparto_mobile_policy.dart';
+import '../domain/entities/shift.dart' as engine_shift;
+import '../domain/entities/user_pay_profile.dart' as engine_profile;
+import '../application/usecases/calculate_shift_usecase.dart';
+import '../application/usecases/build_shift_computation_usecase.dart';
+import '../application/usecases/build_daily_shift_result_usecase.dart';
 
 enum SpmnPreset {
   none,
@@ -80,6 +86,8 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
     SpmnPreset.aggiornamento,
   ];
 
+  static const double _genereDiConfortoCdgRate = 0.72;
+
   late final TextEditingController _descriptionController;
   late final TextEditingController _manualExtraAmountController;
   late final TextEditingController _manualExtraLabelController;
@@ -110,8 +118,11 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
 
   bool _isSaving = false;
 
+  bool _includeGenereDiConfortoCdg = false;
   bool _includeGenereDiConforto = false;
   bool _includeTicketPasto = false;
+  bool _includeCompensazione = false;
+  bool _includeReperibilita = false;
 
   late SpmnPreset _selectedSpmnPreset;
 
@@ -143,19 +154,40 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
     final baseServiceDate =
         widget.initialShift?.serviceDate ?? widget.initialDate ?? DateTime.now();
 
-    final baseStart = widget.initialShift?.start ?? baseServiceDate;
-    final baseEnd =
-        widget.initialShift?.end ?? baseStart.add(const Duration(hours: 6));
+    final normalizedBaseDate = _normalizeDate(baseServiceDate);
+
+    final baseStart = widget.initialShift?.start ??
+        DateTime(
+          normalizedBaseDate.year,
+          normalizedBaseDate.month,
+          normalizedBaseDate.day,
+          7,
+          0,
+        );
+
+    final baseEnd = widget.initialShift?.end ??
+        DateTime(
+          normalizedBaseDate.year,
+          normalizedBaseDate.month,
+          normalizedBaseDate.day,
+          13,
+          0,
+        );
 
     final initialShift = widget.initialShift;
     final initialManualLabel = initialShift?.manualExtraLabel ?? '';
     final initialManualAmount = initialShift?.manualExtraAmount ?? 0.0;
 
-    final hadGenere = _containsGenereDiConforto(initialManualLabel);
-    final hadTicket = _containsTicketPasto(initialManualLabel);
+    final hadGenereCdg = initialShift?.genereDiConfortoCdg == true ||
+        _containsGenereDiConfortoCdg(initialManualLabel);
+    final hadGenere = initialShift?.genereDiConforto == true ||
+        _containsGenereDiConforto(initialManualLabel);
+    final hadTicket = initialShift?.ticketPasto == true ||
+        _containsTicketPasto(initialManualLabel);
 
     final extractedAutoAmount =
-        (hadGenere ? _genereDiConfortoRate : 0.0) +
+        (hadGenereCdg ? _genereDiConfortoCdgRate : 0.0) +
+            (hadGenere ? _genereDiConfortoRate : 0.0) +
             (hadTicket ? _ticketPastoRate : 0.0);
 
     final cleanedManualAmount = (initialManualAmount - extractedAutoAmount) < 0
@@ -216,7 +248,8 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
       _selectedOrderPublic = 'Nessuno';
     }
 
-    _selectedAbsence = _initialAbsenceUiValue(initialShift?.absence ?? 'Nessuna');
+    _selectedAbsence =
+        _initialAbsenceUiValue(initialShift?.absence ?? 'Nessuna');
     _externalService = initialShift?.externalService ?? false;
 
     _polferTerritoryControlType =
@@ -226,8 +259,11 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
     _polferScaloManualOverride =
         initialShift?.polferScaloManualOverride ?? false;
 
+    _includeGenereDiConfortoCdg = hadGenereCdg;
     _includeGenereDiConforto = hadGenere;
     _includeTicketPasto = hadTicket;
+    _includeCompensazione = initialShift?.hasCompensazione ?? false;
+    _includeReperibilita = initialShift?.hasReperibilita ?? false;
 
     _showAdvanced = initialShift != null &&
         (cleanedManualAmount > 0 ||
@@ -370,7 +406,7 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
       case SpmnPreset.mattina:
         return 'Orario preset: 06:55 → 13:08';
       case SpmnPreset.notte:
-        return 'Orario preset: 23:55 → 06:08';
+        return 'Orario preset: 23:55 → 07:08';
       case SpmnPreset.smontante:
         return 'Giornata non operativa.';
       case SpmnPreset.riposo:
@@ -428,7 +464,7 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
           _descriptionController.text = 'Turno Notte';
           _realStartDate = _serviceDate;
           _startTime = const TimeOfDay(hour: 23, minute: 55);
-          _endTime = const TimeOfDay(hour: 6, minute: 8);
+          _endTime = const TimeOfDay(hour: 7, minute: 8);
           break;
 
         case SpmnPreset.smontante:
@@ -446,6 +482,7 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
             _endTime = const TimeOfDay(hour: 14, minute: 0);
             _externalService = false;
             _selectedOrderPublic = 'Nessuno';
+            _includeGenereDiConfortoCdg = false;
             _includeGenereDiConforto = false;
             _includeTicketPasto = false;
             _clearPolferFields();
@@ -464,6 +501,7 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
           _endTime = const TimeOfDay(hour: 14, minute: 0);
           _externalService = false;
           _selectedOrderPublic = 'Nessuno';
+          _includeGenereDiConfortoCdg = false;
           _includeGenereDiConforto = false;
           _includeTicketPasto = false;
           _clearPolferFields();
@@ -513,8 +551,14 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
     }
   }
 
+  bool _containsGenereDiConfortoCdg(String label) {
+    return label.toLowerCase().contains('genere di conforto cdg');
+  }
+
   bool _containsGenereDiConforto(String label) {
-    return label.toLowerCase().contains('genere di conforto');
+    final lower = label.toLowerCase();
+    return lower.contains('genere di conforto') &&
+        !lower.contains('genere di conforto cdg');
   }
 
   bool _containsTicketPasto(String label) {
@@ -530,6 +574,7 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
         .where((e) => e.isNotEmpty)
         .where(
           (e) =>
+              e.toLowerCase() != 'genere di conforto cdg' &&
               e.toLowerCase() != 'genere di conforto' &&
               e.toLowerCase() != 'ticket pasto',
         )
@@ -544,10 +589,6 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
 
   DateTime _normalizeDate(DateTime date) {
     return DateTime(date.year, date.month, date.day);
-  }
-
-  bool _isSameDay(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
   String _formatDate(DateTime date) {
@@ -648,6 +689,7 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
     _externalService = false;
     _manualExtraAmountController.text = '';
     _manualExtraLabelController.text = '';
+    _includeGenereDiConfortoCdg = false;
     _includeGenereDiConforto = false;
     _includeTicketPasto = false;
     _clearPolferFields();
@@ -661,7 +703,8 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
     _endTime = const TimeOfDay(hour: 0, minute: 0);
 
     if (!_absenceNeedsCustomDescription) {
-      _descriptionController.text = _defaultAbsenceDescription(_selectedAbsence);
+      _descriptionController.text =
+          _defaultAbsenceDescription(_selectedAbsence);
     }
   }
 
@@ -669,6 +712,10 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
     if (_hasAbsence) return 0.0;
 
     double total = 0.0;
+
+    if (_includeGenereDiConfortoCdg) {
+      total += _genereDiConfortoCdgRate;
+    }
 
     if (_includeGenereDiConforto) {
       total += _genereDiConfortoRate;
@@ -697,16 +744,27 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
 
       return Shift(
         description: description,
-        start: DateTime(_serviceDate.year, _serviceDate.month, _serviceDate.day),
-        end: DateTime(_serviceDate.year, _serviceDate.month, _serviceDate.day),
+        start: DateTime(
+          _serviceDate.year,
+          _serviceDate.month,
+          _serviceDate.day,
+        ),
+        end: DateTime(
+          _serviceDate.year,
+          _serviceDate.month,
+          _serviceDate.day,
+        ),
         serviceDate: _serviceDate,
         orderPublic: 'Nessuno',
         externalService: false,
         absence: _normalizedAbsenceForSave(_selectedAbsence),
         manualExtraAmount: 0,
         manualExtraLabel: '',
+        genereDiConfortoCdg: false,
         genereDiConforto: false,
         ticketPasto: false,
+        hasCompensazione: false,
+        hasReperibilita: false,
         note: _noteController.text.trim(),
         polferTerritoryControlType: PolferTerritoryControlType.none,
         polferScaloMode: PolferScaloMode.none,
@@ -715,9 +773,8 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
         polferScaloReducedNightHours: 0,
         polferScaloFullDayHours: 0,
         polferScaloFullNightHours: 0,
-        spmnPresetCode: _selectedSpmnPreset == SpmnPreset.none
-            ? ''
-            : _selectedSpmnPreset.name,
+        spmnPresetCode:
+            _selectedSpmnPreset == SpmnPreset.none ? '' : _selectedSpmnPreset.name,
       );
     }
 
@@ -738,12 +795,17 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
       absence: 'Nessuna',
       manualExtraAmount: manualAmount,
       manualExtraLabel: manualLabel,
+      genereDiConfortoCdg: _includeGenereDiConfortoCdg,
       genereDiConforto: _includeGenereDiConforto,
       ticketPasto: _includeTicketPasto,
+      hasCompensazione: _includeCompensazione,
+      hasReperibilita: _includeReperibilita,
       note: _noteController.text.trim(),
-      polferTerritoryControlType:
-          _isPolfer ? _polferTerritoryControlType : PolferTerritoryControlType.none,
-      polferScaloMode: _isPolfer ? _polferScaloMode : PolferScaloMode.none,
+      polferTerritoryControlType: _isPolfer
+          ? _polferTerritoryControlType
+          : PolferTerritoryControlType.none,
+      polferScaloMode:
+          _isPolfer ? _polferScaloMode : PolferScaloMode.none,
       polferScaloManualOverride:
           _isPolfer && _hasPolferScalo ? _polferScaloManualOverride : false,
       polferScaloReducedDayHours:
@@ -762,9 +824,8 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
           _isPolfer && _hasPolferScalo && _polferScaloManualOverride
               ? fullNight
               : 0.0,
-      spmnPresetCode: _selectedSpmnPreset == SpmnPreset.none
-          ? ''
-          : _selectedSpmnPreset.name,
+      spmnPresetCode:
+          _selectedSpmnPreset == SpmnPreset.none ? '' : _selectedSpmnPreset.name,
     );
   }
 
@@ -1174,6 +1235,35 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
       ),
     );
   }
+  Widget _buildInformativeRow(String label, String value) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 5),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: _QuickAddPalette.textSecondary,
+              fontSize: 13.4,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white70,
+            fontSize: 13.0,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _buildBreakdownRow(String label, double amount) {
     return Padding(
@@ -1319,7 +1409,48 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
                     ),
                   ),
                 ],
+                if (_selectedSpmnPreset == SpmnPreset.riposo &&
+                    !_isTuesdayUpdateCase) ...[
+                  const SizedBox(height: 10),
+                  _buildRiposoLockInfoCard(),
+                ],
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRiposoLockInfoCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: _QuickAddPalette.info.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: _QuickAddPalette.info.withOpacity(0.24),
+        ),
+      ),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.info_outline_rounded,
+            color: _QuickAddPalette.info,
+            size: 18,
+          ),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Hai selezionato Riposo. In questa modalità il servizio resta bloccato perché viene trattato come assenza. Per inserire un turno operativo cambia la voce Assenza da Riposo a Nessuna.',
+              style: TextStyle(
+                color: _QuickAddPalette.info,
+                fontSize: 12.8,
+                height: 1.45,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -1733,8 +1864,11 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
               absence: _normalizedAbsenceForSave(_selectedAbsence),
               manualExtraAmount: 0,
               manualExtraLabel: '',
+              genereDiConfortoCdg: false,
               genereDiConforto: false,
               ticketPasto: false,
+              hasCompensazione: false,
+              hasReperibilita: false,
               note: shift.note,
               polferTerritoryControlType: PolferTerritoryControlType.none,
               polferScaloMode: PolferScaloMode.none,
@@ -1768,11 +1902,90 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
     }
   }
 
+  List<Map<String, dynamic>> _buildEnginePreviewBreakdown(Shift previewShift) {
+  if (previewShift.absence != 'Nessuna') {
+    return [];
+  }
+
+  const useCase = BuildDailyShiftResultUseCase();
+
+  final result = useCase.execute(
+    shifts: [previewShift],
+    profile: widget.rates,
+    department: widget.activeDepartment,
+  );
+
+  final computation = result.computations[previewShift];
+  if (computation == null) {
+    return [];
+  }
+
+  return computation.breakdown;
+}
+
+  List<Map<String, String>> _buildInformativePreviewItems(Shift previewShift) {
+  if (previewShift.absence != 'Nessuna') {
+    return [];
+  }
+
+  final items = <Map<String, String>>[];
+
+  items.add({
+    'label': 'Servizio ordinario',
+    'value': 'Compreso nello stipendio',
+  });
+
+  if (previewShift.ticketPasto) {
+    items.add({
+      'label': 'Ticket pasto',
+      'value': 'Benefit separato',
+    });
+  }
+
+  if (previewShift.genereDiConforto) {
+    items.add({
+      'label': 'Genere di conforto',
+      'value': 'Benefit separato',
+    });
+  }
+
+  if (previewShift.genereDiConfortoCdg) {
+    items.add({
+      'label': 'Genere di conforto CDG',
+      'value': 'Benefit separato',
+    });
+  }
+
+  return items;
+}
+
+  double _buildEnginePreviewTotal(Shift previewShift) {
+  if (previewShift.absence != 'Nessuna') {
+    return 0.0;
+  }
+
+  const useCase = BuildDailyShiftResultUseCase();
+
+  final result = useCase.execute(
+    shifts: [previewShift],
+    profile: widget.rates,
+    department: widget.activeDepartment,
+  );
+
+  final computation = result.computations[previewShift];
+  if (computation == null) {
+    return 0.0;
+  }
+
+  return computation.totalAmount;
+}
+
   @override
   Widget build(BuildContext context) {
     final previewShift = _buildShiftPreview();
-    final breakdown = previewShift.getBreakdown(widget.rates);
-    final total = previewShift.getTotalAmount(widget.rates);
+    final breakdown = _buildEnginePreviewBreakdown(previewShift);
+    final total = _buildEnginePreviewTotal(previewShift);
+    final informativeItems = _buildInformativePreviewItems(previewShift);
     final workedHours = previewShift.workedHours;
     final overtimeHours = previewShift.overtimeHours;
     final autoExtra = _autoMealAndComfortAmount();
@@ -1859,12 +2072,10 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
                 ),
               ),
               const SizedBox(height: 16),
-
               if (_isPolfer) ...[
                 _buildSpmnFields(),
                 const SizedBox(height: 16),
               ],
-
               _sectionCard(
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1876,6 +2087,11 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
                       icon: Icons.badge_outlined,
                     ),
                     const SizedBox(height: 16),
+                    if (_selectedSpmnPreset == SpmnPreset.riposo &&
+                        !_isTuesdayUpdateCase) ...[
+                      _buildRiposoLockInfoCard(),
+                      const SizedBox(height: 14),
+                    ],
                     TextField(
                       controller: _descriptionController,
                       textCapitalization: TextCapitalization.sentences,
@@ -1935,7 +2151,6 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
                 ),
               ),
               const SizedBox(height: 16),
-
               _sectionCard(
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1948,6 +2163,58 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
                     ),
                     const SizedBox(height: 16),
                     _buildDepartmentSpecificFields(previewShift),
+                    const SizedBox(height: 10),
+                    IgnorePointer(
+                      ignoring: _hasAbsence,
+                      child: Opacity(
+                        opacity: _hasAbsence ? 0.46 : 1,
+                        child: _ModernSwitchTile(
+                          value: _includeGenereDiConfortoCdg,
+                          title:
+                              'Genere di conforto CDG (${_formatCurrency(_genereDiConfortoCdgRate)})',
+                          subtitle: 'Attivalo solo quando spetta davvero.',
+                          onChanged: (value) {
+                            setState(() {
+                              _includeGenereDiConfortoCdg = value;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    IgnorePointer(
+                      ignoring: _hasAbsence,
+                      child: Opacity(
+                        opacity: _hasAbsence ? 0.46 : 1,
+                        child: _ModernSwitchTile(
+                          value: _includeCompensazione,
+                          title: 'Compensazione (€ 12.00)',
+                          subtitle: 'Attivalo solo quando spetta davvero.',
+                          onChanged: (value) {
+                            setState(() {
+                              _includeCompensazione = value;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    IgnorePointer(
+                      ignoring: _hasAbsence,
+                      child: Opacity(
+                        opacity: _hasAbsence ? 0.46 : 1,
+                        child: _ModernSwitchTile(
+                          value: _includeReperibilita,
+                          title: 'Reperibilità (€ 17.50)',
+                          subtitle: 'Attivala solo quando spetta davvero.',
+                          onChanged: (value) {
+                            setState(() {
+                              _includeReperibilita = value;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 10),
                     IgnorePointer(
                       ignoring: _hasAbsence,
@@ -2001,27 +2268,34 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
                           )
                           .toList(),
                       onChanged: (value) {
-                        if (value == null) return;
-                        setState(() {
-                          _selectedAbsence = value;
-                          _selectedSpmnPreset =
-                              value == 'Riposo' ? SpmnPreset.riposo : SpmnPreset.none;
+  if (value == null) return;
 
-                          if (_hasAbsence) {
-                            _applyAbsenceConstraints();
-                          } else {
-                            _multiDayAbsence = false;
-                            _absenceEndDate = _serviceDate;
-                            _realStartDate = _serviceDate;
-                            _startTime = const TimeOfDay(hour: 7, minute: 0);
-                            _endTime = const TimeOfDay(hour: 13, minute: 0);
-                            _includeGenereDiConforto = false;
-                            _includeTicketPasto = false;
-                            _descriptionController.text = '';
-                            _clearPolferFields();
-                          }
-                        });
-                      },
+  // Se l’utente seleziona di nuovo la stessa voce, non fare nulla.
+  if (value == _selectedAbsence) return;
+
+  setState(() {
+    _selectedAbsence = value;
+    _selectedSpmnPreset =
+        value == 'Riposo' ? SpmnPreset.riposo : SpmnPreset.none;
+
+    if (_hasAbsence) {
+      _applyAbsenceConstraints();
+    } else {
+      _multiDayAbsence = false;
+      _absenceEndDate = _serviceDate;
+      _realStartDate = _serviceDate;
+      _startTime = const TimeOfDay(hour: 7, minute: 0);
+      _endTime = const TimeOfDay(hour: 13, minute: 0);
+      _includeGenereDiConfortoCdg = false;
+      _includeGenereDiConforto = false;
+      _includeTicketPasto = false;
+      _includeCompensazione = false;
+      _includeReperibilita = false;
+      _descriptionController.text = '';
+      _clearPolferFields();
+    }
+  });
+},
                     ),
                     const SizedBox(height: 10),
                     if (_hasAbsence) ...[
@@ -2053,7 +2327,6 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
                 ),
               ),
               const SizedBox(height: 16),
-
               InkWell(
                 onTap: () {
                   setState(() {
@@ -2093,7 +2366,6 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
                   ),
                 ),
               ),
-
               if (_showAdvanced) ...[
                 const SizedBox(height: 16),
                 _sectionCard(
@@ -2157,9 +2429,7 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
                   ),
                 ),
               ],
-
               const SizedBox(height: 16),
-
               _sectionCard(
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -2171,41 +2441,52 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
                       icon: Icons.analytics_outlined,
                     ),
                     const SizedBox(height: 14),
-                    if (breakdown.isEmpty)
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: _QuickAddPalette.surface,
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: _QuickAddPalette.cardBorder),
-                        ),
-                        child: Text(
-                          _hasAbsence
-                              ? 'Per le assenze non viene calcolato alcun importo extra.'
-                              : 'Nessun importo rilevato per questo turno.',
-                          style: const TextStyle(
-                            color: _QuickAddPalette.textSecondary,
-                            fontSize: 13.4,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      )
-                    else ...[
-                      ...breakdown.map((item) {
-                        final label = item['label'] as String? ?? '';
-                        final amount =
-                            (item['amount'] as num?)?.toDouble() ?? 0.0;
-                        return _buildBreakdownRow(label, amount);
-                      }),
-                      const SizedBox(height: 10),
-                      const Divider(color: _QuickAddPalette.divider, height: 1),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          const Expanded(
-                            child: Text(
-                              'Totale turno',
+                    if (breakdown.isEmpty && informativeItems.isEmpty)
+  Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: _QuickAddPalette.surface,
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: _QuickAddPalette.cardBorder),
+    ),
+    child: Text(
+      _hasAbsence
+          ? 'Per le assenze non viene calcolato alcun importo extra.'
+          : 'Nessun importo rilevato per questo turno.',
+      style: const TextStyle(
+        color: _QuickAddPalette.textSecondary,
+        fontSize: 13.4,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+  )
+else ...[
+  if (informativeItems.isNotEmpty) ...[
+    ...informativeItems.map((item) {
+      return _buildInformativeRow(
+        item['label'] ?? '',
+        item['value'] ?? '',
+      );
+    }),
+    if (breakdown.isNotEmpty) const SizedBox(height: 8),
+  ],
+  ...breakdown.map((item) {
+    final label = item['label'] as String? ?? '';
+    final amount = (item['amount'] as num?)?.toDouble() ?? 0.0;
+    return _buildBreakdownRow(label, amount);
+  }),
+  const SizedBox(height: 10),
+  const Divider(
+    color: _QuickAddPalette.divider,
+    height: 1,
+  ),
+  const SizedBox(height: 12),
+  Row(
+    children: [
+      const Expanded(
+        child: Text(
+          'Totale turno',
                               style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w800,
@@ -2226,9 +2507,7 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
                   ],
                 ),
               ),
-
               const SizedBox(height: 22),
-
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(

@@ -1,258 +1,15 @@
+import '../models/department.dart';
 import '../models/shift.dart';
 import '../models/user_pay_profile.dart';
-
-enum PrecisionLevel {
-  low,
-  medium,
-  high,
-}
-
-class PrecisionStatus {
-  final PrecisionLevel level;
-  final double percentage;
-
-  const PrecisionStatus({
-    required this.level,
-    required this.percentage,
-  });
-}
-
-class BasketPayment {
-  final DateTime paymentMonth;
-  final double hoursPaid;
-  final String note;
-
-  const BasketPayment({
-    required this.paymentMonth,
-    required this.hoursPaid,
-    this.note = '',
-  });
-
-  Map<String, dynamic> toJson() {
-    return {
-      'paymentMonth': paymentMonth.toIso8601String(),
-      'hoursPaid': hoursPaid,
-      'note': note,
-    };
-  }
-
-  factory BasketPayment.fromJson(Map<String, dynamic> json) {
-    return BasketPayment(
-      paymentMonth: DateTime.tryParse(
-            (json['paymentMonth'] ?? '') as String,
-          ) ??
-          DateTime.now(),
-      hoursPaid: (json['hoursPaid'] as num?)?.toDouble() ?? 0,
-      note: (json['note'] ?? '') as String,
-    );
-  }
-}
-
-class RfiBasketPayment {
-  final DateTime paymentMonth;
-  final double hoursPaid;
-  final String note;
-
-  const RfiBasketPayment({
-    required this.paymentMonth,
-    required this.hoursPaid,
-    this.note = '',
-  });
-
-  Map<String, dynamic> toJson() {
-    return {
-      'paymentMonth': paymentMonth.toIso8601String(),
-      'hoursPaid': hoursPaid,
-      'note': note,
-    };
-  }
-
-  factory RfiBasketPayment.fromJson(Map<String, dynamic> json) {
-    return RfiBasketPayment(
-      paymentMonth: DateTime.tryParse(
-            (json['paymentMonth'] ?? '') as String,
-          ) ??
-          DateTime.now(),
-      hoursPaid: (json['hoursPaid'] as num?)?.toDouble() ?? 0,
-      note: (json['note'] ?? '') as String,
-    );
-  }
-}
-
-class MonthlyAccessorySummary {
-  final DateTime month;
-  final int shiftCount;
-  final double nonOvertimeGross;
-  final double overtimeGross;
-  final double overtimeHours;
-  final double totalGross;
-
-  /// Basket separato RFI / Trenitalia (Polfer scalo)
-  final double rfiBasketGross;
-  final double rfiBasketHours;
-
-  const MonthlyAccessorySummary({
-    required this.month,
-    required this.shiftCount,
-    required this.nonOvertimeGross,
-    required this.overtimeGross,
-    required this.overtimeHours,
-    required this.totalGross,
-    required this.rfiBasketGross,
-    required this.rfiBasketHours,
-  });
-}
-
-class BasketCarryEntry {
-  final DateTime sourceMonth;
-  final double overtimeGrossRemaining;
-  final double overtimeHoursRemaining;
-
-  const BasketCarryEntry({
-    required this.sourceMonth,
-    required this.overtimeGrossRemaining,
-    required this.overtimeHoursRemaining,
-  });
-}
-
-class PayslipProjectionResult {
-  final DateTime payslipMonth;
-  final DateTime? accessoryReferenceMonth;
-  final int accessoryDelayMonths;
-  final DateTime? basketStartMonth;
-
-  final int referenceMonthShiftCount;
-
-  final double fixedBaseGross;
-  final double fixedBaseNetEstimated;
-
-  final double nonOvertimeGross;
-  final double overtimeGrossFromReferenceMonth;
-  final double overtimeHoursFromReferenceMonth;
-
-  final double basketRecoveredGross;
-  final double basketRecoveredHours;
-
-  final double liquidatedOvertimeGross;
-  final double liquidatedOvertimeHours;
-
-  final double overtimeInBasketGross;
-  final double overtimeInBasketHours;
-
-  /// Basket separato RFI / Trenitalia (Polfer scalo)
-  final double rfiBasketGrossFromReferenceMonth;
-  final double rfiBasketHoursFromReferenceMonth;
-
-  final double accessoriesGrossLiquidated;
-  final double accessoriesGrossUsedForEstimate;
-  final double accessoriesNetEstimated;
-  final bool isUsingHistoricalAccessories;
-
-  final double estimatedPrevidenziali;
-  final double estimatedFiscali;
-  final double estimatedOtherDeductions;
-  final double estimatedConguagli;
-  final double totalEstimatedDeductions;
-
-  final double recurringDeductionsApplied;
-
-  final double manualBasketPaidHoursForMonth;
-  final double manualBasketPaidGrossForMonth;
-
-  final double currentBasketResidualHours;
-  final double currentBasketResidualGrossEstimate;
-
-  final double manualRfiBasketPaidHoursForMonth;
-  final double manualRfiBasketPaidGrossForMonth;
-
-  final double currentRfiBasketResidualHours;
-  final double currentRfiBasketResidualGrossEstimate;
-
-  final double estimatedPayslipTotal;
-
-  final double monthlyOvertimePayableHoursLimit;
-
-  final double historicalAverageNet;
-  final double historicalAverageGross;
-  final double historicalAverageFixedGross;
-  final double historicalAverageAccessoryGross;
-  final double historicalAveragePrevidenziali;
-  final double historicalAverageFiscali;
-  final double historicalAverageOtherDeductions;
-  final double historicalAverageConguagli;
-
-  final List<BasketCarryEntry> openBasketEntries;
-
-  const PayslipProjectionResult({
-    required this.payslipMonth,
-    required this.accessoryReferenceMonth,
-    required this.accessoryDelayMonths,
-    required this.basketStartMonth,
-    required this.referenceMonthShiftCount,
-    required this.fixedBaseGross,
-    required this.fixedBaseNetEstimated,
-    required this.nonOvertimeGross,
-    required this.overtimeGrossFromReferenceMonth,
-    required this.overtimeHoursFromReferenceMonth,
-    required this.basketRecoveredGross,
-    required this.basketRecoveredHours,
-    required this.liquidatedOvertimeGross,
-    required this.liquidatedOvertimeHours,
-    required this.overtimeInBasketGross,
-    required this.overtimeInBasketHours,
-    required this.rfiBasketGrossFromReferenceMonth,
-    required this.rfiBasketHoursFromReferenceMonth,
-    required this.accessoriesGrossLiquidated,
-    required this.accessoriesGrossUsedForEstimate,
-    required this.accessoriesNetEstimated,
-    required this.isUsingHistoricalAccessories,
-    required this.estimatedPrevidenziali,
-    required this.estimatedFiscali,
-    required this.estimatedOtherDeductions,
-    required this.estimatedConguagli,
-    required this.totalEstimatedDeductions,
-    required this.recurringDeductionsApplied,
-    required this.manualBasketPaidHoursForMonth,
-    required this.manualBasketPaidGrossForMonth,
-    required this.currentBasketResidualHours,
-    required this.currentBasketResidualGrossEstimate,
-    required this.manualRfiBasketPaidHoursForMonth,
-    required this.manualRfiBasketPaidGrossForMonth,
-    required this.currentRfiBasketResidualHours,
-    required this.currentRfiBasketResidualGrossEstimate,
-    required this.estimatedPayslipTotal,
-    required this.monthlyOvertimePayableHoursLimit,
-    required this.historicalAverageNet,
-    required this.historicalAverageGross,
-    required this.historicalAverageFixedGross,
-    required this.historicalAverageAccessoryGross,
-    required this.historicalAveragePrevidenziali,
-    required this.historicalAverageFiscali,
-    required this.historicalAverageOtherDeductions,
-    required this.historicalAverageConguagli,
-    required this.openBasketEntries,
-  });
-
-  bool get hasReferenceMonthData => referenceMonthShiftCount > 0;
-
-  bool get hasAnyBasketMovement =>
-      basketRecoveredGross > 0 ||
-      liquidatedOvertimeGross > 0 ||
-      overtimeInBasketGross > 0 ||
-      openBasketEntries.isNotEmpty ||
-      manualBasketPaidHoursForMonth > 0 ||
-      currentBasketResidualHours > 0;
-
-  bool get hasAnyRfiBasketMovement =>
-      rfiBasketGrossFromReferenceMonth > 0 ||
-      manualRfiBasketPaidHoursForMonth > 0 ||
-      currentRfiBasketResidualHours > 0;
-
-  double get extraGross => accessoriesGrossUsedForEstimate;
-  double get extraNet => accessoriesNetEstimated;
-
-  double get taxes => extraGross - extraNet;
-}
+import '../../application/usecases/build_monthly_accessory_summary_usecase.dart';
+import '../../domain/engine/models/basket_carry_entry.dart';
+import '../../domain/engine/models/rfi_basket_open_entry.dart';
+import '../../domain/engine/models/rfi_basket_paid_entry.dart';
+import '../../domain/engine/models/precision_status.dart';
+import '../../domain/engine/models/payslip_projection_result.dart';
+import '../../domain/engine/models/basket_payment.dart';
+import '../../domain/engine/models/rfi_basket_payment.dart';
+import '../../application/models/monthly_accessory_summary.dart';
 
 class _HistoricalCalibrationSnapshot {
   final double averageNet;
@@ -294,15 +51,31 @@ class _DeductionShares {
   });
 }
 
+class _BasketEntryWorking {
+  final DateTime sourceMonth;
+  double grossRemaining;
+  double hoursRemaining;
+
+  _BasketEntryWorking({
+    required this.sourceMonth,
+    required this.grossRemaining,
+    required this.hoursRemaining,
+  });
+}
+
 class PayslipProjectionService {
   const PayslipProjectionService();
 
   static const int _historicalAccessoriesThreshold = 5;
 
+  BuildMonthlyAccessorySummaryUseCase get _monthlySummaryUseCase =>
+      const BuildMonthlyAccessorySummaryUseCase();
+
   PayslipProjectionResult projectPayslip({
     required DateTime payslipMonth,
     required List<Shift> allShifts,
     required UserPayProfile payProfile,
+    required Department department,
     List<BasketPayment> basketPayments = const [],
     List<RfiBasketPayment> rfiBasketPayments = const [],
   }) {
@@ -334,54 +107,71 @@ class PayslipProjectionService {
                 targetMonth: accessoryReferenceMonth,
               );
 
-    final monthlySummaries = relevantMonths
-        .map(
-          (month) => _buildMonthlySummary(
+    final List<MonthlyAccessorySummary> monthlySummaries = relevantMonths
+    .map<MonthlyAccessorySummary>(
+      (month) => _monthlySummaryUseCase.execute(
+        month: month,
+        allShifts: allShifts,
+        profile: payProfile,
+        department: department,
+      ),
+    )
+    .toList();
+
+        final rfiRelevantMonths = basketStartMonth == null
+        ? <DateTime>[normalizedPayslipMonth]
+        : _buildMonthsUpTo(
+            startMonth: basketStartMonth,
+            targetMonth: normalizedPayslipMonth,
+          );
+
+    final List<MonthlyAccessorySummary> rfiMonthlySummaries = rfiRelevantMonths
+        .map<MonthlyAccessorySummary>(
+          (month) => _monthlySummaryUseCase.execute(
             month: month,
             allShifts: allShifts,
-            payProfile: payProfile,
+            profile: payProfile,
+            department: department,
           ),
         )
         .toList();
 
-    final referenceSummary = accessoryReferenceMonth == null
+    final MonthlyAccessorySummary referenceSummary =
+    accessoryReferenceMonth == null
         ? MonthlyAccessorySummary(
             month: normalizedPayslipMonth,
             shiftCount: 0,
             nonOvertimeGross: 0,
             overtimeGross: 0,
             overtimeHours: 0,
-            totalGross: 0,
             rfiBasketGross: 0,
-            rfiBasketHours: 0,
+            totalGross: 0,
           )
-        : monthlySummaries
-                .where((item) => _isSameMonth(item.month, accessoryReferenceMonth))
-                .cast<MonthlyAccessorySummary?>()
-                .firstWhere(
-                  (item) => item != null,
-                  orElse: () => null,
-                ) ??
-            MonthlyAccessorySummary(
+        : monthlySummaries.firstWhere(
+            (item) => _isSameMonth(item.month, accessoryReferenceMonth),
+            orElse: () => MonthlyAccessorySummary(
               month: accessoryReferenceMonth,
               shiftCount: 0,
               nonOvertimeGross: 0,
               overtimeGross: 0,
               overtimeHours: 0,
-              totalGross: 0,
               rfiBasketGross: 0,
-              rfiBasketHours: 0,
-            );
+              totalGross: 0,
+            ),
+          );
 
-    final previousMonths = accessoryReferenceMonth == null
+    final List<MonthlyAccessorySummary> previousMonths =
+    accessoryReferenceMonth == null
         ? <MonthlyAccessorySummary>[]
         : monthlySummaries
-            .where((item) => _isBeforeMonth(item.month, accessoryReferenceMonth))
+            .where(
+              (item) => _isBeforeMonth(item.month, accessoryReferenceMonth),
+            )
             .toList();
 
     double remainingCapacityHours = overtimeHoursLimit;
-    double basketRecoveredGross = 0;
-    double basketRecoveredHours = 0;
+    double basketRecoveredGross = 0.0;
+    double basketRecoveredHours = 0.0;
     final openBasketEntries = <BasketCarryEntry>[];
 
     for (final monthSummary in previousMonths) {
@@ -393,8 +183,10 @@ class PayslipProjectionService {
         openBasketEntries.add(
           BasketCarryEntry(
             sourceMonth: monthSummary.month,
-            overtimeGrossRemaining: monthSummary.overtimeGross,
-            overtimeHoursRemaining: monthSummary.overtimeHours,
+            overtimeGrossRemaining: _sanitizeMoney(monthSummary.overtimeGross),
+            overtimeHoursRemaining: _sanitizeNonNegative(
+              monthSummary.overtimeHours,
+            ),
           ),
         );
         continue;
@@ -421,17 +213,17 @@ class PayslipProjectionService {
         openBasketEntries.add(
           BasketCarryEntry(
             sourceMonth: monthSummary.month,
-            overtimeGrossRemaining: residualGross,
-            overtimeHoursRemaining: residualHours,
+            overtimeGrossRemaining: _sanitizeMoney(residualGross),
+            overtimeHoursRemaining: _sanitizeNonNegative(residualHours),
           ),
         );
       }
     }
 
-    double liquidatedOvertimeHours = 0;
-    double liquidatedOvertimeGross = 0;
-    double overtimeInBasketHours = 0;
-    double overtimeInBasketGross = 0;
+    double liquidatedOvertimeHours = 0.0;
+    double liquidatedOvertimeGross = 0.0;
+    double overtimeInBasketHours = 0.0;
+    double overtimeInBasketGross = 0.0;
 
     if (referenceSummary.overtimeHours > 0 &&
         referenceSummary.overtimeGross > 0) {
@@ -462,169 +254,171 @@ class PayslipProjectionService {
       openBasketEntries.add(
         BasketCarryEntry(
           sourceMonth: referenceSummary.month,
-          overtimeGrossRemaining: overtimeInBasketGross,
-          overtimeHoursRemaining: overtimeInBasketHours,
+          overtimeGrossRemaining: _sanitizeMoney(overtimeInBasketGross),
+          overtimeHoursRemaining: _sanitizeNonNegative(overtimeInBasketHours),
         ),
       );
     }
 
-    final rawOpenBasketHours = _sanitizeNonNegative(
-      openBasketEntries.fold<double>(
-        0.0,
-        (sum, item) => sum + item.overtimeHoursRemaining,
+    final workingBasketEntries = openBasketEntries
+        .map(
+          (e) => _BasketEntryWorking(
+            sourceMonth: e.sourceMonth,
+            grossRemaining: e.overtimeGrossRemaining,
+            hoursRemaining: e.overtimeHoursRemaining,
+          ),
+        )
+        .toList()
+      ..sort((a, b) => a.sourceMonth.compareTo(b.sourceMonth));
+
+    final sortedBasketPayments = [...basketPayments]
+      ..sort((a, b) => a.paymentMonth.compareTo(b.paymentMonth));
+
+    double manualBasketPaidHoursForMonth = 0.0;
+    double manualBasketPaidGrossForMonth = 0.0;
+
+    for (final payment in sortedBasketPayments) {
+      if (_isAfterMonth(payment.paymentMonth, normalizedPayslipMonth)) {
+        continue;
+      }
+
+      double remainingHoursToApply = payment.hoursPaid;
+      double grossAppliedForThisPayment = 0.0;
+
+      for (final entry in workingBasketEntries) {
+        if (remainingHoursToApply <= 0) break;
+        if (entry.hoursRemaining <= 0 || entry.grossRemaining <= 0) continue;
+
+        final grossPerHour = entry.hoursRemaining > 0
+            ? entry.grossRemaining / entry.hoursRemaining
+            : 0.0;
+
+        if (grossPerHour <= 0) continue;
+
+        final appliedHours = remainingHoursToApply <= entry.hoursRemaining
+            ? remainingHoursToApply
+            : entry.hoursRemaining;
+
+        final appliedGross = appliedHours * grossPerHour;
+
+        entry.hoursRemaining -= appliedHours;
+        entry.grossRemaining -= appliedGross;
+        remainingHoursToApply -= appliedHours;
+        grossAppliedForThisPayment += appliedGross;
+      }
+
+      if (_isSameMonth(payment.paymentMonth, normalizedPayslipMonth)) {
+        manualBasketPaidHoursForMonth +=
+            payment.hoursPaid - remainingHoursToApply;
+        manualBasketPaidGrossForMonth += grossAppliedForThisPayment;
+      }
+    }
+
+    final currentBasketResidualHours = workingBasketEntries.fold<double>(
+      0.0,
+      (sum, item) => sum + _sanitizeNonNegative(item.hoursRemaining),
+    );
+
+    final currentBasketResidualGrossEstimate = workingBasketEntries.fold<double>(
+      0.0,
+      (sum, item) => sum + _sanitizeMoney(item.grossRemaining),
+    );
+
+        final nonOvertimeGross = _sanitizeMoney(referenceSummary.nonOvertimeGross);
+
+    final currentMonthRfiSummary = rfiMonthlySummaries.firstWhere(
+      (item) => _isSameMonth(item.month, normalizedPayslipMonth),
+      orElse: () => MonthlyAccessorySummary(
+        month: normalizedPayslipMonth,
+        shiftCount: 0,
+        nonOvertimeGross: 0,
+        overtimeGross: 0,
+        overtimeHours: 0,
+        rfiBasketGross: 0,
+        totalGross: 0,
       ),
     );
 
-    final rawOpenBasketGross = _sanitizeMoney(
-      openBasketEntries.fold<double>(
-        0.0,
-        (sum, item) => sum + item.overtimeGrossRemaining,
-      ),
-    );
-
-    final manualBasketPaidHoursForMonth = _sanitizeNonNegative(
-      basketPayments
-          .where((payment) => _isSameMonth(payment.paymentMonth, normalizedPayslipMonth))
-          .fold<double>(0.0, (sum, item) => sum + item.hoursPaid),
-    );
-
-    final manualBasketPaidGrossForMonth = _sanitizeMoney(
-      basketPayments
-          .where((payment) => _isSameMonth(payment.paymentMonth, normalizedPayslipMonth))
-          .fold<double>(
-            0.0,
-            (sum, item) =>
-                sum +
-                _estimateBasketPaymentGross(
-                  hours: item.hoursPaid,
-                  allShifts: allShifts,
-                  payProfile: payProfile,
-                ),
-          ),
-    );
-
-    final cumulativeManualPaidHours = _sanitizeNonNegative(
-      basketPayments
-          .where((payment) => !_isAfterMonth(payment.paymentMonth, normalizedPayslipMonth))
-          .fold<double>(0.0, (sum, item) => sum + item.hoursPaid),
-    );
-
-    final cumulativeManualPaidGross = _sanitizeMoney(
-      basketPayments
-          .where((payment) => !_isAfterMonth(payment.paymentMonth, normalizedPayslipMonth))
-          .fold<double>(
-            0.0,
-            (sum, item) =>
-                sum +
-                _estimateBasketPaymentGross(
-                  hours: item.hoursPaid,
-                  allShifts: allShifts,
-                  payProfile: payProfile,
-                ),
-          ),
-    );
-
-    final currentBasketResidualHours = _sanitizeNonNegative(
-      rawOpenBasketHours - cumulativeManualPaidHours,
-    );
-
-    final currentBasketResidualGrossEstimate = _sanitizeMoney(
-      rawOpenBasketGross - cumulativeManualPaidGross,
-    );
-
-    final rfiRelevantShifts = allShifts.where((shift) {
-  final shiftMonth = DateTime(
-    shift.serviceDate.year,
-    shift.serviceDate.month,
-  );
-  return !_isAfterMonth(shiftMonth, normalizedPayslipMonth);
-});
-
-final rawOpenRfiBasketHours = _sanitizeNonNegative(
-  rfiRelevantShifts.fold<double>(
-    0.0,
-    (sum, shift) => sum + _extractShiftRfiHours(shift),
-  ),
-);
-
-final rawOpenRfiBasketGross = _sanitizeMoney(
-  rfiRelevantShifts.fold<double>(
-    0.0,
-    (sum, shift) => sum + shift.getRfiBasketAmount(payProfile),
-  ),
-);
-
-    final manualRfiBasketPaidHoursForMonth = _sanitizeNonNegative(
-      rfiBasketPayments
-          .where((payment) => _isSameMonth(payment.paymentMonth, normalizedPayslipMonth))
-          .fold<double>(0.0, (sum, item) => sum + item.hoursPaid),
-    );
-
-    final manualRfiBasketPaidGrossForMonth = _sanitizeMoney(
-      rfiBasketPayments
-          .where((payment) => _isSameMonth(payment.paymentMonth, normalizedPayslipMonth))
-          .fold<double>(
-            0.0,
-            (sum, item) =>
-                sum +
-                _estimateRfiBasketPaymentGross(
-                  hours: item.hoursPaid,
-                  allShifts: allShifts,
-                ),
-          ),
-    );
-
-    final cumulativeManualRfiPaidHours = _sanitizeNonNegative(
-      rfiBasketPayments
-          .where((payment) => !_isAfterMonth(payment.paymentMonth, normalizedPayslipMonth))
-          .fold<double>(0.0, (sum, item) => sum + item.hoursPaid),
-    );
-
-    final cumulativeManualRfiPaidGross = _sanitizeMoney(
-      rfiBasketPayments
-          .where((payment) => !_isAfterMonth(payment.paymentMonth, normalizedPayslipMonth))
-          .fold<double>(
-            0.0,
-            (sum, item) =>
-                sum +
-                _estimateRfiBasketPaymentGross(
-                  hours: item.hoursPaid,
-                  allShifts: allShifts,
-                ),
-          ),
-    );
-
-    final currentRfiBasketResidualHours = _sanitizeNonNegative(
-      rawOpenRfiBasketHours - cumulativeManualRfiPaidHours,
-    );
-
-    final currentRfiBasketResidualGrossEstimate = _sanitizeMoney(
-      rawOpenRfiBasketGross - cumulativeManualRfiPaidGross,
-    );
-
-    final nonOvertimeGross = _sanitizeMoney(referenceSummary.nonOvertimeGross);
     final rfiBasketGrossFromReferenceMonth = _sanitizeMoney(
-  referenceSummary.rfiBasketGross > 0
-      ? referenceSummary.rfiBasketGross
-      : rawOpenRfiBasketGross,
-);
+      currentMonthRfiSummary.rfiBasketGross,
+    );
 
-final rfiBasketHoursFromReferenceMonth = _sanitizeNonNegative(
-  referenceSummary.rfiBasketHours > 0
-      ? referenceSummary.rfiBasketHours
-      : rawOpenRfiBasketHours,
-);
+    final rfiBasketHoursFromReferenceMonth =
+        rfiBasketGrossFromReferenceMonth > 0 ? 1.0 : 0.0;
+
+    final rfiMaturedHoursForMonth = rfiBasketHoursFromReferenceMonth;
+    final rfiMaturedGrossForMonth = rfiBasketGrossFromReferenceMonth;
+
+    final openRfiBasketEntries = <RfiBasketOpenEntry>[];
+    final paidRfiBasketEntries = <RfiBasketPaidEntry>[];
+
+    for (final monthSummary in rfiMonthlySummaries) {
+      if (monthSummary.rfiBasketGross <= 0) continue;
+      if (_isAfterMonth(monthSummary.month, normalizedPayslipMonth)) continue;
+
+      final matchingPayment =
+          rfiBasketPayments.cast<RfiBasketPayment?>().firstWhere(
+        (item) =>
+            item != null &&
+            _isSameMonth(item.sourceMonth, monthSummary.month) &&
+            !_isAfterMonth(item.paidInMonth, normalizedPayslipMonth),
+        orElse: () => null,
+      );
+
+      if (matchingPayment == null) {
+        openRfiBasketEntries.add(
+          RfiBasketOpenEntry(
+            sourceMonth: DateTime(
+              monthSummary.month.year,
+              monthSummary.month.month,
+            ),
+            grossAmount: _sanitizeMoney(monthSummary.rfiBasketGross),
+          ),
+        );
+      } else {
+        paidRfiBasketEntries.add(
+          RfiBasketPaidEntry(
+            sourceMonth: DateTime(
+              monthSummary.month.year,
+              monthSummary.month.month,
+            ),
+            paidInMonth: DateTime(
+              matchingPayment.paidInMonth.year,
+              matchingPayment.paidInMonth.month,
+            ),
+            grossAmount: _sanitizeMoney(monthSummary.rfiBasketGross),
+            note: matchingPayment.note,
+          ),
+        );
+      }
+    }
+
+    final currentRfiBasketResidualHours =
+        openRfiBasketEntries.length.toDouble();
+
+    final currentRfiBasketResidualGrossEstimate =
+        openRfiBasketEntries.fold<double>(
+      0.0,
+      (sum, item) => sum + item.grossAmount,
+    );
+
+    final manualRfiBasketPaidHoursForMonth = paidRfiBasketEntries
+        .where((e) => _isSameMonth(e.paidInMonth, normalizedPayslipMonth))
+        .length
+        .toDouble();
+
+    final manualRfiBasketPaidGrossForMonth = paidRfiBasketEntries
+        .where((e) => _isSameMonth(e.paidInMonth, normalizedPayslipMonth))
+        .fold<double>(0.0, (sum, item) => sum + item.grossAmount);
 
     final accessoriesGrossLiquidated = _sanitizeMoney(
-      nonOvertimeGross +
-          basketRecoveredGross +
-          liquidatedOvertimeGross +
-          manualBasketPaidGrossForMonth,
+      nonOvertimeGross + basketRecoveredGross + liquidatedOvertimeGross,
     );
 
     final historical = _buildHistoricalCalibrationSnapshot(
       payProfile.sourcePayslips,
     );
+    
 
     final hasManualHistoricalOverride =
         payProfile.historicalAccessoryAvg != null &&
@@ -634,7 +428,7 @@ final rfiBasketHoursFromReferenceMonth = _sanitizeNonNegative(
         referenceSummary.shiftCount < _historicalAccessoriesThreshold ||
         hasManualHistoricalOverride;
 
-    double historicalGrossFromNet = 0;
+    double historicalGrossFromNet = 0.0;
 
     if (hasManualHistoricalOverride) {
       final accessoryTaxRate = _clamp(
@@ -649,9 +443,9 @@ final rfiBasketHoursFromReferenceMonth = _sanitizeNonNegative(
       historicalGrossFromNet = netValue / (1 - accessoryTaxRate);
     }
 
-    final estimatedBaseAccessoriesGross = _sanitizeMoney(
+    final accessoriesGrossUsedForEstimate = _sanitizeMoney(
       accessoryReferenceMonth == null
-          ? 0
+          ? 0.0
           : hasManualHistoricalOverride &&
                   referenceSummary.shiftCount < _historicalAccessoriesThreshold
               ? historicalGrossFromNet
@@ -660,10 +454,6 @@ final rfiBasketHoursFromReferenceMonth = _sanitizeNonNegative(
                   realAccessoriesGross: accessoriesGrossLiquidated,
                   historicalAverageGross: historical.averageAccessoryGross,
                 ),
-    );
-
-    final accessoriesGrossUsedForEstimate = _sanitizeMoney(
-      estimatedBaseAccessoriesGross,
     );
 
     final accessoryTaxRate = _clamp(
@@ -690,9 +480,8 @@ final rfiBasketHoursFromReferenceMonth = _sanitizeNonNegative(
       accessoriesGrossUsedForEstimate * (1 - accessoryTaxRate),
     );
 
-    final recurringDeductionsApplied = _sanitizeMoney(
-      payProfile.recurringDeductionsTotal,
-    );
+    final recurringDeductionsApplied =
+        _sanitizeMoney(payProfile.recurringDeductionsTotal);
 
     final estimatedPayslipTotal = _sanitizeMoney(
       fixedBaseNetEstimated +
@@ -700,32 +489,42 @@ final rfiBasketHoursFromReferenceMonth = _sanitizeNonNegative(
           recurringDeductionsApplied,
     );
 
-    final coreTaxAndContribDeductions = _sanitizeMoney(
-      (fixedBaseGross + accessoriesGrossUsedForEstimate) -
-          (fixedBaseNetEstimated + accessoriesNetEstimated),
+    final rfiPaidThisMonthGross = manualRfiBasketPaidGrossForMonth;
+
+final accessoryNetRatio = 1 - accessoryTaxRate;
+
+final rfiNet = _sanitizeMoney(
+  rfiPaidThisMonthGross * accessoryNetRatio,
+);
+
+final totalNetWithRfi = _sanitizeMoney(
+  estimatedPayslipTotal + rfiNet,
+);
+
+    final totalGrossProjected = _sanitizeMoney(
+      fixedBaseGross + accessoriesGrossUsedForEstimate,
     );
 
     final totalEstimatedDeductions = _sanitizeMoney(
-      coreTaxAndContribDeductions + recurringDeductionsApplied,
+      totalGrossProjected - (fixedBaseNetEstimated + accessoriesNetEstimated),
     );
 
     final deductionShares = _deriveDeductionShares(historical);
 
     final estimatedPrevidenziali = _sanitizeMoney(
-      coreTaxAndContribDeductions * deductionShares.previdShare,
+      totalEstimatedDeductions * deductionShares.previdShare,
     );
 
     final estimatedFiscali = _sanitizeMoney(
-      coreTaxAndContribDeductions * deductionShares.fiscalShare,
+      totalEstimatedDeductions * deductionShares.fiscalShare,
     );
 
     final estimatedOtherDeductions = _sanitizeMoney(
-      (coreTaxAndContribDeductions * deductionShares.otherShare) +
-          recurringDeductionsApplied,
+      totalEstimatedDeductions * deductionShares.otherShare,
     );
 
     final estimatedConguagli = _sanitizeMoney(
-      coreTaxAndContribDeductions * deductionShares.conguagliShare,
+      totalEstimatedDeductions * deductionShares.conguagliShare,
     );
 
     return PayslipProjectionResult(
@@ -741,14 +540,14 @@ final rfiBasketHoursFromReferenceMonth = _sanitizeNonNegative(
           _sanitizeMoney(referenceSummary.overtimeGross),
       overtimeHoursFromReferenceMonth:
           _sanitizeNonNegative(referenceSummary.overtimeHours),
+      rfiBasketGrossFromReferenceMonth: rfiBasketGrossFromReferenceMonth,
+      rfiBasketHoursFromReferenceMonth: rfiBasketHoursFromReferenceMonth,
       basketRecoveredGross: _sanitizeMoney(basketRecoveredGross),
       basketRecoveredHours: _sanitizeNonNegative(basketRecoveredHours),
       liquidatedOvertimeGross: _sanitizeMoney(liquidatedOvertimeGross),
       liquidatedOvertimeHours: _sanitizeNonNegative(liquidatedOvertimeHours),
       overtimeInBasketGross: _sanitizeMoney(overtimeInBasketGross),
       overtimeInBasketHours: _sanitizeNonNegative(overtimeInBasketHours),
-      rfiBasketGrossFromReferenceMonth: rfiBasketGrossFromReferenceMonth,
-      rfiBasketHoursFromReferenceMonth: rfiBasketHoursFromReferenceMonth,
       accessoriesGrossLiquidated: accessoriesGrossLiquidated,
       accessoriesGrossUsedForEstimate: accessoriesGrossUsedForEstimate,
       accessoriesNetEstimated: accessoriesNetEstimated,
@@ -758,16 +557,7 @@ final rfiBasketHoursFromReferenceMonth = _sanitizeNonNegative(
       estimatedOtherDeductions: estimatedOtherDeductions,
       estimatedConguagli: estimatedConguagli,
       totalEstimatedDeductions: totalEstimatedDeductions,
-      recurringDeductionsApplied: recurringDeductionsApplied,
-      manualBasketPaidHoursForMonth: manualBasketPaidHoursForMonth,
-      manualBasketPaidGrossForMonth: manualBasketPaidGrossForMonth,
-      currentBasketResidualHours: currentBasketResidualHours,
-      currentBasketResidualGrossEstimate: currentBasketResidualGrossEstimate,
-      manualRfiBasketPaidHoursForMonth: manualRfiBasketPaidHoursForMonth,
-      manualRfiBasketPaidGrossForMonth: manualRfiBasketPaidGrossForMonth,
-      currentRfiBasketResidualHours: currentRfiBasketResidualHours,
-      currentRfiBasketResidualGrossEstimate: currentRfiBasketResidualGrossEstimate,
-      estimatedPayslipTotal: estimatedPayslipTotal,
+      estimatedPayslipTotal: totalNetWithRfi,
       monthlyOvertimePayableHoursLimit: overtimeHoursLimit,
       historicalAverageNet: historical.averageNet,
       historicalAverageGross: historical.averageGross,
@@ -777,7 +567,38 @@ final rfiBasketHoursFromReferenceMonth = _sanitizeNonNegative(
       historicalAverageFiscali: historical.averageFiscali,
       historicalAverageOtherDeductions: historical.averageOtherDeductions,
       historicalAverageConguagli: historical.averageConguagli,
-      openBasketEntries: openBasketEntries,
+      rfiMaturedHoursForMonth: rfiMaturedHoursForMonth,
+      rfiMaturedGrossForMonth: rfiMaturedGrossForMonth,
+      openBasketEntries: workingBasketEntries
+          .where((e) => e.hoursRemaining > 0.0001 && e.grossRemaining > 0.0001)
+          .map(
+            (e) => BasketCarryEntry(
+              sourceMonth: e.sourceMonth,
+              overtimeGrossRemaining: _sanitizeMoney(e.grossRemaining),
+              overtimeHoursRemaining: _sanitizeNonNegative(e.hoursRemaining),
+            ),
+          )
+          .toList(),
+      openRfiBasketEntries: openRfiBasketEntries,
+      paidRfiBasketEntries: paidRfiBasketEntries,
+      currentBasketResidualHours:
+          _sanitizeNonNegative(currentBasketResidualHours),
+      currentBasketResidualGrossEstimate:
+          _sanitizeMoney(currentBasketResidualGrossEstimate),
+      manualBasketPaidHoursForMonth:
+          _sanitizeNonNegative(manualBasketPaidHoursForMonth),
+      manualBasketPaidGrossForMonth:
+          _sanitizeMoney(manualBasketPaidGrossForMonth),
+      currentRfiBasketResidualHours:
+          _sanitizeNonNegative(currentRfiBasketResidualHours),
+      currentRfiBasketResidualGrossEstimate:
+          _sanitizeMoney(currentRfiBasketResidualGrossEstimate),
+      manualRfiBasketPaidHoursForMonth:
+          _sanitizeNonNegative(manualRfiBasketPaidHoursForMonth),
+      manualRfiBasketPaidGrossForMonth:
+          _sanitizeMoney(manualRfiBasketPaidGrossForMonth),
+      recurringDeductionsApplied: recurringDeductionsApplied,
+      differenceFromEstimatedPayslip: 0.0,
     );
   }
 
@@ -785,7 +606,7 @@ final rfiBasketHoursFromReferenceMonth = _sanitizeNonNegative(
     required List<Shift> allShifts,
   }) {
     final months = allShifts
-        .map((shift) => DateTime(shift.serviceDate.year, shift.serviceDate.month))
+        .map((shift) => DateTime(shift.start.year, shift.start.month))
         .toSet()
         .length;
 
@@ -852,64 +673,6 @@ final rfiBasketHoursFromReferenceMonth = _sanitizeNonNegative(
         (realAccessoriesGross * realWeight);
   }
 
-  MonthlyAccessorySummary _buildMonthlySummary({
-  required DateTime month,
-  required List<Shift> allShifts,
-  required UserPayProfile payProfile,
-}) {
-  double nonOvertimeGross = 0;
-  double overtimeGross = 0;
-  double overtimeHours = 0;
-  double rfiBasketGross = 0;
-  double rfiBasketHours = 0;
-  int shiftCount = 0;
-
-  final monthShifts = allShifts.where((shift) {
-  return shift.serviceDate.year == month.year &&
-      shift.serviceDate.month == month.month;
-});
-
-  for (final shift in monthShifts) {
-    shiftCount++;
-
-    final salaryBreakdown = shift.getSalaryBreakdown(payProfile);
-
-    for (final item in salaryBreakdown) {
-      final label = (item['label'] as String? ?? '').toUpperCase().trim();
-      final amount = (item['amount'] as num?)?.toDouble() ?? 0.0;
-
-      if (amount <= 0) continue;
-
-      if (_isOvertimeLabel(label)) {
-        overtimeGross += amount;
-      } else {
-        nonOvertimeGross += amount;
-      }
-    }
-
-    final rfiAmount = shift.getRfiBasketAmount(payProfile);
-    if (rfiAmount > 0) {
-      rfiBasketGross += rfiAmount;
-    }
-
-    overtimeHours += _extractShiftOvertimeHours(shift);
-    rfiBasketHours += _extractShiftRfiHours(shift);
-  }
-
-  final totalGross = nonOvertimeGross + overtimeGross + rfiBasketGross;
-
-  return MonthlyAccessorySummary(
-    month: month,
-    shiftCount: shiftCount,
-    nonOvertimeGross: _sanitizeMoney(nonOvertimeGross),
-    overtimeGross: _sanitizeMoney(overtimeGross),
-    overtimeHours: _sanitizeNonNegative(overtimeHours),
-    totalGross: _sanitizeMoney(totalGross),
-    rfiBasketGross: _sanitizeMoney(rfiBasketGross),
-    rfiBasketHours: _sanitizeNonNegative(rfiBasketHours),
-  );
-}
-
   _HistoricalCalibrationSnapshot _buildHistoricalCalibrationSnapshot(
     List<PayslipParsedData> payslips,
   ) {
@@ -932,16 +695,16 @@ final rfiBasketHoursFromReferenceMonth = _sanitizeNonNegative(
       );
     }
 
-    double sumNet = 0;
-    double sumGross = 0;
-    double sumFixedGross = 0;
-    double sumAccessoryGross = 0;
-    double sumPrevidenziali = 0;
-    double sumFiscali = 0;
-    double sumOther = 0;
-    double sumConguagli = 0;
-    double sumAccessoryTaxRate = 0;
-    double sumFixedNetRatio = 0;
+    double sumNet = 0.0;
+    double sumGross = 0.0;
+    double sumFixedGross = 0.0;
+    double sumAccessoryGross = 0.0;
+    double sumPrevidenziali = 0.0;
+    double sumFiscali = 0.0;
+    double sumOther = 0.0;
+    double sumConguagli = 0.0;
+    double sumAccessoryTaxRate = 0.0;
+    double sumFixedNetRatio = 0.0;
 
     for (final payslip in valid) {
       final fixedGross = _sanitizeMoney(
@@ -1060,103 +823,12 @@ final rfiBasketHoursFromReferenceMonth = _sanitizeNonNegative(
     );
   }
 
-  bool _isOvertimeLabel(String label) {
-    return label.contains('STRAORD') ||
-        label.contains('STRAORDINARIO') ||
-        label.contains('STR.') ||
-        label.contains('ST01') ||
-        label.contains('ST02') ||
-        label.contains('ST03') ||
-        label.contains('A01B/');
-  }
-
-  bool _isRfiBasketLabel(String label) {
-    return label.contains('BASKET RFI') ||
-        label.contains('TRENITALIA') ||
-        label.contains('SCALO FERROVIARIO');
-  }
-
-  double _extractShiftOvertimeHours(Shift shift) {
-    final raw = shift.overtimeHours;
-    if (raw.isNaN || !raw.isFinite || raw < 0) return 0;
-    return raw;
-  }
-
-  double _extractShiftRfiHours(Shift shift) {
-    final raw = shift.effectivePolferScaloReducedDayHours +
-        shift.effectivePolferScaloReducedNightHours +
-        shift.effectivePolferScaloFullDayHours +
-        shift.effectivePolferScaloFullNightHours;
-
-    if (raw.isNaN || !raw.isFinite || raw < 0) return 0;
-    return raw;
-  }
-
-  double _estimateBasketPaymentGross({
-    required double hours,
-    required List<Shift> allShifts,
-    required UserPayProfile payProfile,
-  }) {
-    if (hours <= 0) return 0;
-
-    double totalOvertimeGross = 0;
-    double totalOvertimeHours = 0;
-
-    for (final shift in allShifts) {
-      final breakdown = shift.getBreakdown(payProfile);
-
-      for (final item in breakdown) {
-        final label = (item['label'] as String? ?? '').toUpperCase().trim();
-        final amount = (item['amount'] as num?)?.toDouble() ?? 0.0;
-
-        if (amount <= 0) continue;
-        if (_isOvertimeLabel(label)) {
-          totalOvertimeGross += amount;
-        }
-      }
-
-      totalOvertimeHours += _extractShiftOvertimeHours(shift);
-    }
-
-    if (totalOvertimeHours > 0 && totalOvertimeGross > 0) {
-      return hours * (totalOvertimeGross / totalOvertimeHours);
-    }
-
-    final fallbackRate = payProfile.overtimeNightOrHolidayRate > 0
-        ? payProfile.overtimeNightOrHolidayRate
-        : 14.49;
-
-    return hours * fallbackRate;
-  }
-
-  double _estimateRfiBasketPaymentGross({
-    required double hours,
-    required List<Shift> allShifts,
-  }) {
-    if (hours <= 0) return 0;
-
-    double totalRfiGross = 0;
-    double totalRfiHours = 0;
-
-    for (final shift in allShifts) {
-      totalRfiGross += shift.getRfiBasketAmount();
-      totalRfiHours += _extractShiftRfiHours(shift);
-    }
-
-    if (totalRfiHours > 0 && totalRfiGross > 0) {
-      return hours * (totalRfiGross / totalRfiHours);
-    }
-
-    return 0;
-  }
-
   DateTime? _findFirstShiftMonth(List<Shift> allShifts) {
     if (allShifts.isEmpty) return null;
 
-    final sorted = [...allShifts]
-  ..sort((a, b) => a.serviceDate.compareTo(b.serviceDate));
-final first = sorted.first.serviceDate;
-return DateTime(first.year, first.month);
+    final sorted = [...allShifts]..sort((a, b) => a.start.compareTo(b.start));
+    final first = sorted.first.start;
+    return DateTime(first.year, first.month);
   }
 
   List<DateTime> _buildMonthsUpTo({
@@ -1206,13 +878,13 @@ return DateTime(first.year, first.month);
   }
 
   double _sanitizeMoney(double value) {
-    if (value.isNaN || !value.isFinite) return 0;
+    if (value.isNaN || !value.isFinite) return 0.0;
     return value;
   }
 
   double _sanitizeNonNegative(double value) {
-    if (value.isNaN || !value.isFinite) return 0;
-    if (value < 0) return 0;
+    if (value.isNaN || !value.isFinite) return 0.0;
+    if (value < 0) return 0.0;
     return value;
   }
 }

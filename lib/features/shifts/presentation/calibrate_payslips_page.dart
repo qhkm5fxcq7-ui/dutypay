@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'models/department.dart';
@@ -117,25 +118,57 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
     return null;
   }
 
+  String _storedPdfFileName(int index, String originalName) {
+    final safeName = originalName.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+    return 'cedolino_${_storageScope}_${index + 1}_$safeName';
+  }
+
+  Future<Directory> _getInternalPdfDirectory() async {
+    final baseDir = await getApplicationDocumentsDirectory();
+    final dir = Directory('${baseDir.path}/dutypay_pdfs_$_storageScope');
+
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
+
+    return dir;
+  }
+
+  Future<String> _copyPdfToInternalStorage({
+    required int index,
+    required String sourcePath,
+    required String originalName,
+  }) async {
+    final sourceFile = File(sourcePath);
+
+    if (!await sourceFile.exists()) {
+      throw Exception('Il file selezionato non esiste più.');
+    }
+
+    final internalDir = await _getInternalPdfDirectory();
+    final targetPath =
+        '${internalDir.path}/${_storedPdfFileName(index, originalName)}';
+
+    final targetFile = await sourceFile.copy(targetPath);
+    return targetFile.path;
+  }
+
   Future<void> _restorePersistedData() async {
     try {
       await _loadSavedShifts();
       await _loadSavedProfile();
       await _loadSavedRates();
       await _loadSavedPdfSelectionsMetadataOnly();
+      await _reparseSavedPdfs();
+      await _rebuildProfileIfPossible();
 
       if (!mounted) return;
 
       setState(() {
-        for (int i = 0; i < extractionErrors.length; i++) {
-          extractionErrors[i] = null;
-        }
-
         extraIncome = ShiftValueCalculator.calculateTotal(
           shifts,
           rates: derivedRates,
         );
-
         isRestoring = false;
       });
     } catch (e) {
@@ -161,6 +194,34 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
       return bytes.length;
     } catch (_) {
       return null;
+    }
+  }
+
+  Future<void> _reparseSavedPdfs() async {
+    for (int i = 0; i < selectedPdfPaths.length; i++) {
+      final path = selectedPdfPaths[i];
+
+      if (path == null || path.trim().isEmpty) {
+        parsedPayslips[i] = null;
+        extractionErrors[i] = null;
+        continue;
+      }
+
+      try {
+        final file = File(path);
+        if (!await file.exists()) {
+          parsedPayslips[i] = null;
+          extractionErrors[i] = 'File PDF non trovato nello storage interno.';
+          continue;
+        }
+
+        final parsed = await _parserService.extractAndParsePdf(path);
+        parsedPayslips[i] = parsed;
+        extractionErrors[i] = null;
+      } catch (e) {
+        parsedPayslips[i] = null;
+        extractionErrors[i] = e.toString();
+      }
     }
   }
 
@@ -195,6 +256,7 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
         final fileName = file.uri.pathSegments.isNotEmpty
             ? file.uri.pathSegments.last
             : path.split('/').last;
+
         final bytesCount = await _readPdfBytesCount(path);
 
         selectedPdfPaths[i] = path;
@@ -237,7 +299,9 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
               if (item is Map<String, dynamic>) {
                 shifts.add(shift_model.Shift.fromJson(item));
               } else if (item is Map) {
-                shifts.add(shift_model.Shift.fromJson(Map<String, dynamic>.from(item)));
+                shifts.add(
+                  shift_model.Shift.fromJson(Map<String, dynamic>.from(item)),
+                );
               }
             } catch (_) {}
           }
@@ -247,7 +311,7 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
         }
       }
     } catch (_) {
-      // fallback legacy list sotto
+      // fallback legacy
     }
 
     try {
@@ -265,7 +329,9 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
           if (decoded is Map<String, dynamic>) {
             shifts.add(shift_model.Shift.fromJson(decoded));
           } else if (decoded is Map) {
-            shifts.add(shift_model.Shift.fromJson(Map<String, dynamic>.from(decoded)));
+            shifts.add(
+              shift_model.Shift.fromJson(Map<String, dynamic>.from(decoded)),
+            );
           }
         } catch (_) {}
       }
@@ -295,18 +361,18 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
     );
 
     if (raw == null || raw.trim().isEmpty) {
-      _monthlyOvertimeLimitController.text =
-          UserPayProfile.defaultProfile().monthlyOvertimePayableHoursLimit
-              .toStringAsFixed(0);
+      _monthlyOvertimeLimitController.text = UserPayProfile.defaultProfile()
+          .monthlyOvertimePayableHoursLimit
+          .toStringAsFixed(0);
       return;
     }
 
     try {
       final decoded = jsonDecode(raw);
       if (decoded is! Map) {
-        _monthlyOvertimeLimitController.text =
-            UserPayProfile.defaultProfile().monthlyOvertimePayableHoursLimit
-                .toStringAsFixed(0);
+        _monthlyOvertimeLimitController.text = UserPayProfile.defaultProfile()
+            .monthlyOvertimePayableHoursLimit
+            .toStringAsFixed(0);
         return;
       }
 
@@ -314,16 +380,17 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
         Map<String, dynamic>.from(decoded),
       );
 
-      _monthlyOvertimeLimitController.text =
-          calibratedProfile!.monthlyOvertimePayableHoursLimit.toStringAsFixed(0);
+      _monthlyOvertimeLimitController.text = calibratedProfile!
+          .monthlyOvertimePayableHoursLimit
+          .toStringAsFixed(0);
 
       engineSnapshot = _dutyPayEngine.buildSnapshot(calibratedProfile!);
     } catch (_) {
       calibratedProfile = null;
       engineSnapshot = null;
-      _monthlyOvertimeLimitController.text =
-          UserPayProfile.defaultProfile().monthlyOvertimePayableHoursLimit
-              .toStringAsFixed(0);
+      _monthlyOvertimeLimitController.text = UserPayProfile.defaultProfile()
+          .monthlyOvertimePayableHoursLimit
+          .toStringAsFixed(0);
     }
   }
 
@@ -400,7 +467,8 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
   }
 
   double _parseMonthlyOvertimeLimitInput() {
-    final raw = _monthlyOvertimeLimitController.text.trim().replaceAll(',', '.');
+    final raw =
+        _monthlyOvertimeLimitController.text.trim().replaceAll(',', '.');
     final parsed = double.tryParse(raw);
 
     if (parsed == null || parsed.isNaN || !parsed.isFinite || parsed < 0) {
@@ -425,10 +493,9 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
     setState(() {
       calibratedProfile = updatedProfile;
       engineSnapshot = _dutyPayEngine.buildSnapshot(updatedProfile);
-      _monthlyOvertimeLimitController.text =
-          limit == limit.roundToDouble()
-              ? limit.toStringAsFixed(0)
-              : limit.toStringAsFixed(1);
+      _monthlyOvertimeLimitController.text = limit == limit.roundToDouble()
+          ? limit.toStringAsFixed(0)
+          : limit.toStringAsFixed(1);
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -511,7 +578,8 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
   }
 
   Future<void> _rebuildProfileIfPossible() async {
-    final validPayslips = parsedPayslips.whereType<PayslipParsedData>().toList();
+    final validPayslips =
+        parsedPayslips.whereType<PayslipParsedData>().toList();
 
     if (validPayslips.length < 2) {
       if (!mounted) return;
@@ -528,8 +596,7 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
     try {
       final previousLimit =
           calibratedProfile?.monthlyOvertimePayableHoursLimit ??
-              UserPayProfile.defaultProfile()
-                  .monthlyOvertimePayableHoursLimit;
+              UserPayProfile.defaultProfile().monthlyOvertimePayableHoursLimit;
 
       final profile = _parserService
           .buildDynamicProfile(validPayslips)
@@ -544,15 +611,16 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
         calibratedProfile = profile;
         engineSnapshot = snapshot;
         derivedRates = rates;
-        _monthlyOvertimeLimitController.text =
-            profile.monthlyOvertimePayableHoursLimit == 0
-                ? '0'
-                : profile.monthlyOvertimePayableHoursLimit.roundToDouble() ==
-                        profile.monthlyOvertimePayableHoursLimit
-                    ? profile.monthlyOvertimePayableHoursLimit.toStringAsFixed(0)
-                    : profile.monthlyOvertimePayableHoursLimit.toStringAsFixed(
-                        1,
-                      );
+        _monthlyOvertimeLimitController.text = profile
+                    .monthlyOvertimePayableHoursLimit ==
+                0
+            ? '0'
+            : profile.monthlyOvertimePayableHoursLimit.roundToDouble() ==
+                    profile.monthlyOvertimePayableHoursLimit
+                ? profile.monthlyOvertimePayableHoursLimit.toStringAsFixed(0)
+                : profile.monthlyOvertimePayableHoursLimit.toStringAsFixed(
+                    1,
+                  );
         extraIncome = ShiftValueCalculator.calculateTotal(
           shifts,
           rates: rates,
@@ -587,12 +655,18 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
     String rawPath,
     String fileName,
   ) async {
-    final bytesCount = await _readPdfBytesCount(rawPath);
+    final internalPath = await _copyPdfToInternalStorage(
+      index: index,
+      sourcePath: rawPath,
+      originalName: fileName,
+    );
+
+    final bytesCount = await _readPdfBytesCount(internalPath);
 
     if (!mounted) return;
 
     setState(() {
-      selectedPdfPaths[index] = rawPath;
+      selectedPdfPaths[index] = internalPath;
       selectedPdfNames[index] = fileName;
       selectedPdfBytes[index] = bytesCount;
       parsedPayslips[index] = null;
@@ -605,7 +679,7 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
     await _clearProfile();
     await _clearRates();
     await _savePdfSelections();
-    await _extractAndParsePdf(index, rawPath);
+    await _extractAndParsePdf(index, internalPath);
     await _rebuildProfileIfPossible();
   }
 
@@ -682,7 +756,7 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
 
     if (!mounted) return;
 
-    if (result is shift_model.Shift){
+    if (result is shift_model.Shift) {
       setState(() {
         shifts.add(result);
         shifts.sort((a, b) => b.serviceDate.compareTo(a.serviceDate));
@@ -876,7 +950,8 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
               children: [
                 SizedBox(
                   width: 150,
-                  child: _buildInfoChip('Grado rilevato', parsed.detectedGradeLabel),
+                  child: _buildInfoChip(
+                      'Grado rilevato', parsed.detectedGradeLabel),
                 ),
                 SizedBox(
                   width: 150,
@@ -894,7 +969,8 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
                 ),
                 SizedBox(
                   width: 150,
-                  child: _buildInfoChip('Netto', _formatMoney(parsed.totaleNetto)),
+                  child:
+                      _buildInfoChip('Netto', _formatMoney(parsed.totaleNetto)),
                 ),
                 SizedBox(
                   width: 150,
@@ -963,7 +1039,9 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Icon(
-            isLoaded ? Icons.check_circle_rounded : Icons.picture_as_pdf_rounded,
+            isLoaded
+                ? Icons.check_circle_rounded
+                : Icons.picture_as_pdf_rounded,
             size: 38,
             color: isLoaded ? const Color(0xFF22C55E) : Colors.white70,
           ),
@@ -1050,9 +1128,8 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
   }
 
   Widget _buildOvertimeLimitCard() {
-    final currentLimit =
-        calibratedProfile?.monthlyOvertimePayableHoursLimit ??
-            UserPayProfile.defaultProfile().monthlyOvertimePayableHoursLimit;
+    final currentLimit = calibratedProfile?.monthlyOvertimePayableHoursLimit ??
+        UserPayProfile.defaultProfile().monthlyOvertimePayableHoursLimit;
 
     if (_monthlyOvertimeLimitController.text.trim().isEmpty) {
       _monthlyOvertimeLimitController.text = currentLimit.toStringAsFixed(0);
@@ -1359,9 +1436,8 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
               style: TextStyle(
                 fontSize: 10.5,
                 fontWeight: FontWeight.w700,
-                color: isReal
-                    ? const Color(0xFF22C55E)
-                    : const Color(0xFFF59E0B),
+                color:
+                    isReal ? const Color(0xFF22C55E) : const Color(0xFFF59E0B),
               ),
             ),
           ],
@@ -1488,17 +1564,17 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
   }
 
   String _labelForOpType(shift_model.OpServiceType type) {
-  switch (type) {
-    case shift_model.OpServiceType.none:
-      return 'Nessun OP';
-    case shift_model.OpServiceType.inSede:
-      return 'OP in sede';
-    case shift_model.OpServiceType.fuoriSedeOneTurno:
-      return 'OP fuori sede - 1 turno';
-    case shift_model.OpServiceType.fuoriSedeIntera:
-      return 'OP fuori sede - intera';
+    switch (type) {
+      case shift_model.OpServiceType.none:
+        return 'Nessun OP';
+      case shift_model.OpServiceType.inSede:
+        return 'OP in sede';
+      case shift_model.OpServiceType.fuoriSedeOneTurno:
+        return 'OP fuori sede - 1 turno';
+      case shift_model.OpServiceType.fuoriSedeIntera:
+        return 'OP fuori sede - intera';
+    }
   }
-}
 
   Widget _buildShiftListCard() {
     if (shifts.isEmpty) {

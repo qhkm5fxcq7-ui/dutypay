@@ -477,38 +477,38 @@ class UserPayProfile {
   });
 
   factory UserPayProfile.defaultProfile() {
-    return UserPayProfile(
-      rank: null,
-      overtimeDayRate: 12.0,
-      overtimeNightOrHolidayRate: 13.5,
-      overtimeNightAndHolidayRate: 15.0,
-      orderPublicInSede: 6.0,
-      orderPublicFuoriSede: 10.0,
-      orderPublicPernotto: 15.0,
-      externalServiceRate: 6.0,
-      controlloTerritorioSerale: 3.60,
-      controlloTerritorioNotturno: 7.20,
-      holidayAllowance: 8.0,
-      specialHolidayAllowance: 10.0,
-      monthlyOvertimePayableHoursLimit: 55.0,
-      profileVersion: 'default',
-      calibratedAt: DateTime.now(),
-      sourceWindowLabel: '',
-      detectedGradeLabel: 'Non rilevato',
-      detectedBaseSalary: 0,
-      averageAccessoryPay: 0,
-      historicalAccessoryAvg: null,
-      historicalHoursAvg: null,
-      historicalMonths: null,
-      recurringDeductionsTotal: 0,
-      effectiveTaxRate: 0.27,
-      sourcePayslips: const [],
-      annualProductionBonus: null,
-      genereDiConfortoRate: 1.02,
-      ticketPastoRate: 7.00,
-      straordinarioNetMultiplier: 0.67,
-    );
-  }
+  return UserPayProfile(
+    rank: null,
+    overtimeDayRate: 12.0,
+    overtimeNightOrHolidayRate: 13.5,
+    overtimeNightAndHolidayRate: 15.0,
+    orderPublicInSede: 6.0,
+    orderPublicFuoriSede: 10.0,
+    orderPublicPernotto: 15.0,
+    externalServiceRate: 6.0,
+    controlloTerritorioSerale: 3.60,
+    controlloTerritorioNotturno: 7.20,
+    holidayAllowance: 8.0,
+    specialHolidayAllowance: 10.0,
+    monthlyOvertimePayableHoursLimit: 55.0,
+    profileVersion: 'default',
+    calibratedAt: DateTime.now(),
+    sourceWindowLabel: '',
+    detectedGradeLabel: 'Non rilevato',
+    detectedBaseSalary: 0,
+    averageAccessoryPay: 0,
+    historicalAccessoryAvg: null,
+    historicalHoursAvg: null,
+    historicalMonths: null,
+    recurringDeductionsTotal: 0,
+    effectiveTaxRate: 0.27,
+    sourcePayslips: const [],
+    annualProductionBonus: null,
+    genereDiConfortoRate: 1.02,
+    ticketPastoRate: 7.00,
+    straordinarioNetMultiplier: 0.67,
+  );
+}
 
   double get baseNetSalary {
     if (detectedBaseSalary <= 0) return 0;
@@ -516,174 +516,173 @@ class UserPayProfile {
   }
 
   UserPayProfile copyWith({
-    String? rank,
-    double? overtimeDayRate,
-    double? overtimeNightOrHolidayRate,
-    double? overtimeNightAndHolidayRate,
-    double? orderPublicInSede,
-    double? orderPublicFuoriSede,
-    double? orderPublicPernotto,
-    double? externalServiceRate,
-    double? controlloTerritorioSerale,
-    double? controlloTerritorioNotturno,
-    double? holidayAllowance,
-    double? specialHolidayAllowance,
-    double? monthlyOvertimePayableHoursLimit,
-    String? profileVersion,
-    DateTime? calibratedAt,
-    String? sourceWindowLabel,
-    double? detectedBaseSalary,
-    String? detectedGradeLabel,
-    double? averageAccessoryPay,
-    double? historicalAccessoryAvg,
-    double? historicalHoursAvg,
-    int? historicalMonths,
-    double? recurringDeductionsTotal,
-    double? effectiveTaxRate,
-    List<PayslipParsedData>? sourcePayslips,
-    double? annualProductionBonus,
-    double? genereDiConfortoRate,
-    double? ticketPastoRate,
-    double? straordinarioNetMultiplier,
-  }) {
-    return UserPayProfile(
-      rank: rank ?? this.rank,
-      overtimeDayRate: overtimeDayRate ?? this.overtimeDayRate,
-      overtimeNightOrHolidayRate:
-          overtimeNightOrHolidayRate ?? this.overtimeNightOrHolidayRate,
-      overtimeNightAndHolidayRate:
-          overtimeNightAndHolidayRate ?? this.overtimeNightAndHolidayRate,
-      orderPublicInSede: orderPublicInSede ?? this.orderPublicInSede,
-      orderPublicFuoriSede: orderPublicFuoriSede ?? this.orderPublicFuoriSede,
-      orderPublicPernotto: orderPublicPernotto ?? this.orderPublicPernotto,
-      externalServiceRate: externalServiceRate ?? this.externalServiceRate,
-      controlloTerritorioSerale:
-          controlloTerritorioSerale ?? this.controlloTerritorioSerale,
-      controlloTerritorioNotturno:
-          controlloTerritorioNotturno ?? this.controlloTerritorioNotturno,
-      holidayAllowance: holidayAllowance ?? this.holidayAllowance,
-      specialHolidayAllowance:
-          specialHolidayAllowance ?? this.specialHolidayAllowance,
-      monthlyOvertimePayableHoursLimit:
-          monthlyOvertimePayableHoursLimit ??
-              this.monthlyOvertimePayableHoursLimit,
-      profileVersion: profileVersion ?? this.profileVersion,
-      calibratedAt: calibratedAt ?? this.calibratedAt,
-      sourceWindowLabel: sourceWindowLabel ?? this.sourceWindowLabel,
-      detectedGradeLabel: detectedGradeLabel ?? this.detectedGradeLabel,
-      detectedBaseSalary: detectedBaseSalary ?? this.detectedBaseSalary,
-      averageAccessoryPay: averageAccessoryPay ?? this.averageAccessoryPay,
-      historicalAccessoryAvg:
-          historicalAccessoryAvg ?? this.historicalAccessoryAvg,
-      historicalHoursAvg: historicalHoursAvg ?? this.historicalHoursAvg,
-      historicalMonths: historicalMonths ?? this.historicalMonths,
-      recurringDeductionsTotal:
-          recurringDeductionsTotal ?? this.recurringDeductionsTotal,
-      effectiveTaxRate: effectiveTaxRate ?? this.effectiveTaxRate,
-      sourcePayslips: sourcePayslips ?? this.sourcePayslips,
-      annualProductionBonus:
-          annualProductionBonus ?? this.annualProductionBonus,
-      genereDiConfortoRate:
-          genereDiConfortoRate ?? this.genereDiConfortoRate,
-      ticketPastoRate: ticketPastoRate ?? this.ticketPastoRate,
-      straordinarioNetMultiplier:
-          straordinarioNetMultiplier ?? this.straordinarioNetMultiplier,
-    );
-  }
+  String? rank,
+  double? overtimeDayRate,
+  double? overtimeNightOrHolidayRate,
+  double? overtimeNightAndHolidayRate,
+  double? orderPublicInSede,
+  double? orderPublicFuoriSede,
+  double? orderPublicPernotto,
+  double? externalServiceRate,
+  double? controlloTerritorioSerale,
+  double? controlloTerritorioNotturno,
+  double? holidayAllowance,
+  double? specialHolidayAllowance,
+  double? monthlyOvertimePayableHoursLimit,
+  String? profileVersion,
+  DateTime? calibratedAt,
+  String? sourceWindowLabel,
+  double? detectedBaseSalary,
+  String? detectedGradeLabel,
+  double? averageAccessoryPay,
+  double? historicalAccessoryAvg,
+  double? historicalHoursAvg,
+  int? historicalMonths,
+  double? recurringDeductionsTotal,
+  double? effectiveTaxRate,
+  List<PayslipParsedData>? sourcePayslips,
+  double? annualProductionBonus,
+  double? genereDiConfortoRate,
+  double? ticketPastoRate,
+  double? straordinarioNetMultiplier,
+}) {
+  return UserPayProfile(
+    rank: rank ?? this.rank,
+    overtimeDayRate: overtimeDayRate ?? this.overtimeDayRate,
+    overtimeNightOrHolidayRate:
+        overtimeNightOrHolidayRate ?? this.overtimeNightOrHolidayRate,
+    overtimeNightAndHolidayRate:
+        overtimeNightAndHolidayRate ?? this.overtimeNightAndHolidayRate,
+    orderPublicInSede: orderPublicInSede ?? this.orderPublicInSede,
+    orderPublicFuoriSede: orderPublicFuoriSede ?? this.orderPublicFuoriSede,
+    orderPublicPernotto: orderPublicPernotto ?? this.orderPublicPernotto,
+    externalServiceRate: externalServiceRate ?? this.externalServiceRate,
+    controlloTerritorioSerale:
+        controlloTerritorioSerale ?? this.controlloTerritorioSerale,
+    controlloTerritorioNotturno:
+        controlloTerritorioNotturno ?? this.controlloTerritorioNotturno,
+    holidayAllowance: holidayAllowance ?? this.holidayAllowance,
+    specialHolidayAllowance:
+        specialHolidayAllowance ?? this.specialHolidayAllowance,
+    monthlyOvertimePayableHoursLimit:
+        monthlyOvertimePayableHoursLimit ??
+            this.monthlyOvertimePayableHoursLimit,
+    profileVersion: profileVersion ?? this.profileVersion,
+    calibratedAt: calibratedAt ?? this.calibratedAt,
+    sourceWindowLabel: sourceWindowLabel ?? this.sourceWindowLabel,
+    detectedGradeLabel: detectedGradeLabel ?? this.detectedGradeLabel,
+    detectedBaseSalary: detectedBaseSalary ?? this.detectedBaseSalary,
+    averageAccessoryPay: averageAccessoryPay ?? this.averageAccessoryPay,
+    historicalAccessoryAvg:
+        historicalAccessoryAvg ?? this.historicalAccessoryAvg,
+    historicalHoursAvg: historicalHoursAvg ?? this.historicalHoursAvg,
+    historicalMonths: historicalMonths ?? this.historicalMonths,
+    recurringDeductionsTotal:
+        recurringDeductionsTotal ?? this.recurringDeductionsTotal,
+    effectiveTaxRate: effectiveTaxRate ?? this.effectiveTaxRate,
+    sourcePayslips: sourcePayslips ?? this.sourcePayslips,
+    annualProductionBonus:
+        annualProductionBonus ?? this.annualProductionBonus,
+    genereDiConfortoRate:
+        genereDiConfortoRate ?? this.genereDiConfortoRate,
+    ticketPastoRate: ticketPastoRate ?? this.ticketPastoRate,
+    straordinarioNetMultiplier:
+        straordinarioNetMultiplier ?? this.straordinarioNetMultiplier,
+  );
+}
 
   Map<String, dynamic> toJson() {
-    return {
-      'rank': rank,
-      'overtimeDayRate': overtimeDayRate,
-      'overtimeNightOrHolidayRate': overtimeNightOrHolidayRate,
-      'overtimeNightAndHolidayRate': overtimeNightAndHolidayRate,
-      'orderPublicInSede': orderPublicInSede,
-      'orderPublicFuoriSede': orderPublicFuoriSede,
-      'orderPublicPernotto': orderPublicPernotto,
-      'externalServiceRate': externalServiceRate,
-      'controlloTerritorioSerale': controlloTerritorioSerale,
-      'controlloTerritorioNotturno': controlloTerritorioNotturno,
-      'holidayAllowance': holidayAllowance,
-      'specialHolidayAllowance': specialHolidayAllowance,
-      'monthlyOvertimePayableHoursLimit': monthlyOvertimePayableHoursLimit,
-      'profileVersion': profileVersion,
-      'calibratedAt': calibratedAt.toIso8601String(),
-      'sourceWindowLabel': sourceWindowLabel,
-      'detectedGradeLabel': detectedGradeLabel,
-      'detectedBaseSalary': detectedBaseSalary,
-      'averageAccessoryPay': averageAccessoryPay,
-      'historicalAccessoryAvg': historicalAccessoryAvg,
-      'historicalHoursAvg': historicalHoursAvg,
-      'historicalMonths': historicalMonths,
-      'recurringDeductionsTotal': recurringDeductionsTotal,
-      'effectiveTaxRate': effectiveTaxRate,
-      'sourcePayslips': sourcePayslips.map((e) => e.toJson()).toList(),
-      'annualProductionBonus': annualProductionBonus,
-      'genereDiConfortoRate': genereDiConfortoRate,
-      'ticketPastoRate': ticketPastoRate,
-      'straordinarioNetMultiplier': straordinarioNetMultiplier,
-    };
-  }
+  return {
+    'rank': rank,
+    'overtimeDayRate': overtimeDayRate,
+    'overtimeNightOrHolidayRate': overtimeNightOrHolidayRate,
+    'overtimeNightAndHolidayRate': overtimeNightAndHolidayRate,
+    'orderPublicInSede': orderPublicInSede,
+    'orderPublicFuoriSede': orderPublicFuoriSede,
+    'orderPublicPernotto': orderPublicPernotto,
+    'externalServiceRate': externalServiceRate,
+    'controlloTerritorioSerale': controlloTerritorioSerale,
+    'controlloTerritorioNotturno': controlloTerritorioNotturno,
+    'holidayAllowance': holidayAllowance,
+    'specialHolidayAllowance': specialHolidayAllowance,
+    'monthlyOvertimePayableHoursLimit': monthlyOvertimePayableHoursLimit,
+    'profileVersion': profileVersion,
+    'calibratedAt': calibratedAt.toIso8601String(),
+    'sourceWindowLabel': sourceWindowLabel,
+    'detectedGradeLabel': detectedGradeLabel,
+    'detectedBaseSalary': detectedBaseSalary,
+    'averageAccessoryPay': averageAccessoryPay,
+    'historicalAccessoryAvg': historicalAccessoryAvg,
+    'historicalHoursAvg': historicalHoursAvg,
+    'historicalMonths': historicalMonths,
+    'recurringDeductionsTotal': recurringDeductionsTotal,
+    'effectiveTaxRate': effectiveTaxRate,
+    'sourcePayslips': sourcePayslips.map((e) => e.toJson()).toList(),
+    'annualProductionBonus': annualProductionBonus,
+    'genereDiConfortoRate': genereDiConfortoRate,
+    'ticketPastoRate': ticketPastoRate,
+    'straordinarioNetMultiplier': straordinarioNetMultiplier,
+  };
+}
 
   factory UserPayProfile.fromJson(Map<String, dynamic> json) {
-    return UserPayProfile(
-      rank: json['rank'] as String?,
-      overtimeDayRate: (json['overtimeDayRate'] as num?)?.toDouble() ?? 12.0,
-      overtimeNightOrHolidayRate:
-          (json['overtimeNightOrHolidayRate'] as num?)?.toDouble() ?? 13.5,
-      overtimeNightAndHolidayRate:
-          (json['overtimeNightAndHolidayRate'] as num?)?.toDouble() ?? 15.0,
-      orderPublicInSede:
-          (json['orderPublicInSede'] as num?)?.toDouble() ?? 6.0,
-      orderPublicFuoriSede:
-          (json['orderPublicFuoriSede'] as num?)?.toDouble() ?? 10.0,
-      orderPublicPernotto:
-          (json['orderPublicPernotto'] as num?)?.toDouble() ?? 15.0,
-      externalServiceRate:
-          (json['externalServiceRate'] as num?)?.toDouble() ?? 6.0,
-      controlloTerritorioSerale:
-          (json['controlloTerritorioSerale'] as num?)?.toDouble() ?? 3.60,
-      controlloTerritorioNotturno:
-          (json['controlloTerritorioNotturno'] as num?)?.toDouble() ?? 7.20,
-      holidayAllowance:
-          (json['holidayAllowance'] as num?)?.toDouble() ?? 8.0,
-      specialHolidayAllowance:
-          (json['specialHolidayAllowance'] as num?)?.toDouble() ?? 10.0,
-      monthlyOvertimePayableHoursLimit:
-          (json['monthlyOvertimePayableHoursLimit'] as num?)?.toDouble() ??
-              55.0,
-      profileVersion: (json['profileVersion'] ?? 'default') as String,
-      calibratedAt: DateTime.tryParse(
-            (json['calibratedAt'] ?? '') as String,
-          ) ??
-          DateTime.now(),
-      sourceWindowLabel: (json['sourceWindowLabel'] ?? '') as String,
-      detectedGradeLabel:
-          (json['detectedGradeLabel'] ?? 'Non rilevato') as String,
-      detectedBaseSalary:
-          (json['detectedBaseSalary'] as num?)?.toDouble() ?? 0,
-      averageAccessoryPay:
-          (json['averageAccessoryPay'] as num?)?.toDouble() ?? 0,
-      historicalAccessoryAvg:
-          (json['historicalAccessoryAvg'] as num?)?.toDouble(),
-      historicalHoursAvg: (json['historicalHoursAvg'] as num?)?.toDouble(),
-      historicalMonths: json['historicalMonths'] as int?,
-      recurringDeductionsTotal:
-          (json['recurringDeductionsTotal'] as num?)?.toDouble() ?? 0,
-      effectiveTaxRate:
-          (json['effectiveTaxRate'] as num?)?.toDouble() ?? 0.27,
-      sourcePayslips: (json['sourcePayslips'] as List<dynamic>? ?? [])
-          .whereType<Map<String, dynamic>>()
-          .map(PayslipParsedData.fromJson)
-          .toList(),
-      annualProductionBonus:
-          (json['annualProductionBonus'] as num?)?.toDouble(),
-      genereDiConfortoRate:
-          (json['genereDiConfortoRate'] as num?)?.toDouble() ?? 1.02,
-      ticketPastoRate:
-          (json['ticketPastoRate'] as num?)?.toDouble() ?? 7.00,
-      straordinarioNetMultiplier:
-          (json['straordinarioNetMultiplier'] as num?)?.toDouble() ?? 0.67,
-    );
-  }
+  return UserPayProfile(
+    rank: json['rank'] as String?,
+    overtimeDayRate: (json['overtimeDayRate'] as num?)?.toDouble() ?? 12.0,
+    overtimeNightOrHolidayRate:
+        (json['overtimeNightOrHolidayRate'] as num?)?.toDouble() ?? 13.5,
+    overtimeNightAndHolidayRate:
+        (json['overtimeNightAndHolidayRate'] as num?)?.toDouble() ?? 15.0,
+    orderPublicInSede:
+        (json['orderPublicInSede'] as num?)?.toDouble() ?? 6.0,
+    orderPublicFuoriSede:
+        (json['orderPublicFuoriSede'] as num?)?.toDouble() ?? 10.0,
+    orderPublicPernotto:
+        (json['orderPublicPernotto'] as num?)?.toDouble() ?? 15.0,
+    externalServiceRate:
+        (json['externalServiceRate'] as num?)?.toDouble() ?? 6.0,
+    controlloTerritorioSerale:
+        (json['controlloTerritorioSerale'] as num?)?.toDouble() ?? 3.60,
+    controlloTerritorioNotturno:
+        (json['controlloTerritorioNotturno'] as num?)?.toDouble() ?? 7.20,
+    holidayAllowance:
+        (json['holidayAllowance'] as num?)?.toDouble() ?? 8.0,
+    specialHolidayAllowance:
+        (json['specialHolidayAllowance'] as num?)?.toDouble() ?? 10.0,
+    monthlyOvertimePayableHoursLimit:
+        (json['monthlyOvertimePayableHoursLimit'] as num?)?.toDouble() ?? 55.0,
+    profileVersion: (json['profileVersion'] ?? 'default') as String,
+    calibratedAt:
+        DateTime.tryParse((json['calibratedAt'] ?? '') as String) ??
+            DateTime.now(),
+    sourceWindowLabel: (json['sourceWindowLabel'] ?? '') as String,
+    detectedGradeLabel:
+        (json['detectedGradeLabel'] ?? 'Non rilevato') as String,
+    detectedBaseSalary:
+        (json['detectedBaseSalary'] as num?)?.toDouble() ?? 0,
+    averageAccessoryPay:
+        (json['averageAccessoryPay'] as num?)?.toDouble() ?? 0,
+    historicalAccessoryAvg:
+        (json['historicalAccessoryAvg'] as num?)?.toDouble(),
+    historicalHoursAvg:
+        (json['historicalHoursAvg'] as num?)?.toDouble(),
+    historicalMonths: json['historicalMonths'] as int?,
+    recurringDeductionsTotal:
+        (json['recurringDeductionsTotal'] as num?)?.toDouble() ?? 0,
+    effectiveTaxRate:
+        (json['effectiveTaxRate'] as num?)?.toDouble() ?? 0.27,
+    sourcePayslips: (json['sourcePayslips'] as List<dynamic>? ?? [])
+        .whereType<Map<String, dynamic>>()
+        .map(PayslipParsedData.fromJson)
+        .toList(),
+    annualProductionBonus:
+        (json['annualProductionBonus'] as num?)?.toDouble(),
+    genereDiConfortoRate:
+        (json['genereDiConfortoRate'] as num?)?.toDouble() ?? 1.02,
+    ticketPastoRate:
+        (json['ticketPastoRate'] as num?)?.toDouble() ?? 7.00,
+    straordinarioNetMultiplier:
+        (json['straordinarioNetMultiplier'] as num?)?.toDouble() ?? 0.67,
+  );
+}
 }

@@ -1,0 +1,96 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:dutypay/features/shifts/domain/engine/policies/reparto_mobile_policy.dart';
+import 'package:dutypay/features/shifts/presentation/models/shift.dart';
+import 'package:dutypay/features/shifts/presentation/models/user_pay_profile.dart';
+
+void main() {
+  group('PolferPolicy', () {
+    const policy = PolferPolicy();
+    final profile = UserPayProfile.defaultProfile();
+
+    test('turno mattina standard 06:55 -> 13:08 genera zero straordinario', () {
+      final shift = Shift(
+        start: DateTime(2026, 4, 1, 6, 55),
+        end: DateTime(2026, 4, 1, 13, 8),
+        absence: 'Nessuna',
+      );
+
+      final result = policy.calculateShift(shift, profile);
+
+      expect(result.workedHours, closeTo(6.2166667, 0.001));
+      expect(result.ordinaryHours, closeTo(6.2166667, 0.001));
+      expect(result.overtimeHours, closeTo(0.0, 0.001));
+      expect(result.totalAmount, closeTo(0.0, 0.001));
+      expect(result.breakdown, isEmpty);
+    });
+
+    test('turno pomeriggio standard 12:55 -> 19:08 genera zero straordinario', () {
+      final shift = Shift(
+        start: DateTime(2026, 4, 1, 12, 55),
+        end: DateTime(2026, 4, 1, 19, 8),
+        absence: 'Nessuna',
+      );
+
+      final result = policy.calculateShift(shift, profile);
+
+      expect(result.workedHours, closeTo(6.2166667, 0.001));
+      expect(result.ordinaryHours, closeTo(6.2166667, 0.001));
+      expect(result.overtimeHours, closeTo(0.0, 0.001));
+      expect(result.totalAmount, closeTo(0.0, 0.001));
+      expect(result.breakdown, isEmpty);
+    });
+
+    test('turno sera standard 18:55 -> 00:08 genera zero straordinario', () {
+      final shift = Shift(
+        start: DateTime(2026, 4, 1, 18, 55),
+        end: DateTime(2026, 4, 2, 0, 8),
+        absence: 'Nessuna',
+      );
+
+      final result = policy.calculateShift(shift, profile);
+
+      expect(result.workedHours, closeTo(5.2166667, 0.001));
+      expect(result.ordinaryHours, closeTo(5.2166667, 0.001));
+      expect(result.overtimeHours, closeTo(0.0, 0.001));
+      expect(result.totalAmount, closeTo(0.0, 0.001));
+    });
+
+    test('turno notte standard 23:55 -> 07:08 genera zero straordinario', () {
+      final shift = Shift(
+        start: DateTime(2026, 4, 1, 23, 55),
+        end: DateTime(2026, 4, 2, 7, 8),
+        absence: 'Nessuna',
+      );
+
+      final result = policy.calculateShift(shift, profile);
+
+      expect(result.workedHours, closeTo(7.2166667, 0.001));
+      expect(result.ordinaryHours, closeTo(7.2166667, 0.001));
+      expect(result.overtimeHours, closeTo(0.0, 0.001));
+      expect(result.totalAmount, closeTo(0.0, 0.001));
+    });
+
+    test('controllo territorio serale aggiunge la voce corretta nel breakdown', () {
+      final shift = Shift(
+        start: DateTime(2026, 4, 1, 12, 55),
+        end: DateTime(2026, 4, 1, 19, 8),
+        polferTerritoryControlType: PolferTerritoryControlType.serale,
+        absence: 'Nessuna',
+      );
+
+      final result = policy.calculateShift(shift, profile);
+
+      expect(result.overtimeHours, closeTo(0.0, 0.001));
+      expect(result.totalAmount, closeTo(5.0, 0.001));
+
+      final labels = result.breakdown
+          .map((e) => e['label'] as String? ?? '')
+          .toList();
+
+      expect(
+        labels.any((label) => label.contains('Controllo del territorio serale')),
+        isTrue,
+      );
+    });
+  });
+}
