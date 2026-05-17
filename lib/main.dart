@@ -484,6 +484,8 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
       'dutypay_basket_payments_$_storageScope';
   String get rfiBasketPaymentsStorageKey =>
       'dutypay_rfi_basket_payments_$_storageScope';
+  String get compensativeBasketMovementsStorageKey =>
+    'dutypay_compensative_basket_movements_$_storageScope';
   String get monthNotesStorageKey => 'dutypay_month_notes_$_storageScope';
 
   bool get _isRepartoMobileScope =>
@@ -509,6 +511,7 @@ final BuildCompensativeBasketSummaryFromMovementsUseCase
   final List<Shift> shifts = [];
   final List<BasketPayment> basketPayments = [];
   final List<RfiBasketPayment> rfiBasketPayments = [];
+  final List<CompensativeBasketMovement> manualCompensativeBasketMovements = [];
 
   bool isLoading = true;
   int selectedTabIndex = 0;
@@ -619,6 +622,12 @@ final BuildCompensativeBasketSummaryFromMovementsUseCase
     final loadedRfiBasketPayments =
         _loadRfiBasketPayments(rawRfiBasketPayments);
 
+    final rawCompensativeMovements =
+    prefs.getString(compensativeBasketMovementsStorageKey);
+
+final loadedCompensativeMovements =
+    _loadCompensativeBasketMovements(rawCompensativeMovements);
+
     if (!mounted) return;
 
     setState(() {
@@ -631,6 +640,9 @@ final BuildCompensativeBasketSummaryFromMovementsUseCase
       rfiBasketPayments
         ..clear()
         ..addAll(loadedRfiBasketPayments);
+        manualCompensativeBasketMovements
+  ..clear()
+  ..addAll(loadedCompensativeMovements);
       payProfile = loadedProfile;
       isLoading = false;
     });
@@ -746,6 +758,26 @@ final BuildCompensativeBasketSummaryFromMovementsUseCase
     return [];
   }
 
+  List<CompensativeBasketMovement> _loadCompensativeBasketMovements(
+  String? raw,
+) {
+  if (raw == null || raw.trim().isEmpty) {
+    return [];
+  }
+
+  try {
+    final decoded = jsonDecode(raw);
+    if (decoded is! List) return [];
+
+    return decoded
+        .whereType<Map<String, dynamic>>()
+        .map(CompensativeBasketMovement.fromJson)
+        .toList();
+  } catch (_) {
+    return [];
+  }
+}
+
   Future<void> _saveShiftsToPrefs(
     SharedPreferences prefs,
     List<Shift> shiftsToSave,
@@ -773,6 +805,14 @@ final BuildCompensativeBasketSummaryFromMovementsUseCase
     final raw = jsonEncode(rfiBasketPayments.map((e) => e.toJson()).toList());
     await prefs.setString(rfiBasketPaymentsStorageKey, raw);
   }
+
+  Future<void> _saveCompensativeBasketMovements() async {
+  final prefs = await SharedPreferences.getInstance();
+  final raw = jsonEncode(
+    manualCompensativeBasketMovements.map((e) => e.toJson()).toList(),
+  );
+  await prefs.setString(compensativeBasketMovementsStorageKey, raw);
+}
 
   Future<void> addBasketPayment(
     DateTime paymentMonth,
@@ -1013,9 +1053,15 @@ double get monthlyRfiBasketAmount => monthlySummary.rfiBasketAmount;
 
 List<CompensativeBasketMovement>
     get compensativeBasketMovements {
-  return _buildCompensativeBasketMovementsUseCase.execute(
+  final automaticMovements =
+      _buildCompensativeBasketMovementsUseCase.execute(
     shifts: shifts,
   );
+
+  return [
+    ...automaticMovements,
+    ...manualCompensativeBasketMovements,
+  ]..sort((a, b) => a.createdAt.compareTo(b.createdAt));
 }
 
 double get compensativeBasketEarnedHours {
