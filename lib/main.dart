@@ -10,6 +10,9 @@ import 'features/payslip/presentation/payslip_page.dart';
 import 'features/shifts/application/models/daily_shift_computation.dart';
 import 'features/shifts/application/models/daily_shift_result.dart';
 import 'features/shifts/application/models/monthly_summary.dart';
+import 'features/shifts/application/models/compensative_basket_movement.dart';
+import 'features/shifts/application/usecases/build_compensative_basket_movements_usecase.dart';
+import 'features/shifts/application/usecases/build_compensative_basket_summary_from_movements_usecase.dart';
 import 'features/shifts/application/usecases/build_daily_shift_result_usecase.dart';
 import 'features/shifts/application/usecases/build_monthly_summary_usecase.dart';
 import 'features/shifts/application/usecases/build_shift_computation_usecase.dart';
@@ -494,6 +497,14 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
       const BuildDailyShiftResultUseCase();
   final BuildMonthlySummaryUseCase _buildMonthlySummaryUseCase =
       const BuildMonthlySummaryUseCase();
+
+  final BuildCompensativeBasketMovementsUseCase
+    _buildCompensativeBasketMovementsUseCase =
+        const BuildCompensativeBasketMovementsUseCase();
+
+final BuildCompensativeBasketSummaryFromMovementsUseCase
+    _buildCompensativeBasketSummaryFromMovementsUseCase =
+        const BuildCompensativeBasketSummaryFromMovementsUseCase();
 
   final List<Shift> shifts = [];
   final List<BasketPayment> basketPayments = [];
@@ -999,6 +1010,40 @@ int get workedDaysCount => monthlySummary.workedDays;
 double get averagePerWorkedDay => monthlySummary.averagePerDay;
 double get projectedExtraFuture => monthlySummary.projectedExtraFuture;
 double get monthlyRfiBasketAmount => monthlySummary.rfiBasketAmount;
+
+List<CompensativeBasketMovement>
+    get compensativeBasketMovements {
+  return _buildCompensativeBasketMovementsUseCase.execute(
+    shifts: shifts,
+  );
+}
+
+double get compensativeBasketEarnedHours {
+  final summary =
+      _buildCompensativeBasketSummaryFromMovementsUseCase.execute(
+    movements: compensativeBasketMovements,
+  );
+
+  return summary.earnedHours;
+}
+
+double get compensativeBasketRecoveredHours {
+  final summary =
+      _buildCompensativeBasketSummaryFromMovementsUseCase.execute(
+    movements: compensativeBasketMovements,
+  );
+
+  return summary.recoveredHours;
+}
+
+double get compensativeBasketResidualHours {
+  final summary =
+      _buildCompensativeBasketSummaryFromMovementsUseCase.execute(
+    movements: compensativeBasketMovements,
+  );
+
+  return summary.residualHours;
+}
 
 int get monthlyTicketPastoCount {
   return filteredShifts.where((shift) => shift.ticketPasto).length;
@@ -2222,6 +2267,75 @@ final hasConfortoCdg = shift.genereDiConfortoCdg;
             ),
           ),
         ],
+        if (_isRepartoMobileScope ||
+    widget.activeDepartment == Department.polfer ||
+    widget.activeDepartment == Department.questura) ...[
+  const SizedBox(height: 14),
+  Container(
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: DutyPayPalette.warning.withOpacity(0.09),
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(
+        color: DutyPayPalette.warning.withOpacity(0.22),
+      ),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(
+              Icons.history_toggle_off_rounded,
+              color: DutyPayPalette.warning,
+            ),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text(
+                'Basket compensativo',
+                style: TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w800,
+                  color: DutyPayPalette.warning,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            Expanded(
+              child: _statTile(
+                label: 'Maturato',
+                value:
+                    '${compensativeBasketEarnedHours.toStringAsFixed(1)}h',
+                icon: Icons.add_task_rounded,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _statTile(
+                label: 'Recuperato',
+                value:
+                    '${compensativeBasketRecoveredHours.toStringAsFixed(1)}h',
+                icon: Icons.remove_done_rounded,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        _statTile(
+          label: 'Residuo',
+          value:
+              '${compensativeBasketResidualHours.toStringAsFixed(1)}h',
+          valueColor: DutyPayPalette.warning,
+          icon: Icons.timelapse_rounded,
+        ),
+      ],
+    ),
+  ),
+],
         const SizedBox(height: 14),
         Row(
           children: [
