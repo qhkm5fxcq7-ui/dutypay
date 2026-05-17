@@ -737,3 +737,51 @@ Basket Compensativo complete flow:
 5. absence type “Recupero compensativo”
 6. monthly/yearly UI summary
 7. strict exclusion from payslip payment, RFI basket, and payment basket
+## Latest Operational Handoff — Complete Compensative Basket
+
+The Compensative Basket is now implemented as a complete autonomous hours pipeline.
+
+Completed:
+- domain models
+- summary model
+- movement history
+- automatic earned movements
+- automatic recovered movements
+- manual adjustments
+- positive/negative corrections
+- mandatory note validation
+- delete policy limited to adjustments
+- SharedPreferences scoped persistence
+- dashboard card
+- latest movement history
+- live residual update
+
+Key files:
+- `lib/features/shifts/application/models/compensative_basket_movement.dart`
+- `lib/features/shifts/application/models/compensative_basket_summary.dart`
+- `lib/features/shifts/application/usecases/build_compensative_basket_movements_usecase.dart`
+- `lib/features/shifts/application/usecases/build_compensative_basket_summary_from_movements_usecase.dart`
+- `lib/features/shifts/application/usecases/build_compensative_basket_summary_usecase.dart`
+- `lib/features/shifts/application/usecases/manage_compensative_basket_adjustments_usecase.dart`
+- `lib/main.dart`
+
+Current rules:
+- automatic earned/recovered movements are generated from shifts
+- manual adjustments are persisted
+- only adjustments can be deleted
+- automatic movements are protected
+- final UI state is automatic movements + manual persisted adjustments
+
+Storage:
+- `dutypay_compensative_basket_movements_<department>`
+
+Current validation:
+- `flutter test`: passed
+- `flutter analyze`: no blocking errors; remaining items are warnings/info
+
+Next possible steps:
+1. UX refinement for correction dialog
+2. export/import compensative basket data
+3. recovery wizard
+4. yearly compensative analytics
+5. documentation polish

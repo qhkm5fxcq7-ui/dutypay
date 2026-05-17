@@ -288,4 +288,47 @@ Shift
  ├─ optional programmed overtime interval
  ├─ optional ordinary-hours override
  └─ overtime destination
- 
+
+## 2. `ARCHITECTURE.md`
+
+Aggiungi:
+
+```md
+## Compensative Basket Architecture
+
+The Compensative Basket is an independent hours pipeline.
+
+### Domain models
+
+- `CompensativeBasketMovement`
+- `CompensativeBasketSummary`
+
+Movement types:
+- `earned`
+- `recovered`
+- `adjustment`
+
+### Movement sources
+
+Automatic movements:
+- generated from shifts at runtime
+- `earned` comes from compensative overtime
+- `recovered` comes from absence `Recupero compensativo`
+- automatic movements are not persisted separately
+- automatic movements are not manually deletable
+
+Manual movements:
+- persisted separately
+- currently only `adjustment`
+- can be positive or negative
+- require a note
+- can be deleted by the user
+
+### Runtime merge
+
+```text
+BuildCompensativeBasketMovementsUseCase(shifts)
++
+manualCompensativeBasketMovements from SharedPreferences
+=
+compensativeBasketMovements

@@ -643,3 +643,29 @@ Validated examples:
 - Shift 07:00–16:00, programmed 13:00–16:00 = 3h programmed overtime.
 - Shift 07:00–16:00, programmed 13:00–16:00, compensative = 3h compensative, no paid overtime amount.
 - Shift 07:00–13:00, programmed 12:00–18:00 = 1h programmed overtime after clamp.
+
+## 3. `CALCULATION_RULES.md`
+
+Aggiungi:
+
+```md
+## Compensative Basket Rules
+
+The Compensative Basket tracks hours only.
+
+### Earned hours
+
+Earned compensative hours derive from compensative overtime.
+
+Primary source:
+- `DailyShiftResult.compensativeHours`
+
+Runtime movement:
+- `CompensativeBasketMovementType.earned`
+
+### Recovered hours
+
+Recovered hours derive from absence:
+
+```text
+Recupero compensativo

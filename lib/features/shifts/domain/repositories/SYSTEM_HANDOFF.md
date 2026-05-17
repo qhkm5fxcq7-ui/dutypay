@@ -249,3 +249,33 @@ Architectural rule:
 - BuildDailyShiftResultUseCase owns daily/segment orchestration.
 - UI must not calculate overtime economics.
 - Basket Compensativo must build on `compensativeHours`, not on paid overtime gross.
+## Update — Complete Compensative Basket Baseline
+
+The Compensative Basket has been completed as an autonomous hours-based pipeline.
+
+Core rule:
+- It is not payslip money.
+- It is not RFI.
+- It is not payment basket.
+- It is not an accessory amount.
+- It tracks hours only.
+
+Implemented:
+- Automatic earned movements from compensative overtime shifts.
+- Automatic recovered movements from absence type `Recupero compensativo`.
+- Manual positive/negative adjustments.
+- Mandatory note for manual adjustments.
+- Delete allowed only for manual adjustment movements.
+- Automatic earned/recovered movements are not manually deletable.
+- Department-scoped persistence through SharedPreferences.
+- Dashboard card with earned, recovered, residual hours.
+- Movement history visible in UI.
+- Live residual update after adjustment add/delete.
+
+Source of truth:
+```text
+automatic movements from shifts
++
+manual persisted adjustments
+=
+final compensative basket state

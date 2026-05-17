@@ -83,3 +83,44 @@ Regression requirements:
 - Questura/Volanti preset logic must not lose operational identity.
 - Compensative overtime must not enter payslip paid amount.
 - RFI basket must remain separate.
+
+## 4. `TEST_STRATEGY.md`
+
+Aggiungi:
+
+```md
+## Compensative Basket Test Coverage
+
+Covered areas:
+
+### Summary model
+- earned - recovered = residual
+- positive adjustment increases residual
+- negative adjustment decreases residual
+
+### Movement model
+- JSON serialization
+- JSON deserialization
+- unknown movement type falls back safely to adjustment
+
+### Movement builder
+- earned movement from compensative shift
+- recovered movement from `Recupero compensativo`
+- earned + recovered history in the same month
+
+### Summary from movements
+- earned, recovered, adjustment aggregation
+- residual formula validation
+
+### Adjustment governance
+- positive adjustment increases residual
+- negative adjustment decreases residual
+- empty note blocks adjustment
+- delete removes only adjustment
+- automatic earned movement cannot be deleted
+
+Regression requirements:
+- compensative movements must not affect payslip projection
+- compensative movements must not affect RFI basket
+- compensative movements must not affect payment basket
+- programmed overtime segmentation must remain stable
