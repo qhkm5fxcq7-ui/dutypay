@@ -705,3 +705,35 @@ Ora il parser popola correttamente:
 - `operationalAccessoryEntries`
 
 Questo consente a `buildDynamicProfile()` di usare i dati reali dei cedolini e non più i fallback predefiniti.
+## Latest Operational Handoff — After Commit b9d9f06
+
+The project is now on a stable baseline after segmented programmed overtime.
+
+Completed:
+- Compensative base flow
+- Ordinary-hours override
+- Preset persistence
+- Night cross-midnight service date
+- Polfer false-overtime regression tests
+- Programmed overtime as explicit segment
+- Programmed compensative overtime
+- Clamp for programmed segment outside shift range
+- Legacy orphan file cleanup
+- Payslip projection service repair
+
+Current stable commit:
+- `b9d9f06`
+
+Current validation:
+- `flutter test`: 61/61 passed
+- repository status after cleanup: clean
+
+Next recommended implementation:
+Basket Compensativo complete flow:
+1. compensative hours matured
+2. compensative hours recovered/discharged
+3. residual balance
+4. history of movements
+5. absence type “Recupero compensativo”
+6. monthly/yearly UI summary
+7. strict exclusion from payslip payment, RFI basket, and payment basket

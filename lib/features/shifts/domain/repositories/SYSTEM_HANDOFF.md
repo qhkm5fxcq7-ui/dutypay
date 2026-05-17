@@ -224,3 +224,28 @@ Il parser deve utilizzare SEMPRE:
 
 Motivazione:
 - solo il dettaglio contiene le righe accessorie reali
+## Update — Segmented Programmed Overtime Baseline
+
+A new stable baseline has been created after implementing segmented programmed overtime.
+
+Stable commit:
+- `b9d9f06` — `Implement segmented programmed overtime and archive legacy files`
+
+Current validation:
+- `flutter test`: passed, 61/61
+- `flutter analyze`: no blocking errors; remaining items are warnings/info
+
+Implemented:
+- Programmed overtime is now a time segment, not a whole-shift override.
+- `programmedOvertimeEnabled` with valid `programmedOvertimeStart` / `programmedOvertimeEnd` calculates only the overlapping segment inside the shift.
+- The programmed segment is treated as certain overtime.
+- If `overtimeDestination == compensative`, the programmed overtime hours enter `compensativeHours` and do not enter paid `totalAmount`.
+- Out-of-range programmed segments are safely clamped to the shift range.
+- Legacy/orphaned files no longer used by runtime were removed from active build.
+- `payslip_projection_service.dart` was repaired after legacy/stash corruption.
+
+Architectural rule:
+- Shift stores the operational configuration.
+- BuildDailyShiftResultUseCase owns daily/segment orchestration.
+- UI must not calculate overtime economics.
+- Basket Compensativo must build on `compensativeHours`, not on paid overtime gross.

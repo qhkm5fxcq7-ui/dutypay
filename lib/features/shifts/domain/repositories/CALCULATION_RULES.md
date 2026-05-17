@@ -610,3 +610,36 @@ Il valore RFI viene aggiunto SOLO se pagato nel mese:
 rfiNet = rfiPaidThisMonthGross * (1 - accessoryTaxRate)
 
 totalNetWithRfi = estimatedPayslipTotal + rfiNet
+## Programmed Overtime — Segmented Rule
+
+Programmed overtime is handled as a single explicit time segment.
+
+Fields:
+- `programmedOvertimeEnabled`
+- `programmedOvertimeStart`
+- `programmedOvertimeEnd`
+- `programmedOvertimeNote`
+- `overtimeDestination`
+
+Rules:
+1. If programmed overtime is disabled, normal overtime logic applies.
+2. If enabled and start/end are valid, DutyPay calculates the overlap between:
+   - the shift range
+   - the programmed overtime range
+3. Only the overlapping segment is treated as programmed overtime.
+4. The programmed segment is excluded from ordinary-hour absorption.
+5. The programmed segment is added as certain overtime.
+6. If the segment exceeds the shift range, it is clamped safely.
+7. If `overtimeDestination == payment`, the programmed overtime remains payable.
+8. If `overtimeDestination == compensative`, the programmed overtime:
+   - remains in total overtime hours
+   - enters compensative hours
+   - is excluded from paid total amount
+   - must not enter payslip payment
+   - must not enter RFI basket
+   - must not enter payment basket
+
+Validated examples:
+- Shift 07:00–16:00, programmed 13:00–16:00 = 3h programmed overtime.
+- Shift 07:00–16:00, programmed 13:00–16:00, compensative = 3h compensative, no paid overtime amount.
+- Shift 07:00–13:00, programmed 12:00–18:00 = 1h programmed overtime after clamp.

@@ -276,3 +276,16 @@ Dopo la correzione del parser e la validazione automatica:
 - il caricamento dei cedolini reali produce valori coerenti
 - la schermata delle rate derivate dai cedolini può basarsi su dati realmente letti
 - la parte parser è da considerarsi stabilizzata e pronta per il rilascio, salvo nuovi bug emersi dai tester reali
+## Segmented Programmed Overtime Architecture
+
+Programmed overtime is not a global whole-shift flag anymore.
+
+The calculation flow is:
+
+```text
+Shift
+ ├─ actual worked interval
+ ├─ optional programmed overtime interval
+ ├─ optional ordinary-hours override
+ └─ overtime destination
+ 
