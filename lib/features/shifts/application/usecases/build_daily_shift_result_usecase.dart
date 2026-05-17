@@ -88,14 +88,33 @@ double compensativeGrossEstimate = 0.0;
       (sum, item) => sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
     );
 
+final programmedHours = _calculateProgrammedOvertimeHours(
+  shift: shift,
+  normalizedEnd: ShiftTimeHelper.normalizedEnd(
+    shift.start,
+    shift.end,
+  ),
+);
+
 final requestedCompensativeHours = isCompensative
     ? _sanitizeHours(shift.compensativeOvertimeHours)
     : 0.0;
 
+final automaticCompensativeHours =
+    programmedHours > 0
+        ? programmedHours
+        : computation.overtimeHours;
+
 final effectiveCompensativeHours = isCompensative
     ? (requestedCompensativeHours > 0
-        ? requestedCompensativeHours.clamp(0.0, computation.overtimeHours)
-        : computation.overtimeHours)
+        ? requestedCompensativeHours.clamp(
+            0.0,
+            computation.overtimeHours,
+          )
+        : automaticCompensativeHours.clamp(
+            0.0,
+            computation.overtimeHours,
+          ))
     : 0.0;
 
 final compensativeRatio = computation.overtimeHours > 0
@@ -105,13 +124,26 @@ final compensativeRatio = computation.overtimeHours > 0
 final compensativeOvertimeGross =
     _sanitizeMoney(overtimeGross * compensativeRatio);
 
-final normalAmount = computation.breakdown
+final baseNonBasketAmount = computation.breakdown
     .where((item) => item['isBasketItem'] != true)
     .fold<double>(
       0.0,
       (sum, item) => sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
-    ) -
-    compensativeOvertimeGross;
+    );
+
+final normalAmount = isCompensative && compensativeRatio >= 0.999
+    ? computation.breakdown
+        .where(
+          (item) =>
+              item['isBasketItem'] != true &&
+              !_isOvertimeCategory(item['category']),
+        )
+        .fold<double>(
+          0.0,
+          (sum, item) =>
+              sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
+        )
+    : baseNonBasketAmount - compensativeOvertimeGross;
 
 totalAmount += _sanitizeMoney(normalAmount);
 
@@ -207,13 +239,33 @@ final ordinaryLimit = shift.ordinaryHoursOverrideEnabled &&
 late final double ordinaryHoursForShift;
 late final double overtimeHoursForShift;
 
-if (shift.programmedOvertimeEnabled) {
-  ordinaryHoursForShift = 0.0;
+final programmedOvertimeHours = _calculateProgrammedOvertimeHours(
+  shift: shift,
+  normalizedEnd: normalizedEnd,
+);
 
-  overtimeHoursForShift = shiftWorkedHours.clamp(
-    0.0,
-    shiftWorkedHours,
-  );
+final nonProgrammedWorkedHours =
+    (shiftWorkedHours - programmedOvertimeHours).clamp(
+  0.0,
+  shiftWorkedHours,
+);
+
+if (programmedOvertimeHours > 0) {
+  final remainingOrdinaryHours =
+      (ordinaryLimit - ordinaryHoursAlreadyConsumed)
+          .clamp(0.0, ordinaryLimit);
+
+  ordinaryHoursForShift =
+      nonProgrammedWorkedHours <= remainingOrdinaryHours
+          ? nonProgrammedWorkedHours
+          : remainingOrdinaryHours;
+
+  overtimeHoursForShift =
+      programmedOvertimeHours +
+      (nonProgrammedWorkedHours - ordinaryHoursForShift).clamp(
+        0.0,
+        nonProgrammedWorkedHours,
+      );
 } else if (department == Department.polfer) {
 
     
@@ -570,6 +622,40 @@ if (shift.programmedOvertimeEnabled) {
 
     return '${hours}h ${minutes}m';
   }
+
+  double _calculateProgrammedOvertimeHours({
+  required Shift shift,
+  required DateTime normalizedEnd,
+}) {
+  if (!shift.programmedOvertimeEnabled) return 0.0;
+
+  final programmedStart = shift.programmedOvertimeStart;
+  final rawProgrammedEnd = shift.programmedOvertimeEnd;
+
+  if (programmedStart == null || rawProgrammedEnd == null) {
+    return 0.0;
+  }
+
+  final programmedEnd = ShiftTimeHelper.normalizedEnd(
+    programmedStart,
+    rawProgrammedEnd,
+  );
+
+  final overlapStart =
+      programmedStart.isAfter(shift.start) ? programmedStart : shift.start;
+
+  final overlapEnd =
+      programmedEnd.isBefore(normalizedEnd) ? programmedEnd : normalizedEnd;
+
+  if (!overlapEnd.isAfter(overlapStart)) {
+    return 0.0;
+  }
+
+  final minutes = overlapEnd.difference(overlapStart).inMinutes;
+  if (minutes <= 0) return 0.0;
+
+  return (minutes / 60.0).clamp(0.0, shift.workedHours);
+}
 
   void _appendTransitionalAccessoryItems({
     required List<Map<String, dynamic>> breakdown,

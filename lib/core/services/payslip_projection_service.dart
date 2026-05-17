@@ -1,5 +1,6 @@
-import '../models/shift.dart';
-import '../models/user_pay_profile.dart';
+import '../../features/shifts/presentation/models/shift.dart';
+import '../../features/shifts/presentation/models/user_pay_profile.dart';
+
 
 enum PrecisionLevel {
   low,
@@ -59,23 +60,9 @@ class BasketPayment {
     required this.hoursPaid,
     this.note = '',
   });
-
-  Map<String, dynamic> toJson() {
-    return {
-      'paymentMonth': paymentMonth.toIso8601String(),
-      'hoursPaid': hoursPaid,
-      'note': note,
-    };
-  }
-
-  factory BasketPayment.fromJson(Map<String, dynamic> json) {
-    return BasketPayment(
-      paymentMonth: DateTime.parse(json['paymentMonth'] as String),
-      hoursPaid: (json['hoursPaid'] as num?)?.toDouble() ?? 0.0,
-      note: json['note'] as String? ?? '',
-    );
-  }
 }
+
+
 
 class RfiBasketOpenEntry {
   final DateTime sourceMonth;
@@ -93,31 +80,34 @@ class RfiBasketPaidEntry {
   final double grossAmount;
   final String note;
 
+
   const RfiBasketPaidEntry({
     required this.sourceMonth,
     required this.paidInMonth,
     required this.grossAmount,
     required this.note,
   });
-}
-
 
   Map<String, dynamic> toJson() {
     return {
       'sourceMonth': sourceMonth.toIso8601String(),
       'paidInMonth': paidInMonth.toIso8601String(),
+      'grossAmount': grossAmount,
       'note': note,
     };
   }
 
-  factory RfiBasketPayment.fromJson(Map<String, dynamic> json) {
-    return RfiBasketPayment(
+  factory RfiBasketPaidEntry.fromJson(Map<String, dynamic> json) {
+    return RfiBasketPaidEntry(
       sourceMonth: DateTime.parse(json['sourceMonth'] as String),
       paidInMonth: DateTime.parse(json['paidInMonth'] as String),
+      grossAmount: (json['grossAmount'] as num?)?.toDouble() ?? 0.0,
       note: json['note'] as String? ?? '',
     );
   }
 }
+
+typedef RfiBasketPayment = RfiBasketPaidEntry;
 
 class PayslipProjectionResult {
   final DateTime payslipMonth;

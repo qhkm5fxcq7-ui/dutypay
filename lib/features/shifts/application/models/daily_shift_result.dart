@@ -7,6 +7,8 @@ class DailyShiftResult {
   final double totalOvertimeHours;
   final List<Map<String, dynamic>> mergedBreakdown;
   final double rfiBasketAmount;
+  final double compensativeHours;
+  final double compensativeGrossEstimate;
 
   const DailyShiftResult({
     required this.computations,
@@ -14,5 +16,7 @@ class DailyShiftResult {
     required this.totalOvertimeHours,
     required this.mergedBreakdown,
     required this.rfiBasketAmount,
+    this.compensativeHours = 0.0,
+    this.compensativeGrossEstimate = 0.0,
   });
 }

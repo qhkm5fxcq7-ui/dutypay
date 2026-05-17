@@ -56,6 +56,7 @@ class CalculateShiftUseCase {
   ) {
     switch (department) {
       case presentation_department.Department.repartoMobile:
+      case presentation_department.Department.questura:
         return domain_department.Department.repartoMobile;
       case presentation_department.Department.polfer:
         return domain_department.Department.polfer;

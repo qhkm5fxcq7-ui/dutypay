@@ -31,6 +31,7 @@ class BuildShiftComputationUseCase {
 
     switch (department) {
       case Department.repartoMobile:
+      case Department.questura:
         return _buildRepartoMobileViewData(
           shift: shift,
           profile: profile,

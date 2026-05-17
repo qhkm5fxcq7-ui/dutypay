@@ -1,6 +1,7 @@
 enum Department {
   repartoMobile,
   polfer,
+  questura,
 }
 
 extension DepartmentX on Department {
@@ -10,6 +11,8 @@ extension DepartmentX on Department {
         return 'reparto_mobile';
       case Department.polfer:
         return 'polfer';
+      case Department.questura:
+        return 'questura';
     }
   }
 
@@ -19,6 +22,8 @@ extension DepartmentX on Department {
         return 'Reparto Mobile';
       case Department.polfer:
         return 'Polfer';
+      case Department.questura:
+        return 'Questura';
     }
   }
 }
