@@ -65,6 +65,16 @@ class DepartmentSelectionPage extends StatelessWidget {
                       await onSelected(Department.polfer);
                     },
                   ),
+                  const SizedBox(height: 14),
+_DepartmentCard(
+  title: Department.questura.label,
+  subtitle:
+      'Volanti, uffici, straordinario e basket ore Questura.',
+  selected: initialDepartment == Department.questura,
+  onTap: () async {
+    await onSelected(Department.questura);
+  },
+),
                 ],
               ),
             ),

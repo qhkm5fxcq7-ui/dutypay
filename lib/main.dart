@@ -2436,216 +2436,6 @@ Future<void> _deleteCompensativeBasketAdjustment(String movementId) async {
             ],
           ),
         ),
-        if (widget.activeDepartment == Department.polfer) ...[
-          const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: DutyPayPalette.info.withOpacity(0.09),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: DutyPayPalette.info.withOpacity(0.22),
-              ),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.account_balance_wallet_outlined,
-                  color: DutyPayPalette.info,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Basket RFI del mese: ${_formatCurrency(monthlyRfiBasketAmount)}',
-                    style: const TextStyle(
-                      fontSize: 13.8,
-                      fontWeight: FontWeight.w700,
-                      color: DutyPayPalette.info,
-                      height: 1.4,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-        if (_isRepartoMobileScope ||
-    widget.activeDepartment == Department.polfer ||
-    widget.activeDepartment == Department.questura) ...[
-  const SizedBox(height: 14),
-  Container(
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      color: DutyPayPalette.warning.withOpacity(0.09),
-      borderRadius: BorderRadius.circular(18),
-      border: Border.all(
-        color: DutyPayPalette.warning.withOpacity(0.22),
-      ),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-  children: [
-    const Icon(
-      Icons.history_toggle_off_rounded,
-      color: DutyPayPalette.warning,
-    ),
-    const SizedBox(width: 10),
-    const Expanded(
-      child: Text(
-        'Basket compensativo',
-        style: TextStyle(
-          fontSize: 14.5,
-          fontWeight: FontWeight.w800,
-          color: DutyPayPalette.warning,
-        ),
-      ),
-    ),
-    OutlinedButton.icon(
-      onPressed: _openCompensativeBasketAdjustmentDialog,
-      icon: const Icon(
-        Icons.add_rounded,
-        size: 16,
-      ),
-      label: const Text('Correzione'),
-    ),
-  ],
-),
-        const SizedBox(height: 14),
-        Row(
-          children: [
-            Expanded(
-              child: _statTile(
-                label: 'Maturato',
-                value:
-                    '${compensativeBasketEarnedHours.toStringAsFixed(1)}h',
-                icon: Icons.add_task_rounded,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _statTile(
-                label: 'Recuperato',
-                value:
-                    '${compensativeBasketRecoveredHours.toStringAsFixed(1)}h',
-                icon: Icons.remove_done_rounded,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        _statTile(
-          label: 'Residuo',
-          value:
-              '${compensativeBasketResidualHours.toStringAsFixed(1)}h',
-          valueColor: DutyPayPalette.warning,
-          icon: Icons.timelapse_rounded,
-        ),
-        if (compensativeBasketMovements.isNotEmpty) ...[
-  const SizedBox(height: 14),
-  const Text(
-    'Ultimi movimenti',
-    style: TextStyle(
-      fontSize: 13,
-      fontWeight: FontWeight.w700,
-      color: DutyPayPalette.textSecondary,
-    ),
-  ),
-  const SizedBox(height: 10),
-  ...compensativeBasketMovements
-      .reversed
-      .take(5)
-      .map((movement) {
-    final isEarned =
-        movement.type ==
-        CompensativeBasketMovementType.earned;
-
-    final isRecovered =
-        movement.type ==
-        CompensativeBasketMovementType.recovered;
-
-    final color = isEarned
-        ? DutyPayPalette.primary
-        : isRecovered
-            ? DutyPayPalette.warning
-            : DutyPayPalette.info;
-
-    final icon = isEarned
-        ? Icons.add_circle_outline_rounded
-        : isRecovered
-            ? Icons.remove_circle_outline_rounded
-            : Icons.tune_rounded;
-
-    final label = isEarned
-        ? 'Maturate'
-        : isRecovered
-            ? 'Recuperate'
-            : 'Correzione';
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: DutyPayPalette.surface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: DutyPayPalette.cardBorder,
-          ),
-        ),
-        child: Row(
-  children: [
-    Icon(icon, color: color, size: 18),
-    const SizedBox(width: 10),
-    Expanded(
-      child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
-        children: [
-          Text(
-            '$label • ${movement.hours.toStringAsFixed(1)}h',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: color,
-            ),
-          ),
-          if (movement.note.isNotEmpty)
-            Text(
-              movement.note,
-              style: const TextStyle(
-                fontSize: 12,
-                color: DutyPayPalette.textSecondary,
-              ),
-            ),
-        ],
-      ),
-    ),
-        if (movement.type ==
-        CompensativeBasketMovementType.adjustment)
-      IconButton(
-        onPressed: () async {
-          await _deleteCompensativeBasketAdjustment(
-            movement.id,
-          );
-        },
-        icon: const Icon(
-          Icons.delete_outline_rounded,
-          color: DutyPayPalette.danger,
-          size: 18,
-        ),
-      ),
-  ],
-),
-      ),
-    );
-  }),
-],
-      ],
-    ),
-  ),
-],
         const SizedBox(height: 14),
         Row(
           children: [
@@ -3066,13 +2856,24 @@ Future<void> _deleteCompensativeBasketAdjustment(String movementId) async {
     );
 
     return PayslipPage(
-      projection: projection,
-      selectedMonth: selectedPayslipMonth,
-      onOpenCalibration: openCalibratePayslips,
-      onAddBasketPayment: addBasketPayment,
-      onAddRfiBasketPayment: addRfiBasketPayment,
-      precision: payslipPrecisionStatus,
-    );
+  projection: projection,
+  selectedMonth: selectedPayslipMonth,
+  onOpenCalibration: openCalibratePayslips,
+  onAddBasketPayment: addBasketPayment,
+  onAddRfiBasketPayment:
+      widget.activeDepartment == Department.polfer
+          ? addRfiBasketPayment
+          : null,
+  precision: payslipPrecisionStatus,
+  compensativeBasketEarnedHours: compensativeBasketEarnedHours,
+  compensativeBasketRecoveredHours: compensativeBasketRecoveredHours,
+  compensativeBasketResidualHours: compensativeBasketResidualHours,
+  compensativeBasketMovements: compensativeBasketMovements,
+  onAddCompensativeBasketAdjustment:
+      _openCompensativeBasketAdjustmentDialog,
+  onDeleteCompensativeBasketAdjustment:
+      _deleteCompensativeBasketAdjustment,
+);
   }
 
   @override

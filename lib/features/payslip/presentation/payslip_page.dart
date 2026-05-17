@@ -10,6 +10,7 @@ import '../../shifts/domain/engine/models/precision_status.dart';
 import '../../shifts/domain/engine/models/payslip_projection_result.dart';
 import '../../shifts/domain/engine/models/basket_payment.dart';
 import '../../shifts/domain/engine/models/rfi_basket_payment.dart';
+import '../../shifts/application/models/compensative_basket_movement.dart';
 
 class PayslipPage extends StatefulWidget {
   const PayslipPage({
@@ -23,6 +24,12 @@ class PayslipPage extends StatefulWidget {
     this.onOpenCalibration,
     this.onAddBasketPayment,
     this.onAddRfiBasketPayment,
+    this.compensativeBasketEarnedHours = 0.0,
+this.compensativeBasketRecoveredHours = 0.0,
+this.compensativeBasketResidualHours = 0.0,
+this.compensativeBasketMovements = const [],
+this.onAddCompensativeBasketAdjustment,
+this.onDeleteCompensativeBasketAdjustment,
   });
 
   final PayslipProjectionResult? projection;
@@ -47,6 +54,16 @@ class PayslipPage extends StatefulWidget {
   DateTime paymentMonth,
   String note,
 )? onAddRfiBasketPayment;
+
+final double compensativeBasketEarnedHours;
+final double compensativeBasketRecoveredHours;
+final double compensativeBasketResidualHours;
+final List<CompensativeBasketMovement> compensativeBasketMovements;
+
+final FutureOr<void> Function()? onAddCompensativeBasketAdjustment;
+
+final FutureOr<void> Function(String movementId)?
+    onDeleteCompensativeBasketAdjustment;
 
   @override
   State<PayslipPage> createState() => _PayslipPageState();
@@ -243,6 +260,18 @@ class _PayslipPageState extends State<PayslipPage> {
         ),
           ),
           const SizedBox(height: 16),
+
+
+_CompensativeBasketCard(
+  earnedHours: widget.compensativeBasketEarnedHours,
+  recoveredHours: widget.compensativeBasketRecoveredHours,
+  residualHours: widget.compensativeBasketResidualHours,
+  movements: widget.compensativeBasketMovements,
+  onAddAdjustment: widget.onAddCompensativeBasketAdjustment,
+  onDeleteAdjustment: widget.onDeleteCompensativeBasketAdjustment,
+),
+if (widget.onAddRfiBasketPayment != null) ...[
+          const SizedBox(height: 16),
           _RfiBasketCard(
   title: 'Basket RFI',
   subtitle:
@@ -257,6 +286,7 @@ class _PayslipPageState extends State<PayslipPage> {
             projection.openRfiBasketEntries,
           ),
 ),
+],
 const SizedBox(height: 16),
 _PremiumCard(
   padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
@@ -1756,6 +1786,214 @@ class _PrimarySummaryCard extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CompensativeBasketCard extends StatelessWidget {
+  const _CompensativeBasketCard({
+    required this.earnedHours,
+    required this.recoveredHours,
+    required this.residualHours,
+    required this.movements,
+    this.onAddAdjustment,
+    this.onDeleteAdjustment,
+  });
+
+  final double earnedHours;
+  final double recoveredHours;
+  final double residualHours;
+
+  final List<CompensativeBasketMovement> movements;
+
+  final FutureOr<void> Function()? onAddAdjustment;
+
+  final FutureOr<void> Function(String movementId)?
+      onDeleteAdjustment;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFF141A24),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: const Color(0xFF2A3442),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Basket compensativo',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              if (onAddAdjustment != null)
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    await onAddAdjustment!();
+                  },
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text('Correzione'),
+                ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: _MiniBasketStat(
+                  label: 'Maturato',
+                  value: '${earnedHours.toStringAsFixed(1)}h',
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _MiniBasketStat(
+                  label: 'Recuperato',
+                  value: '${recoveredHours.toStringAsFixed(1)}h',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _MiniBasketStat(
+            label: 'Residuo',
+            value: '${residualHours.toStringAsFixed(1)}h',
+            highlight: true,
+          ),
+          if (movements.isNotEmpty) ...[
+            const SizedBox(height: 18),
+            const Text(
+              'Ultimi movimenti',
+              style: TextStyle(
+                color: Color(0xFF9AA8B7),
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 10),
+            ...movements.reversed.take(5).map((movement) {
+              final isAdjustment =
+                  movement.type ==
+                  CompensativeBasketMovementType.adjustment;
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1B2430),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment:
+                            CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${movement.type.name.toUpperCase()} • ${movement.hours.toStringAsFixed(1)}h',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
+                          ),
+                          if (movement.note.isNotEmpty)
+                            Text(
+                              movement.note,
+                              style: const TextStyle(
+                                color: Color(0xFF9AA8B7),
+                                fontSize: 12,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    if (isAdjustment &&
+                        onDeleteAdjustment != null)
+                      IconButton(
+                        onPressed: () async {
+                          await onDeleteAdjustment!(
+                            movement.id,
+                          );
+                        },
+                        icon: const Icon(
+                          Icons.delete_outline_rounded,
+                          color: Colors.redAccent,
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _MiniBasketStat extends StatelessWidget {
+  const _MiniBasketStat({
+    required this.label,
+    required this.value,
+    this.highlight = false,
+  });
+
+  final String label;
+  final String value;
+  final bool highlight;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: highlight
+            ? const Color(0x1A22C55E)
+            : const Color(0xFF1B2430),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: highlight
+              ? const Color(0xFF22C55E)
+              : const Color(0xFF2A3442),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFF9AA8B7),
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              color: highlight
+                  ? const Color(0xFF22C55E)
+                  : Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+            ),
           ),
         ],
       ),
