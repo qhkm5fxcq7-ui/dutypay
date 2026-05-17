@@ -3,11 +3,7 @@ import 'package:flutter/material.dart';
 import 'models/department.dart';
 import 'models/shift.dart';
 import 'models/user_pay_profile.dart';
-import '../domain/engine/policies/reparto_mobile_policy.dart';
-import '../domain/entities/shift.dart' as engine_shift;
-import '../domain/entities/user_pay_profile.dart' as engine_profile;
-import '../application/usecases/calculate_shift_usecase.dart';
-import '../application/usecases/build_shift_computation_usecase.dart';
+
 import '../application/usecases/build_daily_shift_result_usecase.dart';
 
 enum SpmnPreset {
@@ -97,6 +93,8 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
   late final TextEditingController _polferReducedNightController;
   late final TextEditingController _polferFullDayController;
   late final TextEditingController _polferFullNightController;
+  late final TextEditingController _compensativeOvertimeHoursController;
+late final TextEditingController _compensativeOvertimeNoteController;
 
   late DateTime _serviceDate;
   late DateTime _realStartDate;
@@ -143,6 +141,12 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
       (_selectedSpmnPreset == SpmnPreset.riposo && !_isTuesdayUpdateCase);
 
   UserPayProfile get _profile => widget.rates;
+
+  OvertimeDestination _overtimeDestination =
+    OvertimeDestination.payment;
+
+bool get _usesCompensativeOvertime =>
+    _overtimeDestination == OvertimeDestination.compensative;
 
   double get _genereDiConfortoRate => _profile.genereDiConfortoRate;
   double get _ticketPastoRate => _profile.ticketPastoRate;
@@ -236,6 +240,20 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
           : '',
     );
 
+    _compensativeOvertimeHoursController = TextEditingController(
+  text: (initialShift?.compensativeOvertimeHours ?? 0) > 0
+      ? initialShift!.compensativeOvertimeHours.toStringAsFixed(2)
+      : '',
+);
+
+_compensativeOvertimeNoteController = TextEditingController(
+  text: initialShift?.compensativeOvertimeNote ?? '',
+);
+
+_overtimeDestination =
+    initialShift?.overtimeDestination ??
+        OvertimeDestination.payment;
+
     _serviceDate = _normalizeDate(baseServiceDate);
     _realStartDate = _normalizeDate(baseStart);
     _absenceEndDate = _serviceDate;
@@ -308,6 +326,8 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
     _polferReducedNightController.dispose();
     _polferFullDayController.dispose();
     _polferFullNightController.dispose();
+    _compensativeOvertimeHoursController.dispose();
+_compensativeOvertimeNoteController.dispose();
     super.dispose();
   }
 
@@ -763,6 +783,9 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
         genereDiConfortoCdg: false,
         genereDiConforto: false,
         ticketPasto: false,
+        overtimeDestination: OvertimeDestination.payment,
+compensativeOvertimeHours: 0.0,
+compensativeOvertimeNote: '',
         hasCompensazione: false,
         hasReperibilita: false,
         note: _noteController.text.trim(),
@@ -798,6 +821,17 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
       genereDiConfortoCdg: _includeGenereDiConfortoCdg,
       genereDiConforto: _includeGenereDiConforto,
       ticketPasto: _includeTicketPasto,
+      
+overtimeDestination: _overtimeDestination,
+compensativeOvertimeHours:
+    _usesCompensativeOvertime
+        ? _parseDouble(_compensativeOvertimeHoursController.text)
+        : 0.0,
+compensativeOvertimeNote:
+    _usesCompensativeOvertime
+        ? _compensativeOvertimeNoteController.text.trim()
+        : '',
+
       hasCompensazione: _includeCompensazione,
       hasReperibilita: _includeReperibilita,
       note: _noteController.text.trim(),
@@ -907,9 +941,8 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
     if (picked == null) return;
 
     setState(() {
-      _realStartDate = _normalizeDate(picked);
-      _selectedSpmnPreset = SpmnPreset.none;
-    });
+  _realStartDate = _normalizeDate(picked);
+});
   }
 
   Future<void> _pickAbsenceEndDate() async {
@@ -947,12 +980,14 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
   }
 
   void _setStartTime(TimeOfDay start) {
-    setState(() {
-      _startTime = start;
+  setState(() {
+    _startTime = start;
+
+    if (_selectedSpmnPreset == SpmnPreset.none) {
       _endTime = _addSixHours(start);
-      _selectedSpmnPreset = SpmnPreset.none;
-    });
-  }
+    }
+  });
+}
 
   Future<void> _pickCustomStartTime() async {
     final picked = await showTimePicker(
@@ -1015,9 +1050,8 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
     if (picked == null) return;
 
     setState(() {
-      _endTime = picked;
-      _selectedSpmnPreset = SpmnPreset.none;
-    });
+  _endTime = picked;
+});
   }
 
   Future<void> _openStartTimeSheet() async {
@@ -1920,7 +1954,25 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
     return [];
   }
 
-  return computation.breakdown;
+  if (result.compensativeHours <= 0) {
+    return computation.breakdown;
+  }
+
+  return computation.breakdown.map((item) {
+    final label = item['label'] as String? ?? '';
+    final amount = (item['amount'] as num?)?.toDouble() ?? 0.0;
+
+    if (label.toLowerCase().contains('straordinario') &&
+        result.totalAmount < amount) {
+      return {
+        ...item,
+        'amount': result.totalAmount,
+        'label': '$label • pagato al netto del recupero',
+      };
+    }
+
+    return item;
+  }).toList();
 }
 
   List<Map<String, String>> _buildInformativePreviewItems(Shift previewShift) {
@@ -1934,6 +1986,21 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
     'label': 'Servizio ordinario',
     'value': 'Compreso nello stipendio',
   });
+
+  if (previewShift.overtimeDestination == OvertimeDestination.compensative) {
+  final hours = previewShift.compensativeOvertimeHours > 0
+      ? previewShift.compensativeOvertimeHours
+      : previewShift.overtimeHours;
+
+  if (hours > 0) {
+    final formattedHours = _formatDuration(hours);
+
+    items.add({
+      'label': 'Recupero compensativo',
+      'value': '$formattedHours sottratte dal pagamento',
+    });
+  }
+}
 
   if (previewShift.ticketPasto) {
     items.add({
@@ -1972,12 +2039,7 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
     department: widget.activeDepartment,
   );
 
-  final computation = result.computations[previewShift];
-  if (computation == null) {
-    return 0.0;
-  }
-
-  return computation.totalAmount;
+  return result.totalAmount;
 }
 
   @override
@@ -2108,13 +2170,7 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
                                 : 'Compilata automaticamente')
                             : 'Es. Volante, Ordine Pubblico, Ufficio',
                       ),
-                      onChanged: (_) {
-                        setState(() {
-                          if (_selectedSpmnPreset != SpmnPreset.none) {
-                            _selectedSpmnPreset = SpmnPreset.none;
-                          }
-                        });
-                      },
+                      onChanged: (_) => setState(() {}),
                     ),
                     const SizedBox(height: 14),
                     _pickerTile(
@@ -2216,6 +2272,89 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
                       ),
                     ),
                     const SizedBox(height: 10),
+                    const SizedBox(height: 10),
+
+IgnorePointer(
+  ignoring: _hasAbsence,
+  child: Opacity(
+    opacity: _hasAbsence ? 0.46 : 1,
+    child: Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: _QuickAddPalette.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: _QuickAddPalette.cardBorder,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Destinazione straordinario',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Scegli se lo straordinario deve essere pagato o recuperato.',
+            style: TextStyle(
+              fontSize: 12.5,
+              color: _QuickAddPalette.textSecondary,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 12),
+          SegmentedButton<OvertimeDestination>(
+            segments: const [
+              ButtonSegment(
+                value: OvertimeDestination.payment,
+                label: Text('Pagato'),
+                icon: Icon(Icons.payments_outlined),
+              ),
+              ButtonSegment(
+                value: OvertimeDestination.compensative,
+                label: Text('Compensativo'),
+                icon: Icon(Icons.event_repeat_rounded),
+              ),
+            ],
+            selected: {_overtimeDestination},
+            onSelectionChanged: (values) {
+              setState(() {
+                _overtimeDestination = values.first;
+              });
+            },
+          ),
+          if (_usesCompensativeOvertime) ...[
+            const SizedBox(height: 12),
+            TextField(
+              controller: _compensativeOvertimeHoursController,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: const InputDecoration(
+                labelText: 'Ore a recupero compensativo',
+                hintText: 'Es. 3',
+              ),
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _compensativeOvertimeNoteController,
+              decoration: const InputDecoration(
+                labelText: 'Nota compensativo',
+                hintText: 'Es. Recupero programmato',
+              ),
+              onChanged: (_) => setState(() {}),
+            ),
+          ],
+        ],
+      ),
+    ),
+  ),
+),
                     IgnorePointer(
                       ignoring: _hasAbsence,
                       child: Opacity(

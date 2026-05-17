@@ -6,9 +6,15 @@ import '../../presentation/models/user_pay_profile.dart';
 import '../../domain/engine/helpers/date_classification_helper.dart';
 import '../../domain/engine/helpers/shift_time_helper.dart';
 import '../../domain/engine/helpers/time_band_helper.dart';
+import 'build_shift_computation_usecase.dart';
 
 class BuildDailyShiftResultUseCase {
-  const BuildDailyShiftResultUseCase();
+  final BuildShiftComputationUseCase _buildShiftComputationUseCase;
+
+  const BuildDailyShiftResultUseCase({
+    BuildShiftComputationUseCase buildShiftComputationUseCase =
+        const BuildShiftComputationUseCase(),
+  }) : _buildShiftComputationUseCase = buildShiftComputationUseCase;
 
   static const double _dailyOrdinaryHoursLimit = 6.0;
   static const double _nightAllowanceRate = 4.30;
@@ -29,16 +35,33 @@ class BuildDailyShiftResultUseCase {
     double totalAmount = 0.0;
     double totalOvertimeHours = 0.0;
     double consumedOrdinaryHours = 0.0;
+    double consumedPayableOvertimeHours = 0.0;
     double rfiBasketAmount = 0.0;
+    double compensativeHours = 0.0;
+double compensativeGrossEstimate = 0.0;
     final Map<String, double> breakdownTotals = {};
 
+    final overtimeMonthlyLimit = _sanitizeHours(
+      profile.monthlyOvertimePayableHoursLimit,
+    );
+
     for (final shift in sortedShifts) {
-      final computation = _buildContextAwareComputation(
+      final rawComputation = _buildContextAwareComputation(
         shift: shift,
         profile: profile,
         department: department,
         ordinaryHoursAlreadyConsumed: consumedOrdinaryHours,
       );
+
+      final computation = _applyMonthlyOvertimeBasketCap(
+        computation: rawComputation,
+        payableOvertimeHoursAlreadyConsumed: consumedPayableOvertimeHours,
+        monthlyOvertimeLimit: overtimeMonthlyLimit,
+      );
+
+      final isCompensative =
+    shift.overtimeDestination ==
+    OvertimeDestination.compensative;
 
       computations[shift] = computation;
       totalOvertimeHours += computation.overtimeHours;
@@ -47,24 +70,64 @@ class BuildDailyShiftResultUseCase {
         consumedOrdinaryHours += shift.hasAbsence ? 0.0 : shift.workedHours;
       }
 
-      final normalAmount = computation.breakdown
-          .where((item) => item['isBasketItem'] != true)
-          .fold<double>(
-            0.0,
-            (sum, item) => sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
-          );
+      final payableOvertimeHoursForShift = _extractPayableOvertimeHours(
+        computation.breakdown,
+      );
+      consumedPayableOvertimeHours += payableOvertimeHoursForShift;
 
-      final shiftRfiBasketAmount = computation.breakdown
-          .where(
-            (item) =>
-                item['isBasketItem'] == true && item['basketKey'] == 'rfi',
-          )
-          .fold<double>(
-            0.0,
-            (sum, item) => sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
-          );
+      final overtimeGross = computation.breakdown
+    .where((item) {
+      if (item['isBasketItem'] == true) {
+        return false;
+      }
 
-      totalAmount += normalAmount;
+      return _isOvertimeCategory(item['category']);
+    })
+    .fold<double>(
+      0.0,
+      (sum, item) => sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
+    );
+
+final requestedCompensativeHours = isCompensative
+    ? _sanitizeHours(shift.compensativeOvertimeHours)
+    : 0.0;
+
+final effectiveCompensativeHours = isCompensative
+    ? (requestedCompensativeHours > 0
+        ? requestedCompensativeHours.clamp(0.0, computation.overtimeHours)
+        : computation.overtimeHours)
+    : 0.0;
+
+final compensativeRatio = computation.overtimeHours > 0
+    ? (effectiveCompensativeHours / computation.overtimeHours).clamp(0.0, 1.0)
+    : 0.0;
+
+final compensativeOvertimeGross =
+    _sanitizeMoney(overtimeGross * compensativeRatio);
+
+final normalAmount = computation.breakdown
+    .where((item) => item['isBasketItem'] != true)
+    .fold<double>(
+      0.0,
+      (sum, item) => sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
+    ) -
+    compensativeOvertimeGross;
+
+totalAmount += _sanitizeMoney(normalAmount);
+
+if (effectiveCompensativeHours > 0) {
+  compensativeHours += effectiveCompensativeHours;
+  compensativeGrossEstimate += compensativeOvertimeGross;
+}
+final shiftRfiBasketAmount = computation.breakdown
+    .where(
+      (item) =>
+          item['isBasketItem'] == true && item['basketKey'] == 'rfi',
+    )
+    .fold<double>(
+      0.0,
+      (sum, item) => sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
+    );
       rfiBasketAmount += shiftRfiBasketAmount;
 
       for (final item in computation.breakdown) {
@@ -75,7 +138,7 @@ class BuildDailyShiftResultUseCase {
 
         if (label == null || label.isEmpty) continue;
 
-        if (isBasket && basketKey == 'rfi') {
+        if (isBasket && (basketKey == 'rfi' || basketKey == 'overtime')) {
           continue;
         }
 
@@ -98,6 +161,8 @@ class BuildDailyShiftResultUseCase {
       totalOvertimeHours: totalOvertimeHours,
       mergedBreakdown: mergedBreakdown,
       rfiBasketAmount: rfiBasketAmount,
+      compensativeHours: compensativeHours,
+compensativeGrossEstimate: compensativeGrossEstimate,
     );
   }
 
@@ -116,19 +181,48 @@ class BuildDailyShiftResultUseCase {
       );
     }
 
+    if (department == Department.questura) {
+  final computation = _buildShiftComputationUseCase.execute(
+    shift: shift,
+    profile: profile,
+    department: department,
+  );
+
+  return DailyShiftComputation(
+    overtimeHours: computation.overtimeHours,
+    totalAmount: computation.totalAmount,
+    extraAmount: computation.extraAmount,
+    breakdown: computation.breakdown,
+  );
+}
+
     final normalizedEnd = ShiftTimeHelper.normalizedEnd(shift.start, shift.end);
-    final shiftWorkedHours = shift.workedHours;
+final shiftWorkedHours = shift.workedHours;
 
-    late final double ordinaryHoursForShift;
-    late final double overtimeHoursForShift;
+final ordinaryLimit = shift.ordinaryHoursOverrideEnabled &&
+        shift.ordinaryHoursOverride > 0
+    ? shift.ordinaryHoursOverride
+    : _dailyOrdinaryHoursLimit;
 
-    if (department == Department.polfer) {
+late final double ordinaryHoursForShift;
+late final double overtimeHoursForShift;
+
+if (shift.programmedOvertimeEnabled) {
+  ordinaryHoursForShift = 0.0;
+
+  overtimeHoursForShift = shiftWorkedHours.clamp(
+    0.0,
+    shiftWorkedHours,
+  );
+} else if (department == Department.polfer) {
+
+    
       final scheduledEnd = _resolvePolferScheduledEnd(shift);
 
       if (scheduledEnd == null) {
         final remainingOrdinaryHours =
-            (_dailyOrdinaryHoursLimit - ordinaryHoursAlreadyConsumed)
-                .clamp(0.0, _dailyOrdinaryHoursLimit);
+    (ordinaryLimit - ordinaryHoursAlreadyConsumed)
+        .clamp(0.0, ordinaryLimit);
 
         ordinaryHoursForShift = shiftWorkedHours <= remainingOrdinaryHours
             ? shiftWorkedHours
@@ -158,8 +252,8 @@ class BuildDailyShiftResultUseCase {
       }
     } else {
       final remainingOrdinaryHours =
-          (_dailyOrdinaryHoursLimit - ordinaryHoursAlreadyConsumed)
-              .clamp(0.0, _dailyOrdinaryHoursLimit);
+    (ordinaryLimit - ordinaryHoursAlreadyConsumed)
+        .clamp(0.0, ordinaryLimit);
 
       ordinaryHoursForShift = shiftWorkedHours <= remainingOrdinaryHours
           ? shiftWorkedHours
@@ -201,22 +295,23 @@ class BuildDailyShiftResultUseCase {
       }
     }
 
-        final overtimeAmountMultiplier =
+    final overtimeAmountMultiplier =
         department == Department.repartoMobile
             ? 1.0
             : _resolvedOvertimeNetMultiplier(profile);
 
-    final overtimeDayAmount =
-        overtimeDayHours * profile.overtimeDayRate * overtimeAmountMultiplier;
-    final overtimeNightAmount = overtimeNightHours *
-        profile.overtimeNightOrHolidayRate *
-        overtimeAmountMultiplier;
-    final overtimeHolidayDayAmount = overtimeHolidayDayHours *
-        profile.overtimeNightOrHolidayRate *
-        overtimeAmountMultiplier;
-    final overtimeNightHolidayAmount = overtimeNightHolidayHours *
-        profile.overtimeNightAndHolidayRate *
-        overtimeAmountMultiplier;
+    final overtimeDayRate = profile.overtimeDayRate * overtimeAmountMultiplier;
+    final overtimeNightOrHolidayRate =
+        profile.overtimeNightOrHolidayRate * overtimeAmountMultiplier;
+    final overtimeNightHolidayRate =
+        profile.overtimeNightAndHolidayRate * overtimeAmountMultiplier;
+
+    final overtimeDayAmount = overtimeDayHours * overtimeDayRate;
+    final overtimeNightAmount = overtimeNightHours * overtimeNightOrHolidayRate;
+    final overtimeHolidayDayAmount =
+        overtimeHolidayDayHours * overtimeNightOrHolidayRate;
+    final overtimeNightHolidayAmount =
+        overtimeNightHolidayHours * overtimeNightHolidayRate;
 
     final ordinaryNightAmount = ordinaryNightHours * _nightAllowanceRate;
 
@@ -225,8 +320,10 @@ class BuildDailyShiftResultUseCase {
     if (overtimeNightHolidayHours > 0) {
       breakdown.add({
         'label':
-            'Straordinario notturno festivo (${overtimeNightHolidayHours.toStringAsFixed(1)}h × €${(profile.overtimeNightAndHolidayRate * overtimeAmountMultiplier).toStringAsFixed(2)})',
+            'Straordinario notturno festivo (${_formatCompactHours(overtimeNightHolidayHours)} × €${overtimeNightHolidayRate.toStringAsFixed(2)})',
         'amount': overtimeNightHolidayAmount,
+        'hours': overtimeNightHolidayHours,
+        'hourlyRate': overtimeNightHolidayRate,
         'category': 'overtime_night_holiday',
       });
     }
@@ -234,8 +331,10 @@ class BuildDailyShiftResultUseCase {
     if (overtimeNightHours > 0) {
       breakdown.add({
         'label':
-            'Straordinario notturno (${overtimeNightHours.toStringAsFixed(1)}h × €${(profile.overtimeNightOrHolidayRate * overtimeAmountMultiplier).toStringAsFixed(2)})',
+            'Straordinario notturno (${_formatCompactHours(overtimeNightHours)} × €${overtimeNightOrHolidayRate.toStringAsFixed(2)})',
         'amount': overtimeNightAmount,
+        'hours': overtimeNightHours,
+        'hourlyRate': overtimeNightOrHolidayRate,
         'category': 'overtime_night',
       });
     }
@@ -243,8 +342,10 @@ class BuildDailyShiftResultUseCase {
     if (overtimeHolidayDayHours > 0) {
       breakdown.add({
         'label':
-            'Straordinario festivo (${overtimeHolidayDayHours.toStringAsFixed(1)}h × €${(profile.overtimeNightOrHolidayRate * overtimeAmountMultiplier).toStringAsFixed(2)})',
+            'Straordinario festivo (${_formatCompactHours(overtimeHolidayDayHours)} × €${overtimeNightOrHolidayRate.toStringAsFixed(2)})',
         'amount': overtimeHolidayDayAmount,
+        'hours': overtimeHolidayDayHours,
+        'hourlyRate': overtimeNightOrHolidayRate,
         'category': 'overtime_holiday_day',
       });
     }
@@ -252,8 +353,10 @@ class BuildDailyShiftResultUseCase {
     if (overtimeDayHours > 0) {
       breakdown.add({
         'label':
-            'Straordinario diurno (${overtimeDayHours.toStringAsFixed(1)}h × €${(profile.overtimeDayRate * overtimeAmountMultiplier).toStringAsFixed(2)})',
+            'Straordinario diurno (${_formatCompactHours(overtimeDayHours)} × €${overtimeDayRate.toStringAsFixed(2)})',
         'amount': overtimeDayAmount,
+        'hours': overtimeDayHours,
+        'hourlyRate': overtimeDayRate,
         'category': 'overtime_day',
       });
     }
@@ -261,7 +364,7 @@ class BuildDailyShiftResultUseCase {
     if (ordinaryNightAmount > 0) {
       breakdown.add({
         'label':
-            'Indennità servizio notturno (${ordinaryNightHours.toStringAsFixed(1)}h × €${_nightAllowanceRate.toStringAsFixed(2)} lordi)',
+            'Indennità servizio notturno (${_formatCompactHours(ordinaryNightHours)} × €${_nightAllowanceRate.toStringAsFixed(2)} lordi)',
         'amount': ordinaryNightAmount,
         'category': 'ordinary_night',
       });
@@ -298,6 +401,176 @@ class BuildDailyShiftResultUseCase {
     );
   }
 
+  DailyShiftComputation _applyMonthlyOvertimeBasketCap({
+    required DailyShiftComputation computation,
+    required double payableOvertimeHoursAlreadyConsumed,
+    required double monthlyOvertimeLimit,
+  }) {
+    if (computation.breakdown.isEmpty) {
+      return computation;
+    }
+
+    if (monthlyOvertimeLimit <= 0) {
+      return computation;
+    }
+
+    double remainingPayableHours =
+        (monthlyOvertimeLimit - payableOvertimeHoursAlreadyConsumed).clamp(
+      0.0,
+      monthlyOvertimeLimit,
+    );
+
+    final adjustedBreakdown = <Map<String, dynamic>>[];
+
+    for (final rawItem in computation.breakdown) {
+      final item = Map<String, dynamic>.from(rawItem);
+      final category = item['category'];
+
+      if (!_isOvertimeCategory(category)) {
+        adjustedBreakdown.add(item);
+        continue;
+      }
+
+      final itemHours = _sanitizeHours((item['hours'] as num?)?.toDouble() ?? 0);
+      final itemAmount =
+          _sanitizeMoney((item['amount'] as num?)?.toDouble() ?? 0.0);
+      final hourlyRate = itemHours > 0
+          ? _sanitizeMoney(
+              (item['hourlyRate'] as num?)?.toDouble() ?? (itemAmount / itemHours),
+            )
+          : 0.0;
+
+      if (itemHours <= 0 || itemAmount <= 0) {
+        adjustedBreakdown.add(item);
+        continue;
+      }
+
+      final payableHours = itemHours <= remainingPayableHours
+          ? itemHours
+          : remainingPayableHours;
+      final basketHours = (itemHours - payableHours).clamp(0.0, itemHours);
+
+      if (payableHours > 0) {
+        final payableAmount = _sanitizeMoney(payableHours * hourlyRate);
+        adjustedBreakdown.add({
+          ...item,
+          'hours': payableHours,
+          'amount': payableAmount,
+          'label': _overtimeLabel(
+            category: category,
+            hours: payableHours,
+            hourlyRate: hourlyRate,
+            isBasket: false,
+          ),
+        });
+      }
+
+      if (basketHours > 0) {
+        final basketAmount = _sanitizeMoney(basketHours * hourlyRate);
+        adjustedBreakdown.add({
+          'label': _overtimeLabel(
+            category: category,
+            hours: basketHours,
+            hourlyRate: hourlyRate,
+            isBasket: true,
+          ),
+          'amount': basketAmount,
+          'hours': basketHours,
+          'hourlyRate': hourlyRate,
+          'category': category,
+          'isBasketItem': true,
+          'basketKey': 'overtime',
+        });
+      }
+
+      remainingPayableHours =
+          (remainingPayableHours - payableHours).clamp(0.0, monthlyOvertimeLimit);
+    }
+
+    final totalAmount = adjustedBreakdown
+        .where((item) => item['isBasketItem'] != true)
+        .fold<double>(
+          0.0,
+          (sum, item) => sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
+        );
+
+    final extraAmount = adjustedBreakdown
+        .where(
+          (item) =>
+              item['isBasketItem'] != true &&
+              item['category'] != 'order_public',
+        )
+        .fold<double>(
+          0.0,
+          (sum, item) => sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
+        );
+
+    return DailyShiftComputation(
+      overtimeHours: computation.overtimeHours,
+      totalAmount: totalAmount,
+      extraAmount: extraAmount,
+      breakdown: adjustedBreakdown,
+    );
+  }
+
+  double _extractPayableOvertimeHours(List<Map<String, dynamic>> breakdown) {
+    return breakdown
+        .where(
+          (item) =>
+              _isOvertimeCategory(item['category']) &&
+              item['isBasketItem'] != true,
+        )
+        .fold<double>(
+          0.0,
+          (sum, item) => sum + ((item['hours'] as num?)?.toDouble() ?? 0.0),
+        );
+  }
+
+  bool _isOvertimeCategory(dynamic category) {
+    return category == 'overtime_day' ||
+        category == 'overtime_night' ||
+        category == 'overtime_holiday_day' ||
+        category == 'overtime_night_holiday';
+  }
+
+  String _overtimeLabel({
+    required dynamic category,
+    required double hours,
+    required double hourlyRate,
+    required bool isBasket,
+  }) {
+    final hoursLabel = _formatCompactHours(hours);
+    final rateLabel = hourlyRate.toStringAsFixed(2);
+    final basketSuffix = isBasket ? ' basket' : '';
+
+    switch (category) {
+      case 'overtime_night_holiday':
+        return 'Straordinario notturno festivo$basketSuffix ($hoursLabel × €$rateLabel)';
+      case 'overtime_night':
+        return 'Straordinario notturno$basketSuffix ($hoursLabel × €$rateLabel)';
+      case 'overtime_holiday_day':
+        return 'Straordinario festivo$basketSuffix ($hoursLabel × €$rateLabel)';
+      case 'overtime_day':
+      default:
+        return 'Straordinario diurno$basketSuffix ($hoursLabel × €$rateLabel)';
+    }
+  }
+
+  String _formatCompactHours(double value) {
+    if (value.isNaN || !value.isFinite || value <= 0) {
+      return '0m';
+    }
+
+    final totalMinutes = (value * 60).round();
+    final hours = totalMinutes ~/ 60;
+    final minutes = totalMinutes % 60;
+
+    if (hours == 0) return '${minutes}m';
+    if (minutes == 0) return '${hours}h';
+
+    return '${hours}h ${minutes}m';
+  }
+
   void _appendTransitionalAccessoryItems({
     required List<Map<String, dynamic>> breakdown,
     required Shift shift,
@@ -313,6 +586,7 @@ class BuildDailyShiftResultUseCase {
     final comfortAmount = shift.getGenereDiConfortoAmount(profile);
     final mealAmount = shift.getTicketPastoAmount(profile);
     final manualAmount = shift.getManualExtraAmount();
+    final missionAmount = shift.hasMission ? shift.missionAmount : 0.0;
     final scaloAmount = _calculatePolferScaloAmount(
       shift: shift,
       normalizedEnd: normalizedEnd,
@@ -368,7 +642,7 @@ class BuildDailyShiftResultUseCase {
       });
     }
 
-        if (comfortCdgAmount > 0) {
+    if (comfortCdgAmount > 0) {
       breakdown.add({
         'label': 'Genere di conforto CDG',
         'amount': 0.0,
@@ -414,6 +688,14 @@ class BuildDailyShiftResultUseCase {
       });
     }
 
+    if (missionAmount > 0) {
+      breakdown.add({
+        'label': 'Missione',
+        'amount': missionAmount,
+        'category': 'missione',
+      });
+    }
+
     if (manualAmount > 0) {
       breakdown.add({
         'label': shift.effectiveManualExtraLabel,
@@ -431,30 +713,74 @@ class BuildDailyShiftResultUseCase {
     return raw;
   }
 
+  double _sanitizeHours(double value) {
+    if (value.isNaN || !value.isFinite || value < 0) return 0.0;
+    return value;
+  }
+
+  double _sanitizeMoney(double value) {
+    if (value.isNaN || !value.isFinite) return 0.0;
+    return value;
+  }
+
   DateTime? _resolvePolferScheduledEnd(Shift shift) {
-    final start = shift.start;
-    final startMinutes = start.hour * 60 + start.minute;
+  final preset = _resolveOperationalPresetCode(shift);
+  final start = shift.start;
 
-    if (startMinutes >= 360 && startMinutes <= 539) {
+  switch (preset) {
+    case 'mattina':
       return DateTime(start.year, start.month, start.day, 13, 8);
-    }
 
-    if (startMinutes >= 720 && startMinutes <= 899) {
+    case 'pomeriggio':
       return DateTime(start.year, start.month, start.day, 19, 8);
-    }
 
-    if (startMinutes >= 1080 && startMinutes <= 1259) {
+    case 'sera':
       return DateTime(start.year, start.month, start.day, 0, 8)
           .add(const Duration(days: 1));
-    }
 
-    if (startMinutes >= 1320 || startMinutes <= 179) {
+    case 'notte':
       return DateTime(start.year, start.month, start.day, 7, 8)
           .add(const Duration(days: 1));
-    }
 
-    return null;
+    default:
+      break;
   }
+
+  final startMinutes = start.hour * 60 + start.minute;
+
+  if (startMinutes >= 360 && startMinutes <= 539) {
+    return DateTime(start.year, start.month, start.day, 13, 8);
+  }
+
+  if (startMinutes >= 720 && startMinutes <= 899) {
+    return DateTime(start.year, start.month, start.day, 19, 8);
+  }
+
+  if (startMinutes >= 1080 && startMinutes <= 1259) {
+    return DateTime(start.year, start.month, start.day, 0, 8)
+        .add(const Duration(days: 1));
+  }
+
+  if (startMinutes >= 1320 || startMinutes <= 179) {
+    return DateTime(start.year, start.month, start.day, 7, 8)
+        .add(const Duration(days: 1));
+  }
+
+  return null;
+}
+
+String _resolveOperationalPresetCode(Shift shift) {
+  final spmnCode = shift.spmnPresetCode.trim().toLowerCase();
+  if (spmnCode.isNotEmpty && spmnCode != 'none') {
+    return spmnCode;
+  }
+
+  if (shift.questuraPreset != QuesturaPreset.none) {
+    return shift.questuraPreset.name.toLowerCase();
+  }
+
+  return '';
+}
 
   double _calculatePolferScaloAmount({
     required Shift shift,

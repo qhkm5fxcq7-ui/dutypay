@@ -3,7 +3,6 @@ import '../../domain/engine/helpers/date_classification_helper.dart';
 import '../../domain/engine/helpers/shift_time_helper.dart';
 import '../../domain/engine/helpers/time_band_helper.dart';
 
-
 enum OpServiceType {
   none,
   inSede,
@@ -23,6 +22,34 @@ enum PolferScaloMode {
   intera,
 }
 
+enum QuesturaMode {
+  uffici,
+  volanti,
+}
+
+enum QuesturaPreset {
+  none,
+  mattina,
+  pomeriggio,
+  sera,
+  notte,
+  smontante,
+  riposo,
+  aggiornamento,
+}
+
+enum OvertimeDestination {
+  payment,
+  compensative,
+}
+
+enum QuesturaOfficeProfile {
+  sixHours,
+  settimanaCorta,
+  settimanaLunga,
+  custom,
+}
+
 class _OvertimeSegment {
   final double hours;
   final bool isNight;
@@ -34,6 +61,7 @@ class _OvertimeSegment {
     required this.isHoliday,
   });
 }
+
 class TimeOfDayLike {
   final int hour;
   final int minute;
@@ -45,8 +73,6 @@ class Shift {
   final String description;
   final DateTime start;
   final DateTime end;
-
-  /// Giorno operativo/di competenza da usare per calendario, conteggi e filtri.
   final DateTime serviceDate;
 
   final String orderPublic;
@@ -55,6 +81,9 @@ class Shift {
 
   final double manualExtraAmount;
   final String manualExtraLabel;
+
+  final bool hasMission;
+  final double missionAmount;
 
   final bool genereDiConfortoCdg;
   final bool genereDiConforto;
@@ -69,32 +98,38 @@ class Shift {
   final double manualAmount;
   final String note;
 
+  final OvertimeDestination overtimeDestination;
+
   final String spmnPresetCode;
+  final QuesturaMode questuraMode;
+  final QuesturaPreset questuraPreset;
+  final QuesturaOfficeProfile questuraOfficeProfile;
+  final double questuraOfficeOrdinaryHours;
 
   final double? workedHoursOverride;
 
-  // ===== POLFER =====
   final PolferTerritoryControlType polferTerritoryControlType;
-
-  /// Modalità principale dello scalo:
-  /// - none
-  /// - ridotta
-  /// - intera
   final PolferScaloMode polferScaloMode;
-
-  /// Se false, il sistema calcola automaticamente le ore giorno/notte
-  /// in base alle ore effettive del turno e le attribuisce tutte alla
-  /// modalità scelta (ridotta o intera).
-  ///
-  /// Se true, usa i 4 campi manuali sottostanti.
   final bool polferScaloManualOverride;
   final bool hasCompensazione;
-final bool hasReperibilita;
+  final bool hasReperibilita;
 
   final double polferScaloReducedDayHours;
   final double polferScaloReducedNightHours;
   final double polferScaloFullDayHours;
   final double polferScaloFullNightHours;
+
+  final double compensativeOvertimeHours;
+  final String compensativeOvertimeNote;
+
+  final bool programmedOvertimeEnabled;
+  final DateTime? programmedOvertimeStart;
+  final DateTime? programmedOvertimeEnd;
+  final String programmedOvertimeNote;
+
+  final bool ordinaryHoursOverrideEnabled;
+  final double ordinaryHoursOverride;
+  final String ordinaryHoursOverrideNote;
 
   static const double standardHours = 6.0;
 
@@ -134,13 +169,15 @@ final bool hasReperibilita;
     String absence = 'Nessuna',
     double manualExtraAmount = 0.0,
     String manualExtraLabel = '',
+    bool hasMission = false,
+    double missionAmount = 0.0,
     bool genereDiConfortoCdg = false,
     bool genereDiConforto = false,
     bool ticketPasto = false,
     DateTime? date,
     double? workedHours,
     bool hasCompensazione = false,
-bool hasReperibilita = false,
+    bool hasReperibilita = false,
     double straordinarioDiurnoHours = 0.0,
     double straordinarioNotturnoFestivoHours = 0.0,
     int notturnoCount = 0,
@@ -150,6 +187,11 @@ bool hasReperibilita = false,
     double manualAmount = 0.0,
     String note = '',
     String spmnPresetCode = '',
+    QuesturaMode questuraMode = QuesturaMode.uffici,
+    QuesturaPreset questuraPreset = QuesturaPreset.none,
+    QuesturaOfficeProfile questuraOfficeProfile =
+        QuesturaOfficeProfile.sixHours,
+    double questuraOfficeOrdinaryHours = 6.0,
     PolferTerritoryControlType polferTerritoryControlType =
         PolferTerritoryControlType.none,
     PolferScaloMode polferScaloMode = PolferScaloMode.none,
@@ -158,6 +200,16 @@ bool hasReperibilita = false,
     double polferScaloReducedNightHours = 0.0,
     double polferScaloFullDayHours = 0.0,
     double polferScaloFullNightHours = 0.0,
+    OvertimeDestination overtimeDestination = OvertimeDestination.payment,
+    double compensativeOvertimeHours = 0.0,
+    String compensativeOvertimeNote = '',
+    bool programmedOvertimeEnabled = false,
+    DateTime? programmedOvertimeStart,
+    DateTime? programmedOvertimeEnd,
+    String programmedOvertimeNote = '',
+    bool ordinaryHoursOverrideEnabled = false,
+    double ordinaryHoursOverride = 0.0,
+    String ordinaryHoursOverrideNote = '',
   }) {
     final resolvedStart = start ?? date ?? DateTime.now();
     final resolvedWorkedHours = workedHours ?? standardHours;
@@ -167,7 +219,13 @@ bool hasReperibilita = false,
         );
 
     final resolvedServiceDate = _normalizeDate(
-      serviceDate ?? _deriveServiceDate(resolvedStart, resolvedEnd),
+      serviceDate ??
+    _deriveServiceDate(
+      resolvedStart,
+      resolvedEnd,
+      spmnPresetCode: spmnPresetCode,
+      questuraPreset: questuraPreset,
+    ),
     );
 
     final resolvedOrderPublic = _normalizeOrderPublic(
@@ -193,11 +251,13 @@ bool hasReperibilita = false,
       absence: absence,
       manualExtraAmount: resolvedManualExtraAmount,
       manualExtraLabel: resolvedManualExtraLabel,
+      hasMission: hasMission,
+      missionAmount: missionAmount,
       genereDiConfortoCdg: genereDiConfortoCdg,
       genereDiConforto: genereDiConforto,
       ticketPasto: ticketPasto,
       hasCompensazione: hasCompensazione,
-hasReperibilita: hasReperibilita,
+      hasReperibilita: hasReperibilita,
       straordinarioDiurnoHours: straordinarioDiurnoHours,
       straordinarioNotturnoFestivoHours: straordinarioNotturnoFestivoHours,
       notturnoCount: notturnoCount,
@@ -207,6 +267,10 @@ hasReperibilita: hasReperibilita,
       manualAmount: manualAmount,
       note: note,
       spmnPresetCode: spmnPresetCode,
+      questuraMode: questuraMode,
+      questuraPreset: questuraPreset,
+      questuraOfficeProfile: questuraOfficeProfile,
+      questuraOfficeOrdinaryHours: questuraOfficeOrdinaryHours,
       workedHoursOverride: workedHours,
       polferTerritoryControlType: polferTerritoryControlType,
       polferScaloMode: polferScaloMode,
@@ -215,6 +279,16 @@ hasReperibilita: hasReperibilita,
       polferScaloReducedNightHours: polferScaloReducedNightHours,
       polferScaloFullDayHours: polferScaloFullDayHours,
       polferScaloFullNightHours: polferScaloFullNightHours,
+      overtimeDestination: overtimeDestination,
+      compensativeOvertimeHours: compensativeOvertimeHours,
+      compensativeOvertimeNote: compensativeOvertimeNote,
+      programmedOvertimeEnabled: programmedOvertimeEnabled,
+      programmedOvertimeStart: programmedOvertimeStart,
+      programmedOvertimeEnd: programmedOvertimeEnd,
+      programmedOvertimeNote: programmedOvertimeNote,
+      ordinaryHoursOverrideEnabled: ordinaryHoursOverrideEnabled,
+      ordinaryHoursOverride: ordinaryHoursOverride,
+      ordinaryHoursOverrideNote: ordinaryHoursOverrideNote,
     );
   }
 
@@ -228,11 +302,13 @@ hasReperibilita: hasReperibilita,
     required this.absence,
     required this.manualExtraAmount,
     required this.manualExtraLabel,
+    this.hasMission = false,
+    this.missionAmount = 0.0,
     required this.genereDiConfortoCdg,
     required this.genereDiConforto,
     required this.ticketPasto,
     this.hasCompensazione = false,
-this.hasReperibilita = false,
+    this.hasReperibilita = false,
     required this.straordinarioDiurnoHours,
     required this.straordinarioNotturnoFestivoHours,
     required this.notturnoCount,
@@ -241,6 +317,10 @@ this.hasReperibilita = false,
     required this.opServiceType,
     required this.manualAmount,
     required this.note,
+    required this.questuraMode,
+    required this.questuraPreset,
+    required this.questuraOfficeProfile,
+    required this.questuraOfficeOrdinaryHours,
     required this.spmnPresetCode,
     required this.workedHoursOverride,
     required this.polferTerritoryControlType,
@@ -250,6 +330,16 @@ this.hasReperibilita = false,
     required this.polferScaloReducedNightHours,
     required this.polferScaloFullDayHours,
     required this.polferScaloFullNightHours,
+    required this.overtimeDestination,
+    required this.compensativeOvertimeHours,
+    required this.compensativeOvertimeNote,
+    required this.programmedOvertimeEnabled,
+    required this.programmedOvertimeStart,
+    required this.programmedOvertimeEnd,
+    required this.programmedOvertimeNote,
+    required this.ordinaryHoursOverrideEnabled,
+    required this.ordinaryHoursOverride,
+    required this.ordinaryHoursOverrideNote,
   });
 
   Shift copyWith({
@@ -262,6 +352,8 @@ this.hasReperibilita = false,
     String? absence,
     double? manualExtraAmount,
     String? manualExtraLabel,
+    bool? hasMission,
+    double? missionAmount,
     bool? genereDiConfortoCdg,
     bool? genereDiConforto,
     bool? ticketPasto,
@@ -276,6 +368,10 @@ this.hasReperibilita = false,
     double? manualAmount,
     String? note,
     String? spmnPresetCode,
+    QuesturaMode? questuraMode,
+    QuesturaPreset? questuraPreset,
+    QuesturaOfficeProfile? questuraOfficeProfile,
+    double? questuraOfficeOrdinaryHours,
     double? workedHoursOverride,
     PolferTerritoryControlType? polferTerritoryControlType,
     PolferScaloMode? polferScaloMode,
@@ -284,6 +380,16 @@ this.hasReperibilita = false,
     double? polferScaloReducedNightHours,
     double? polferScaloFullDayHours,
     double? polferScaloFullNightHours,
+    OvertimeDestination? overtimeDestination,
+    double? compensativeOvertimeHours,
+    String? compensativeOvertimeNote,
+    bool? programmedOvertimeEnabled,
+    DateTime? programmedOvertimeStart,
+    DateTime? programmedOvertimeEnd,
+    String? programmedOvertimeNote,
+    bool? ordinaryHoursOverrideEnabled,
+    double? ordinaryHoursOverride,
+    String? ordinaryHoursOverrideNote,
   }) {
     final nextStart = start ?? this.start;
     final nextEnd = end ?? this.end;
@@ -298,12 +404,13 @@ this.hasReperibilita = false,
       absence: absence ?? this.absence,
       manualExtraAmount: manualExtraAmount ?? this.manualExtraAmount,
       manualExtraLabel: manualExtraLabel ?? this.manualExtraLabel,
-      genereDiConfortoCdg:
-          genereDiConfortoCdg ?? this.genereDiConfortoCdg,
+      hasMission: hasMission ?? this.hasMission,
+      missionAmount: missionAmount ?? this.missionAmount,
+      genereDiConfortoCdg: genereDiConfortoCdg ?? this.genereDiConfortoCdg,
       genereDiConforto: genereDiConforto ?? this.genereDiConforto,
       ticketPasto: ticketPasto ?? this.ticketPasto,
       hasCompensazione: hasCompensazione ?? this.hasCompensazione,
-hasReperibilita: hasReperibilita ?? this.hasReperibilita,
+      hasReperibilita: hasReperibilita ?? this.hasReperibilita,
       straordinarioDiurnoHours:
           straordinarioDiurnoHours ?? this.straordinarioDiurnoHours,
       straordinarioNotturnoFestivoHours:
@@ -311,12 +418,17 @@ hasReperibilita: hasReperibilita ?? this.hasReperibilita,
               this.straordinarioNotturnoFestivoHours,
       notturnoCount: notturnoCount ?? this.notturnoCount,
       festivoCount: festivoCount ?? this.festivoCount,
-      servizioEsternoCount:
-          servizioEsternoCount ?? this.servizioEsternoCount,
+      servizioEsternoCount: servizioEsternoCount ?? this.servizioEsternoCount,
       opServiceType: opServiceType ?? this.opServiceType,
       manualAmount: manualAmount ?? this.manualAmount,
       note: note ?? this.note,
       spmnPresetCode: spmnPresetCode ?? this.spmnPresetCode,
+      questuraMode: questuraMode ?? this.questuraMode,
+      questuraPreset: questuraPreset ?? this.questuraPreset,
+      questuraOfficeProfile:
+          questuraOfficeProfile ?? this.questuraOfficeProfile,
+      questuraOfficeOrdinaryHours:
+          questuraOfficeOrdinaryHours ?? this.questuraOfficeOrdinaryHours,
       workedHoursOverride: workedHoursOverride ?? this.workedHoursOverride,
       polferTerritoryControlType:
           polferTerritoryControlType ?? this.polferTerritoryControlType,
@@ -331,20 +443,37 @@ hasReperibilita: hasReperibilita ?? this.hasReperibilita,
           polferScaloFullDayHours ?? this.polferScaloFullDayHours,
       polferScaloFullNightHours:
           polferScaloFullNightHours ?? this.polferScaloFullNightHours,
+      overtimeDestination: overtimeDestination ?? this.overtimeDestination,
+      compensativeOvertimeHours:
+          compensativeOvertimeHours ?? this.compensativeOvertimeHours,
+      compensativeOvertimeNote:
+          compensativeOvertimeNote ?? this.compensativeOvertimeNote,
+      programmedOvertimeEnabled:
+          programmedOvertimeEnabled ?? this.programmedOvertimeEnabled,
+      programmedOvertimeStart:
+          programmedOvertimeStart ?? this.programmedOvertimeStart,
+      programmedOvertimeEnd:
+          programmedOvertimeEnd ?? this.programmedOvertimeEnd,
+      programmedOvertimeNote:
+          programmedOvertimeNote ?? this.programmedOvertimeNote,
+      ordinaryHoursOverrideEnabled:
+          ordinaryHoursOverrideEnabled ?? this.ordinaryHoursOverrideEnabled,
+      ordinaryHoursOverride: ordinaryHoursOverride ?? this.ordinaryHoursOverride,
+      ordinaryHoursOverrideNote:
+          ordinaryHoursOverrideNote ?? this.ordinaryHoursOverrideNote,
     );
   }
-// =========================
-// CORE DATA + SAFE HELPERS
-// =========================
+
   DateTime get date => serviceDate;
 
   double get hours {
     final diffMinutes = end.difference(start).inMinutes;
     return diffMinutes > 0 ? diffMinutes / 60.0 : 0.0;
   }
+
   double getOrdinaryNightShiftAmount([UserPayProfile? profile]) {
-  return 0.0;
-}
+    return 0.0;
+  }
 
   double get workedHours => workedHoursOverride ?? hours;
   double get totalHours => workedHours;
@@ -372,121 +501,118 @@ hasReperibilita: hasReperibilita ?? this.hasReperibilita,
     return false;
   }
 
-     bool get isSunday => serviceDate.weekday == DateTime.sunday;
+  bool get isSunday => serviceDate.weekday == DateTime.sunday;
 
   bool get isSuperHoliday {
-  return DateClassificationHelper.matchesAnyDate(
-    serviceDate,
-    DateClassificationHelper.superHolidayDates(serviceDate.year),
-  );
-}
+    return DateClassificationHelper.matchesAnyDate(
+      serviceDate,
+      DateClassificationHelper.superHolidayDates(serviceDate.year),
+    );
+  }
 
   bool get isHoliday {
-  return DateClassificationHelper.isHolidayDate(serviceDate);
-}
-// LEGACY / transitional:
-// do not use this as source of truth in the new computation flow.
-// Source of truth must be DepartmentPolicy -> ShiftCalculationResult.
-    double get overtimeHours {
-  if (hasAbsence) return 0.0;
-
-  final legacyTotal =
-      straordinarioDiurnoHours + straordinarioNotturnoFestivoHours;
-  if (legacyTotal > 0) return legacyTotal;
-
-  final overtimeStart = _getOvertimeStart();
-  final normalizedEnd = _normalizedShiftEnd;
-
-  if (!normalizedEnd.isAfter(overtimeStart)) return 0.0;
-
-  final minutes = normalizedEnd.difference(overtimeStart).inMinutes;
-  if (minutes <= 0) return 0.0;
-
-  return minutes / 60.0;
-}
-
-DateTime get _normalizedShiftEnd {
-  return ShiftTimeHelper.normalizedEnd(start, end);
-}
-
-DateTime _getOvertimeStart() {
-  final normalizedEnd = _normalizedShiftEnd;
-  final polferThreshold = _getPolferOvertimeThreshold();
-
-  if (polferThreshold != null) {
-    return normalizedEnd.isAfter(polferThreshold)
-        ? polferThreshold
-        : normalizedEnd;
+    return DateClassificationHelper.isHolidayDate(serviceDate);
   }
 
-  final standardEnd = start.add(
-    Duration(minutes: (standardHours * 60).round()),
-  );
+  double get overtimeHours {
+    if (hasAbsence) return 0.0;
 
-  return normalizedEnd.isAfter(standardEnd) ? standardEnd : normalizedEnd;
-}
+    final legacyTotal =
+        straordinarioDiurnoHours + straordinarioNotturnoFestivoHours;
+    if (legacyTotal > 0) return legacyTotal;
 
-DateTime? _getPolferOvertimeThreshold() {
-  final code = spmnPresetCode.trim().toLowerCase();
+    final overtimeStart = _getOvertimeStart();
+    final normalizedEnd = _normalizedShiftEnd;
 
-  TimeOfDayLike? matchedPreset;
+    if (!normalizedEnd.isAfter(overtimeStart)) return 0.0;
 
-  if (code.contains('notte')) {
-    matchedPreset = const TimeOfDayLike(23, 55);
-  } else if (code.contains('sera')) {
-    matchedPreset = const TimeOfDayLike(18, 55);
-  } else if (code.contains('pomeriggio')) {
-    matchedPreset = const TimeOfDayLike(12, 55);
-  } else if (code.contains('mattina')) {
-    matchedPreset = const TimeOfDayLike(6, 55);
-  } else {
-    final startHour = start.hour;
-    final startMinute = start.minute;
+    final minutes = normalizedEnd.difference(overtimeStart).inMinutes;
+    if (minutes <= 0) return 0.0;
 
-    if (startHour == 23 && startMinute == 55) {
-      matchedPreset = const TimeOfDayLike(23, 55);
-    } else if (startHour == 18 && startMinute == 55) {
-      matchedPreset = const TimeOfDayLike(18, 55);
-    } else if (startHour == 12 && startMinute == 55) {
-      matchedPreset = const TimeOfDayLike(12, 55);
-    } else if (startHour == 6 && startMinute == 55) {
-      matchedPreset = const TimeOfDayLike(6, 55);
+    return minutes / 60.0;
+  }
+
+  DateTime get _normalizedShiftEnd {
+    return ShiftTimeHelper.normalizedEnd(start, end);
+  }
+
+  DateTime _getOvertimeStart() {
+    final normalizedEnd = _normalizedShiftEnd;
+    final polferThreshold = _getPolferOvertimeThreshold();
+
+    if (polferThreshold != null) {
+      return normalizedEnd.isAfter(polferThreshold)
+          ? polferThreshold
+          : normalizedEnd;
     }
+
+    final standardEnd = start.add(
+      Duration(minutes: (standardHours * 60).round()),
+    );
+
+    return normalizedEnd.isAfter(standardEnd) ? standardEnd : normalizedEnd;
   }
 
-  if (matchedPreset == null) return null;
+  DateTime? _getPolferOvertimeThreshold() {
+    final code = spmnPresetCode.trim().toLowerCase();
 
-  if (matchedPreset.hour == 23 && matchedPreset.minute == 55) {
-    return DateTime(start.year, start.month, start.day + 1, 7, 8);
+    TimeOfDayLike? matchedPreset;
+
+    if (code.contains('notte')) {
+      matchedPreset = const TimeOfDayLike(23, 55);
+    } else if (code.contains('sera')) {
+      matchedPreset = const TimeOfDayLike(18, 55);
+    } else if (code.contains('pomeriggio')) {
+      matchedPreset = const TimeOfDayLike(12, 55);
+    } else if (code.contains('mattina')) {
+      matchedPreset = const TimeOfDayLike(6, 55);
+    } else {
+      final startHour = start.hour;
+      final startMinute = start.minute;
+
+      if (startHour == 23 && startMinute == 55) {
+        matchedPreset = const TimeOfDayLike(23, 55);
+      } else if (startHour == 18 && startMinute == 55) {
+        matchedPreset = const TimeOfDayLike(18, 55);
+      } else if (startHour == 12 && startMinute == 55) {
+        matchedPreset = const TimeOfDayLike(12, 55);
+      } else if (startHour == 6 && startMinute == 55) {
+        matchedPreset = const TimeOfDayLike(6, 55);
+      }
+    }
+
+    if (matchedPreset == null) return null;
+
+    if (matchedPreset.hour == 23 && matchedPreset.minute == 55) {
+      return DateTime(start.year, start.month, start.day + 1, 7, 8);
+    }
+
+    if (matchedPreset.hour == 18 && matchedPreset.minute == 55) {
+      return DateTime(start.year, start.month, start.day + 1, 0, 8);
+    }
+
+    if (matchedPreset.hour == 12 && matchedPreset.minute == 55) {
+      return DateTime(start.year, start.month, start.day, 19, 8);
+    }
+
+    if (matchedPreset.hour == 6 && matchedPreset.minute == 55) {
+      return DateTime(start.year, start.month, start.day, 13, 8);
+    }
+
+    return null;
   }
 
-  if (matchedPreset.hour == 18 && matchedPreset.minute == 55) {
-    return DateTime(start.year, start.month, start.day + 1, 0, 8);
+  bool _isNightMoment(DateTime moment) {
+    return TimeBandHelper.isNightMoment(moment);
   }
-
-  if (matchedPreset.hour == 12 && matchedPreset.minute == 55) {
-    return DateTime(start.year, start.month, start.day, 19, 8);
-  }
-
-  if (matchedPreset.hour == 6 && matchedPreset.minute == 55) {
-    return DateTime(start.year, start.month, start.day, 13, 8);
-  }
-
-  return null;
-}
-
-bool _isNightMoment(DateTime moment) {
-  return TimeBandHelper.isNightMoment(moment);
-}
-
 
   bool _isHolidayDate(DateTime date) {
-  return DateClassificationHelper.isHolidayDate(date);
-}
+    return DateClassificationHelper.isHolidayDate(date);
+  }
 
   DateTime _nextBoundary(DateTime current, DateTime limit) {
-  return TimeBandHelper.nextBoundary(current, limit);
-}
+    return TimeBandHelper.nextBoundary(current, limit);
+  }
 
   List<_OvertimeSegment> _buildOvertimeSegments() {
     if (hasAbsence) return const [];
@@ -520,41 +646,31 @@ bool _isNightMoment(DateTime moment) {
 
     return segments;
   }
-// LEGACY / transitional:
-// do not use this as source of truth in the new computation flow.
-// Source of truth must be DepartmentPolicy -> ShiftCalculationResult.
+
   double get segmentedOvertimeDayHours {
     return _buildOvertimeSegments()
         .where((s) => !s.isNight && !s.isHoliday)
         .fold(0.0, (sum, s) => sum + s.hours);
   }
-// LEGACY / transitional:
-// do not use this as source of truth in the new computation flow.
-// Source of truth must be DepartmentPolicy -> ShiftCalculationResult.
+
   double get segmentedOvertimeNightHours {
     return _buildOvertimeSegments()
         .where((s) => s.isNight && !s.isHoliday)
         .fold(0.0, (sum, s) => sum + s.hours);
   }
-// LEGACY / transitional:
-// do not use this as source of truth in the new computation flow.
-// Source of truth must be DepartmentPolicy -> ShiftCalculationResult.
+
   double get segmentedOvertimeHolidayDayHours {
     return _buildOvertimeSegments()
         .where((s) => !s.isNight && s.isHoliday)
         .fold(0.0, (sum, s) => sum + s.hours);
   }
-// LEGACY / transitional:
-// do not use this as source of truth in the new computation flow.
-// Source of truth must be DepartmentPolicy -> ShiftCalculationResult.
+
   double get segmentedOvertimeNightHolidayHours {
     return _buildOvertimeSegments()
         .where((s) => s.isNight && s.isHoliday)
         .fold(0.0, (sum, s) => sum + s.hours);
   }
-// LEGACY / transitional:
-// do not use this as source of truth in the new computation flow.
-// Source of truth must be DepartmentPolicy -> ShiftCalculationResult.
+
   double get overtimeNightHours {
     if (hasAbsence) return 0.0;
     if (overtimeHours <= 0) return 0.0;
@@ -562,9 +678,7 @@ bool _isNightMoment(DateTime moment) {
 
     return segmentedOvertimeNightHours + segmentedOvertimeNightHolidayHours;
   }
-// LEGACY / transitional:
-// do not use this as source of truth in the new computation flow.
-// Source of truth must be DepartmentPolicy -> ShiftCalculationResult.
+
   double get overtimeDayHours {
     if (hasAbsence) return 0.0;
     if (overtimeHours <= 0) return 0.0;
@@ -701,9 +815,21 @@ bool _isNightMoment(DateTime moment) {
     }
     return value;
   }
-// LEGACY / transitional:
-// do not use this as source of truth in the new computation flow.
-// Source of truth must be DepartmentPolicy -> ShiftCalculationResult.
+
+  double getEstimatedNetAmount([UserPayProfile? profile]) {
+    if (hasAbsence) return 0.0;
+
+    final p = _effectiveProfile(profile);
+    final netMultiplier = _resolvedOvertimeNetMultiplier(p);
+
+    final taxableGross = getSalaryBreakdown(profile).fold<double>(
+      0.0,
+      (sum, item) => sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
+    );
+
+    return taxableGross * netMultiplier;
+  }
+
   double getOvertimeRate([UserPayProfile? profile]) {
     final p = _effectiveProfile(profile);
 
@@ -741,48 +867,42 @@ bool _isNightMoment(DateTime moment) {
 
     return weightedAmount / totalHours;
   }
-// LEGACY / transitional:
-// do not use this as source of truth in the new computation flow.
-// Source of truth must be DepartmentPolicy -> ShiftCalculationResult.
+
   double getOvertimeAmount([UserPayProfile? profile]) {
-  if (hasAbsence) return 0.0;
+    if (hasAbsence) return 0.0;
 
-  final p = _effectiveProfile(profile);
+    final p = _effectiveProfile(profile);
 
-  if (isLegacyQuantifiedShift) {
+    if (isLegacyQuantifiedShift) {
+      final dayRate = _resolvedOvertimeDayRate(p);
+      final nightOrHolidayRate = _resolvedOvertimeNightOrHolidayRate(p);
+
+      final diurnoLordo = straordinarioDiurnoHours * dayRate;
+      final nottFestLordo =
+          straordinarioNotturnoFestivoHours * nightOrHolidayRate;
+
+      return diurnoLordo + nottFestLordo;
+    }
+
     final dayRate = _resolvedOvertimeDayRate(p);
     final nightOrHolidayRate = _resolvedOvertimeNightOrHolidayRate(p);
+    final nightAndHolidayRate = _resolvedOvertimeNightAndHolidayRate(p);
 
-    final diurnoLordo = straordinarioDiurnoHours * dayRate;
-    final nottFestLordo =
-        straordinarioNotturnoFestivoHours * nightOrHolidayRate;
+    double lordo = 0.0;
 
-    return diurnoLordo + nottFestLordo;
+    for (final segment in _buildOvertimeSegments()) {
+      final rate = segment.isNight && segment.isHoliday
+          ? nightAndHolidayRate
+          : (segment.isNight || segment.isHoliday)
+              ? nightOrHolidayRate
+              : dayRate;
+
+      lordo += segment.hours * rate;
+    }
+
+    return lordo;
   }
 
-  final dayRate = _resolvedOvertimeDayRate(p);
-  final nightOrHolidayRate = _resolvedOvertimeNightOrHolidayRate(p);
-  final nightAndHolidayRate = _resolvedOvertimeNightAndHolidayRate(p);
-
-  double lordo = 0.0;
-
-  for (final segment in _buildOvertimeSegments()) {
-    final rate = segment.isNight && segment.isHoliday
-        ? nightAndHolidayRate
-        : (segment.isNight || segment.isHoliday)
-            ? nightOrHolidayRate
-            : dayRate;
-
-    lordo += segment.hours * rate;
-  }
-
-  return lordo;
-}
-// =========================
-// LEGACY MONEY / BREAKDOWN
-// Transitional only.
-// Keep only until all accessory and breakdown logic is fully produced by engine policies.
-// =========================
   double getOrderPublicAmount([UserPayProfile? profile]) {
     if (hasAbsence) return 0.0;
 
@@ -860,22 +980,22 @@ bool _isNightMoment(DateTime moment) {
   }
 
   double getNightAllowanceAmount([UserPayProfile? profile]) {
-  if (hasAbsence) return 0.0;
+    if (hasAbsence) return 0.0;
 
-  if (isLegacyQuantifiedShift) {
-    if (notturnoCount <= 0) return 0.0;
-    return notturnoCount * fallbackNightAllowance;
+    if (isLegacyQuantifiedShift) {
+      if (notturnoCount <= 0) return 0.0;
+      return notturnoCount * fallbackNightAllowance;
+    }
+
+    final totalNightHours = TimeBandHelper.calculateNightOnlyHours(
+      start,
+      _normalizedShiftEnd,
+    );
+
+    if (totalNightHours <= 0) return 0.0;
+
+    return totalNightHours * fallbackNightAllowance;
   }
-
-  final totalNightHours = TimeBandHelper.calculateNightOnlyHours(
-  start,
-  _normalizedShiftEnd,
-);
-
-  if (totalNightHours <= 0) return 0.0;
-
-  return totalNightHours * fallbackNightAllowance;
-}
 
   double getPolferTerritoryControlAmount([UserPayProfile? profile]) {
     if (hasAbsence) return 0.0;
@@ -923,6 +1043,14 @@ bool _isNightMoment(DateTime moment) {
     return _resolvedTicketPastoRate(p);
   }
 
+  double getMissionAmount() {
+    if (hasAbsence || !hasMission) return 0.0;
+    if (missionAmount.isNaN || !missionAmount.isFinite || missionAmount <= 0) {
+      return 0.0;
+    }
+    return missionAmount;
+  }
+
   double getManualExtraAmount() {
     if (hasAbsence) return 0.0;
 
@@ -960,18 +1088,10 @@ bool _isNightMoment(DateTime moment) {
       final hasHoliday =
           straordinarioNotturnoFestivoHours > 0 && festivoCount > 0;
 
-      if (hasNight && hasHoliday) {
-        return 'Straordinario notturno festivo';
-      }
-      if (hasNight) {
-        return 'Straordinario notturno';
-      }
-      if (hasHoliday) {
-        return 'Straordinario festivo';
-      }
-      if (straordinarioDiurnoHours > 0) {
-        return 'Straordinario diurno';
-      }
+      if (hasNight && hasHoliday) return 'Straordinario notturno festivo';
+      if (hasNight) return 'Straordinario notturno';
+      if (hasHoliday) return 'Straordinario festivo';
+      if (straordinarioDiurnoHours > 0) return 'Straordinario diurno';
 
       return 'Straordinario';
     }
@@ -1000,27 +1120,25 @@ bool _isNightMoment(DateTime moment) {
     return 'Extra manuale';
   }
 
-  // ===== POLFER SCALO / BASKET RFI =====
-
   bool get hasPolferScalo => polferScaloMode != PolferScaloMode.none;
 
   double get polferWorkedDayHours {
-  if (hasAbsence) return 0.0;
-  return TimeBandHelper.calculateBandHours(
-    start,
-    _normalizedShiftEnd,
-    dayBand: true,
-  );
-}
+    if (hasAbsence) return 0.0;
+    return TimeBandHelper.calculateBandHours(
+      start,
+      _normalizedShiftEnd,
+      dayBand: true,
+    );
+  }
 
-double get polferWorkedNightHours {
-  if (hasAbsence) return 0.0;
-  return TimeBandHelper.calculateBandHours(
-    start,
-    _normalizedShiftEnd,
-    dayBand: false,
-  );
-}
+  double get polferWorkedNightHours {
+    if (hasAbsence) return 0.0;
+    return TimeBandHelper.calculateBandHours(
+      start,
+      _normalizedShiftEnd,
+      dayBand: false,
+    );
+  }
 
   double get effectivePolferScaloReducedDayHours {
     if (!hasPolferScalo) return 0.0;
@@ -1063,17 +1181,13 @@ double get polferWorkedNightHours {
         (effectivePolferScaloFullNightHours * polferScaloFullNightRate);
   }
 
-  /// Lo scalo RFI/Trenitalia va fuori dalle accessorie T2
-  /// e viene gestito come basket separato.
   double get polferScaloBasketAmount => polferScaloAmount;
 
   String get polferScaloLabel {
-    final hasReduced =
-        effectivePolferScaloReducedDayHours > 0 ||
-            effectivePolferScaloReducedNightHours > 0;
-    final hasFull =
-        effectivePolferScaloFullDayHours > 0 ||
-            effectivePolferScaloFullNightHours > 0;
+    final hasReduced = effectivePolferScaloReducedDayHours > 0 ||
+        effectivePolferScaloReducedNightHours > 0;
+    final hasFull = effectivePolferScaloFullDayHours > 0 ||
+        effectivePolferScaloFullNightHours > 0;
 
     if (polferScaloManualOverride && hasReduced && hasFull) {
       return 'Scalo ferroviario misto (basket RFI)';
@@ -1093,65 +1207,171 @@ double get polferWorkedNightHours {
 
     return 'Scalo ferroviario (basket RFI)';
   }
-// LEGACY / transitional:
-// do not use this as source of truth in the new computation flow.
-// Source of truth must be DepartmentPolicy -> ShiftCalculationResult.
+
   List<Map<String, dynamic>> getBreakdown([UserPayProfile? profile]) {
-  if (hasAbsence) {
-    return [
-      {
-        'label': 'Assenza dal servizio',
-        'amount': 0.0,
-      }
-    ];
-  }
+    if (hasAbsence) {
+      return [
+        {
+          'label': 'Assenza dal servizio',
+          'amount': 0.0,
+        }
+      ];
+    }
 
-  final items = <Map<String, dynamic>>[];
-  final orderPublicAmount = getOrderPublicAmount(profile);
-  final festiveAmount = getFestiveAmount(profile);
-  final specialHolidayAmount = getSpecialHolidayAmount(profile);
-  final externalServiceAmount = getExternalServiceAmount(profile);
-  final territoryControlAmount = getPolferTerritoryControlAmount(profile);
-  final nightAmount = getNightAllowanceAmount(profile);
-  final ordinaryNightShiftAmount = getOrdinaryNightShiftAmount(profile);
-  final comfortCdgAmount = getGenereDiConfortoCdgAmount(profile);
-  final comfortAmount = getGenereDiConfortoAmount(profile);
-  final mealAmount = getTicketPastoAmount(profile);
-  final manual = getManualExtraAmount();
+    final items = <Map<String, dynamic>>[];
+    final orderPublicAmount = getOrderPublicAmount(profile);
+    final festiveAmount = getFestiveAmount(profile);
+    final specialHolidayAmount = getSpecialHolidayAmount(profile);
+    final externalServiceAmount = getExternalServiceAmount(profile);
+    final territoryControlAmount = getPolferTerritoryControlAmount(profile);
+    final nightAmount = getNightAllowanceAmount(profile);
+    final ordinaryNightShiftAmount = getOrdinaryNightShiftAmount(profile);
+    final comfortCdgAmount = getGenereDiConfortoCdgAmount(profile);
+    final comfortAmount = getGenereDiConfortoAmount(profile);
+    final mealAmount = getTicketPastoAmount(profile);
+    final mission = getMissionAmount();
+    final manual = getManualExtraAmount();
 
-  if (orderPublicAmount > 0) {
-    items.add({
-      'label': 'Ordine pubblico $effectiveOrderPublicLabel',
-      'amount': orderPublicAmount,
-    });
-  }
-
-  if (isLegacyQuantifiedShift) {
-    final p = _effectiveProfile(profile);
-    final dayRate = _resolvedOvertimeDayRate(p);
-    final nightOrHolidayRate = _resolvedOvertimeNightOrHolidayRate(p);
-
-    if (straordinarioDiurnoHours > 0) {
+    if (orderPublicAmount > 0) {
       items.add({
-        'label':
-            'Straordinario diurno (${straordinarioDiurnoHours.toStringAsFixed(1)}h × €${dayRate.toStringAsFixed(2)} lordi)',
-        'amount': straordinarioDiurnoHours * dayRate,
+        'label': 'Ordine pubblico $effectiveOrderPublicLabel',
+        'amount': orderPublicAmount,
       });
     }
 
-    if (straordinarioNotturnoFestivoHours > 0) {
-      items.add({
-        'label':
-            'Straordinario notturno/festivo (${straordinarioNotturnoFestivoHours.toStringAsFixed(1)}h × €${nightOrHolidayRate.toStringAsFixed(2)} lordi)',
-        'amount': straordinarioNotturnoFestivoHours * nightOrHolidayRate,
-      });
+    if (isLegacyQuantifiedShift) {
+      final p = _effectiveProfile(profile);
+      final dayRate = _resolvedOvertimeDayRate(p);
+      final nightOrHolidayRate = _resolvedOvertimeNightOrHolidayRate(p);
+
+      if (straordinarioDiurnoHours > 0) {
+        items.add({
+          'label':
+              'Straordinario diurno (${straordinarioDiurnoHours.toStringAsFixed(1)}h × €${dayRate.toStringAsFixed(2)} lordi)',
+          'amount': straordinarioDiurnoHours * dayRate,
+        });
+      }
+
+      if (straordinarioNotturnoFestivoHours > 0) {
+        items.add({
+          'label':
+              'Straordinario notturno/festivo (${straordinarioNotturnoFestivoHours.toStringAsFixed(1)}h × €${nightOrHolidayRate.toStringAsFixed(2)} lordi)',
+          'amount': straordinarioNotturnoFestivoHours * nightOrHolidayRate,
+        });
+      }
+
+      if (nightAmount > 0) {
+        final totalNightHours = TimeBandHelper.calculateNightOnlyHours(
+          start,
+          _normalizedShiftEnd,
+        );
+        final payableNightHours = totalNightHours - overtimeHours;
+
+        items.add({
+          'label':
+              'Indennità servizio notturno (${payableNightHours.toStringAsFixed(1)}h × €${fallbackNightAllowance.toStringAsFixed(2)} lordi)',
+          'amount': nightAmount,
+        });
+      }
+
+      if (festiveAmount > 0) {
+        items.add({
+          'label': 'Indennità servizio festivo ($festivoCount)',
+          'amount': festiveAmount,
+        });
+      }
+
+      if (externalServiceAmount > 0) {
+        items.add({
+          'label': 'Indennità presenza servizi esterni ($servizioEsternoCount)',
+          'amount': externalServiceAmount,
+        });
+      }
+
+      if (territoryControlAmount > 0) {
+        items.add({
+          'label': polferTerritoryControlLabel,
+          'amount': territoryControlAmount,
+        });
+      }
+
+      if (comfortCdgAmount > 0) {
+        items.add({'label': 'Genere di conforto CDG', 'amount': comfortCdgAmount});
+      }
+
+      if (comfortAmount > 0) {
+        items.add({'label': 'Genere di conforto', 'amount': comfortAmount});
+      }
+
+      if (mealAmount > 0) {
+        items.add({'label': 'Ticket pasto', 'amount': mealAmount});
+      }
+
+      if (mission > 0) {
+        items.add({'label': 'Missione', 'amount': mission});
+      }
+
+      if (manual > 0) {
+        items.add({'label': effectiveManualExtraLabel, 'amount': manual});
+      }
+
+      if (polferScaloAmount > 0) {
+        items.add({'label': polferScaloLabel, 'amount': polferScaloAmount});
+      }
+
+      return items;
+    }
+
+    if (overtimeHours > 0) {
+      final p = _effectiveProfile(profile);
+
+      final dayHours = segmentedOvertimeDayHours;
+      final nightHours = segmentedOvertimeNightHours;
+      final holidayDayHours = segmentedOvertimeHolidayDayHours;
+      final nightHolidayHours = segmentedOvertimeNightHolidayHours;
+
+      if (nightHolidayHours > 0) {
+        final rate = _resolvedOvertimeNightAndHolidayRate(p);
+        items.add({
+          'label':
+              'Straordinario notturno festivo (${nightHolidayHours.toStringAsFixed(1)}h × €${rate.toStringAsFixed(2)} lordi)',
+          'amount': nightHolidayHours * rate,
+        });
+      }
+
+      if (nightHours > 0) {
+        final rate = _resolvedOvertimeNightOrHolidayRate(p);
+        items.add({
+          'label':
+              'Straordinario notturno (${nightHours.toStringAsFixed(1)}h × €${rate.toStringAsFixed(2)} lordi)',
+          'amount': nightHours * rate,
+        });
+      }
+
+      if (holidayDayHours > 0) {
+        final rate = _resolvedOvertimeNightOrHolidayRate(p);
+        items.add({
+          'label':
+              'Straordinario festivo (${holidayDayHours.toStringAsFixed(1)}h × €${rate.toStringAsFixed(2)} lordi)',
+          'amount': holidayDayHours * rate,
+        });
+      }
+
+      if (dayHours > 0) {
+        final rate = _resolvedOvertimeDayRate(p);
+        items.add({
+          'label':
+              'Straordinario diurno (${dayHours.toStringAsFixed(1)}h × €${rate.toStringAsFixed(2)} lordi)',
+          'amount': dayHours * rate,
+        });
+      }
     }
 
     if (nightAmount > 0) {
       final totalNightHours = TimeBandHelper.calculateNightOnlyHours(
-  start,
-  _normalizedShiftEnd,
-);
+        start,
+        _normalizedShiftEnd,
+      );
       final payableNightHours = totalNightHours - overtimeHours;
 
       items.add({
@@ -1162,200 +1382,60 @@ double get polferWorkedNightHours {
     }
 
     if (festiveAmount > 0) {
+      items.add({'label': 'Indennità servizio festivo', 'amount': festiveAmount});
+    }
+
+    if (specialHolidayAmount > 0) {
       items.add({
-        'label': 'Indennità servizio festivo ($festivoCount)',
-        'amount': festiveAmount,
+        'label': 'Indennità festività particolare',
+        'amount': specialHolidayAmount,
       });
     }
 
     if (externalServiceAmount > 0) {
       items.add({
-        'label': 'Indennità presenza servizi esterni ($servizioEsternoCount)',
+        'label': 'Indennità presenza servizi esterni',
         'amount': externalServiceAmount,
       });
     }
 
     if (territoryControlAmount > 0) {
+      items.add({'label': polferTerritoryControlLabel, 'amount': territoryControlAmount});
+    }
+
+    if (ordinaryNightShiftAmount > 0) {
       items.add({
-        'label': polferTerritoryControlLabel,
-        'amount': territoryControlAmount,
+        'label': 'Indennità turno notturno ordinario',
+        'amount': ordinaryNightShiftAmount,
       });
     }
 
     if (comfortCdgAmount > 0) {
-      items.add({
-        'label': 'Genere di conforto CDG',
-        'amount': comfortCdgAmount,
-      });
+      items.add({'label': 'Genere di conforto CDG', 'amount': comfortCdgAmount});
     }
 
     if (comfortAmount > 0) {
-      items.add({
-        'label': 'Genere di conforto',
-        'amount': comfortAmount,
-      });
+      items.add({'label': 'Genere di conforto', 'amount': comfortAmount});
     }
 
     if (mealAmount > 0) {
-      items.add({
-        'label': 'Ticket pasto',
-        'amount': mealAmount,
-      });
+      items.add({'label': 'Ticket pasto', 'amount': mealAmount});
+    }
+
+    if (mission > 0) {
+      items.add({'label': 'Missione', 'amount': mission});
     }
 
     if (manual > 0) {
-      items.add({
-        'label': effectiveManualExtraLabel,
-        'amount': manual,
-      });
+      items.add({'label': effectiveManualExtraLabel, 'amount': manual});
     }
 
     if (polferScaloAmount > 0) {
-      items.add({
-        'label': polferScaloLabel,
-        'amount': polferScaloAmount,
-      });
+      items.add({'label': polferScaloLabel, 'amount': polferScaloAmount});
     }
 
     return items;
   }
-
-  if (overtimeHours > 0) {
-    final p = _effectiveProfile(profile);
-
-    final dayHours = segmentedOvertimeDayHours;
-    final nightHours = segmentedOvertimeNightHours;
-    final holidayDayHours = segmentedOvertimeHolidayDayHours;
-    final nightHolidayHours = segmentedOvertimeNightHolidayHours;
-
-    if (nightHolidayHours > 0) {
-      final rate = _resolvedOvertimeNightAndHolidayRate(p);
-
-      items.add({
-        'label':
-            'Straordinario notturno festivo (${nightHolidayHours.toStringAsFixed(1)}h × €${rate.toStringAsFixed(2)} lordi)',
-        'amount': nightHolidayHours * rate,
-      });
-    }
-
-    if (nightHours > 0) {
-      final rate = _resolvedOvertimeNightOrHolidayRate(p);
-
-      items.add({
-        'label':
-            'Straordinario notturno (${nightHours.toStringAsFixed(1)}h × €${rate.toStringAsFixed(2)} lordi)',
-        'amount': nightHours * rate,
-      });
-    }
-
-    if (holidayDayHours > 0) {
-      final rate = _resolvedOvertimeNightOrHolidayRate(p);
-
-      items.add({
-        'label':
-            'Straordinario festivo (${holidayDayHours.toStringAsFixed(1)}h × €${rate.toStringAsFixed(2)} lordi)',
-        'amount': holidayDayHours * rate,
-      });
-    }
-
-    if (dayHours > 0) {
-      final rate = _resolvedOvertimeDayRate(p);
-
-      items.add({
-        'label':
-            'Straordinario diurno (${dayHours.toStringAsFixed(1)}h × €${rate.toStringAsFixed(2)} lordi)',
-        'amount': dayHours * rate,
-      });
-    }
-  }
-
-  if (nightAmount > 0) {
-    final totalNightHours =
-        TimeBandHelper.calculateNightOnlyHours(
-  start,
-  _normalizedShiftEnd,
-);
-    final payableNightHours = totalNightHours - overtimeHours;
-
-    items.add({
-      'label':
-          'Indennità servizio notturno (${payableNightHours.toStringAsFixed(1)}h × €${fallbackNightAllowance.toStringAsFixed(2)} lordi)',
-      'amount': nightAmount,
-    });
-  }
-
-  if (festiveAmount > 0) {
-    items.add({
-      'label': 'Indennità servizio festivo',
-      'amount': festiveAmount,
-    });
-  }
-
-  if (specialHolidayAmount > 0) {
-    items.add({
-      'label': 'Indennità festività particolare',
-      'amount': specialHolidayAmount,
-    });
-  }
-
-  if (externalServiceAmount > 0) {
-    items.add({
-      'label': 'Indennità presenza servizi esterni',
-      'amount': externalServiceAmount,
-    });
-  }
-
-  if (territoryControlAmount > 0) {
-    items.add({
-      'label': polferTerritoryControlLabel,
-      'amount': territoryControlAmount,
-    });
-  }
-
-  if (ordinaryNightShiftAmount > 0) {
-    items.add({
-      'label': 'Indennità turno notturno ordinario',
-      'amount': ordinaryNightShiftAmount,
-    });
-  }
-
-  if (comfortCdgAmount > 0) {
-    items.add({
-      'label': 'Genere di conforto CDG',
-      'amount': comfortCdgAmount,
-    });
-  }
-
-  if (comfortAmount > 0) {
-    items.add({
-      'label': 'Genere di conforto',
-      'amount': comfortAmount,
-    });
-  }
-
-  if (mealAmount > 0) {
-    items.add({
-      'label': 'Ticket pasto',
-      'amount': mealAmount,
-    });
-  }
-
-  if (manual > 0) {
-    items.add({
-      'label': effectiveManualExtraLabel,
-      'amount': manual,
-    });
-  }
-
-  if (polferScaloAmount > 0) {
-    items.add({
-      'label': polferScaloLabel,
-      'amount': polferScaloAmount,
-    });
-  }
-
-  return items;
-}
 
   double getTotalAmount([UserPayProfile? profile]) {
     if (hasAbsence) return 0.0;
@@ -1365,9 +1445,7 @@ double get polferWorkedNightHours {
       (sum, item) => sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
     );
   }
-// LEGACY / transitional:
-// do not use this as source of truth in the new computation flow.
-// Source of truth must be DepartmentPolicy -> ShiftCalculationResult.
+
   List<Map<String, dynamic>> getSalaryBreakdown([UserPayProfile? profile]) {
     final fullBreakdown = getBreakdown(profile);
 
@@ -1424,11 +1502,13 @@ double get polferWorkedNightHours {
       'absence': absence,
       'manualExtraAmount': manualExtraAmount,
       'manualExtraLabel': manualExtraLabel,
+      'hasMission': hasMission,
+      'missionAmount': missionAmount,
       'genereDiConfortoCdg': genereDiConfortoCdg,
       'genereDiConforto': genereDiConforto,
       'ticketPasto': ticketPasto,
       'hasCompensazione': hasCompensazione,
-'hasReperibilita': hasReperibilita,
+      'hasReperibilita': hasReperibilita,
       'straordinarioDiurnoHours': straordinarioDiurnoHours,
       'straordinarioNotturnoFestivoHours': straordinarioNotturnoFestivoHours,
       'notturnoCount': notturnoCount,
@@ -1438,6 +1518,10 @@ double get polferWorkedNightHours {
       'manualAmount': manualAmount,
       'note': note,
       'spmnPresetCode': spmnPresetCode,
+      'questuraMode': questuraMode.name,
+      'questuraPreset': questuraPreset.name,
+      'questuraOfficeProfile': questuraOfficeProfile.name,
+      'questuraOfficeOrdinaryHours': questuraOfficeOrdinaryHours,
       'workedHours': workedHoursOverride,
       'polferTerritoryControlType': polferTerritoryControlType.name,
       'polferScaloMode': polferScaloMode.name,
@@ -1446,6 +1530,16 @@ double get polferWorkedNightHours {
       'polferScaloReducedNightHours': polferScaloReducedNightHours,
       'polferScaloFullDayHours': polferScaloFullDayHours,
       'polferScaloFullNightHours': polferScaloFullNightHours,
+      'overtimeDestination': overtimeDestination.name,
+      'compensativeOvertimeHours': compensativeOvertimeHours,
+      'compensativeOvertimeNote': compensativeOvertimeNote,
+      'programmedOvertimeEnabled': programmedOvertimeEnabled,
+      'programmedOvertimeStart': programmedOvertimeStart?.toIso8601String(),
+      'programmedOvertimeEnd': programmedOvertimeEnd?.toIso8601String(),
+      'programmedOvertimeNote': programmedOvertimeNote,
+      'ordinaryHoursOverrideEnabled': ordinaryHoursOverrideEnabled,
+      'ordinaryHoursOverride': ordinaryHoursOverride,
+      'ordinaryHoursOverrideNote': ordinaryHoursOverrideNote,
     };
   }
 
@@ -1467,7 +1561,16 @@ double get polferWorkedNightHours {
 
     final parsedServiceDate = json['serviceDate'] != null
         ? _normalizeDate(DateTime.parse(json['serviceDate'] as String))
-        : _normalizeDate(_deriveServiceDate(parsedStart, parsedEnd));
+        : _normalizeDate(
+    _deriveServiceDate(
+      parsedStart,
+      parsedEnd,
+      spmnPresetCode: json['spmnPresetCode'] as String? ?? '',
+      questuraPreset: _parseQuesturaPreset(
+        json['questuraPreset']?.toString(),
+      ),
+    ),
+  );
 
     return Shift._internal(
       description: json['description'] as String? ?? '',
@@ -1481,16 +1584,18 @@ double get polferWorkedNightHours {
               json['opServiceType']?.toString(),
             ),
           ),
-      externalService: json['externalService'] as bool? ??
-          (_toInt(json['servizioEsternoCount']) > 0),
+      externalService:
+          json['externalService'] as bool? ?? (_toInt(json['servizioEsternoCount']) > 0),
       absence: json['absence'] as String? ?? 'Nessuna',
       manualExtraAmount: _toDouble(json['manualExtraAmount']),
       manualExtraLabel: json['manualExtraLabel'] as String? ?? '',
+      hasMission: json['hasMission'] as bool? ?? false,
+      missionAmount: _toDouble(json['missionAmount']),
       genereDiConfortoCdg: json['genereDiConfortoCdg'] as bool? ?? false,
       genereDiConforto: json['genereDiConforto'] as bool? ?? false,
       ticketPasto: json['ticketPasto'] as bool? ?? false,
       hasCompensazione: json['hasCompensazione'] as bool? ?? false,
-hasReperibilita: json['hasReperibilita'] as bool? ?? false,
+      hasReperibilita: json['hasReperibilita'] as bool? ?? false,
       straordinarioDiurnoHours: _toDouble(json['straordinarioDiurnoHours']),
       straordinarioNotturnoFestivoHours:
           _toDouble(json['straordinarioNotturnoFestivoHours']),
@@ -1501,6 +1606,13 @@ hasReperibilita: json['hasReperibilita'] as bool? ?? false,
       manualAmount: _toDouble(json['manualAmount']),
       note: json['note']?.toString() ?? '',
       spmnPresetCode: json['spmnPresetCode'] as String? ?? '',
+      questuraMode: _parseQuesturaMode(json['questuraMode']?.toString()),
+      questuraPreset: _parseQuesturaPreset(json['questuraPreset']?.toString()),
+      questuraOfficeProfile: _parseQuesturaOfficeProfile(
+        json['questuraOfficeProfile']?.toString(),
+      ),
+      questuraOfficeOrdinaryHours:
+          _toDoubleNullable(json['questuraOfficeOrdinaryHours']) ?? 6.0,
       workedHoursOverride: parsedWorkedHours,
       polferTerritoryControlType: _parsePolferTerritoryControlType(
         json['polferTerritoryControlType']?.toString(),
@@ -1517,6 +1629,28 @@ hasReperibilita: json['hasReperibilita'] as bool? ?? false,
       polferScaloFullDayHours: _toDouble(json['polferScaloFullDayHours']),
       polferScaloFullNightHours:
           _toDouble(json['polferScaloFullNightHours']),
+      overtimeDestination: _parseOvertimeDestination(
+        json['overtimeDestination']?.toString(),
+      ),
+      compensativeOvertimeHours:
+          _toDouble(json['compensativeOvertimeHours']),
+      compensativeOvertimeNote:
+          json['compensativeOvertimeNote']?.toString() ?? '',
+      programmedOvertimeEnabled:
+          json['programmedOvertimeEnabled'] as bool? ?? false,
+      programmedOvertimeStart: json['programmedOvertimeStart'] != null
+          ? DateTime.parse(json['programmedOvertimeStart'] as String)
+          : null,
+      programmedOvertimeEnd: json['programmedOvertimeEnd'] != null
+          ? DateTime.parse(json['programmedOvertimeEnd'] as String)
+          : null,
+      programmedOvertimeNote:
+          json['programmedOvertimeNote']?.toString() ?? '',
+      ordinaryHoursOverrideEnabled:
+          json['ordinaryHoursOverrideEnabled'] as bool? ?? false,
+      ordinaryHoursOverride: _toDouble(json['ordinaryHoursOverride']),
+      ordinaryHoursOverrideNote:
+          json['ordinaryHoursOverrideNote']?.toString() ?? '',
     );
   }
 
@@ -1540,18 +1674,41 @@ hasReperibilita: json['hasReperibilita'] as bool? ?? false,
     }
   }
 
-  static DateTime _deriveServiceDate(DateTime start, DateTime end) {
-    final normalizedStart = _normalizeDate(start);
-    final normalizedEnd = _normalizeDate(end);
+  static DateTime _deriveServiceDate(
+  DateTime start,
+  DateTime end, {
+  String spmnPresetCode = '',
+  QuesturaPreset questuraPreset = QuesturaPreset.none,
+}) {
+  final normalizedStart = _normalizeDate(start);
+  final normalizedEnd = _normalizeDate(end);
 
-    final isNightShift =
-        start.hour >= 22 && normalizedEnd.isAfter(normalizedStart);
+  final normalizedPreset = spmnPresetCode.trim().toLowerCase();
+  final isNightPreset =
+      normalizedPreset == 'notte' || questuraPreset == QuesturaPreset.notte;
 
-    if (isNightShift) {
-      return normalizedEnd;
+  if (isNightPreset && normalizedEnd.isAfter(normalizedStart)) {
+    return normalizedEnd;
+  }
+
+  final isNightShift =
+      start.hour >= 22 && normalizedEnd.isAfter(normalizedStart);
+
+  if (isNightShift) {
+    return normalizedEnd;
+  }
+
+  return normalizedStart;
+}
+
+  static OvertimeDestination _parseOvertimeDestination(String? value) {
+    switch (value) {
+      case 'compensative':
+        return OvertimeDestination.compensative;
+      case 'payment':
+      default:
+        return OvertimeDestination.payment;
     }
-
-    return normalizedStart;
   }
 
   static DateTime _normalizeDate(DateTime value) {
@@ -1587,6 +1744,27 @@ hasReperibilita: json['hasReperibilita'] as bool? ?? false,
       default:
         return OpServiceType.none;
     }
+  }
+
+  static QuesturaMode _parseQuesturaMode(String? value) {
+    return QuesturaMode.values.firstWhere(
+      (e) => e.name == value,
+      orElse: () => QuesturaMode.uffici,
+    );
+  }
+
+  static QuesturaPreset _parseQuesturaPreset(String? value) {
+    return QuesturaPreset.values.firstWhere(
+      (e) => e.name == value,
+      orElse: () => QuesturaPreset.none,
+    );
+  }
+
+  static QuesturaOfficeProfile _parseQuesturaOfficeProfile(String? value) {
+    return QuesturaOfficeProfile.values.firstWhere(
+      (e) => e.name == value,
+      orElse: () => QuesturaOfficeProfile.sixHours,
+    );
   }
 
   static PolferTerritoryControlType _parsePolferTerritoryControlType(
