@@ -27,6 +27,7 @@ import 'features/shifts/presentation/models/shift.dart';
 import 'features/shifts/presentation/models/user_pay_profile.dart';
 import 'features/shifts/presentation/quick_add_shift_page.dart';
 import 'features/shifts/presentation/services/payslip_projection_service.dart';
+import 'features/shifts/application/usecases/manage_compensative_basket_adjustments_usecase.dart';
 
 void main() {
   runApp(const DutyPayApp());
@@ -507,7 +508,9 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
 final BuildCompensativeBasketSummaryFromMovementsUseCase
     _buildCompensativeBasketSummaryFromMovementsUseCase =
         const BuildCompensativeBasketSummaryFromMovementsUseCase();
-
+  final ManageCompensativeBasketAdjustmentsUseCase
+    _manageCompensativeBasketAdjustmentsUseCase =
+        const ManageCompensativeBasketAdjustmentsUseCase();
   final List<Shift> shifts = [];
   final List<BasketPayment> basketPayments = [];
   final List<RfiBasketPayment> rfiBasketPayments = [];
@@ -1907,6 +1910,115 @@ _MonthlyLiveProjection _buildMonthlyLiveProjection({
     );
   }
 
+  Future<void> _openCompensativeBasketAdjustmentDialog() async {
+  final hoursController = TextEditingController();
+  final noteController = TextEditingController();
+
+  bool isPositive = true;
+
+  await showDialog(
+    context: context,
+    builder: (context) {
+      return StatefulBuilder(
+        builder: (context, setModalState) {
+          return AlertDialog(
+            title: const Text(
+              'Correzione basket compensativo',
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: hoursController,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: const InputDecoration(
+                    labelText: 'Ore',
+                    hintText: 'Es. 2.0',
+                  ),
+                ),
+                const SizedBox(height: 14),
+                DropdownButtonFormField<bool>(
+                  value: isPositive,
+                  decoration: const InputDecoration(
+                    labelText: 'Tipo correzione',
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: true,
+                      child: Text('Aggiungi ore'),
+                    ),
+                    DropdownMenuItem(
+                      value: false,
+                      child: Text('Sottrai ore'),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    if (value == null) return;
+
+                    setModalState(() {
+                      isPositive = value;
+                    });
+                  },
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: noteController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Motivo della correzione',
+                    hintText: 'Nota obbligatoria',
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                child: const Text('Annulla'),
+              ),
+              FilledButton(
+                onPressed: () async {
+                  final parsedHours =
+                      double.tryParse(
+                        hoursController.text.replaceAll(',', '.'),
+                      ) ??
+                      0.0;
+
+                  final note = noteController.text.trim();
+
+                  if (parsedHours <= 0 || note.isEmpty) {
+                    return;
+                  }
+
+                  await _addCompensativeBasketAdjustment(
+                    hours: parsedHours,
+                    isPositive: isPositive,
+                    note: note,
+                    movementDate: DateTime.now(),
+                  );
+
+                  if (!mounted) return;
+
+                  Navigator.pop(context);
+                },
+                child: const Text('Salva'),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
+
   Widget _buildShiftCard(
     Shift shift, {
     DailyShiftComputation? computation,
@@ -2149,6 +2261,50 @@ final hasConfortoCdg = shift.genereDiConfortoCdg;
     );
   }
 
+  Future<void> _addCompensativeBasketAdjustment({
+  required double hours,
+  required bool isPositive,
+  required String note,
+  required DateTime movementDate,
+}) async {
+  final updated =
+      _manageCompensativeBasketAdjustmentsUseCase.addAdjustment(
+    movements: manualCompensativeBasketMovements,
+    hours: hours,
+    isPositive: isPositive,
+    note: note,
+    movementDate: movementDate,
+  );
+
+  if (updated.length == manualCompensativeBasketMovements.length) {
+    return;
+  }
+
+  setState(() {
+    manualCompensativeBasketMovements
+      ..clear()
+      ..addAll(updated);
+  });
+
+  await _saveCompensativeBasketMovements();
+}
+
+Future<void> _deleteCompensativeBasketAdjustment(String movementId) async {
+  final updated =
+      _manageCompensativeBasketAdjustmentsUseCase.deleteAdjustment(
+    movements: manualCompensativeBasketMovements,
+    movementId: movementId,
+  );
+
+  setState(() {
+    manualCompensativeBasketMovements
+      ..clear()
+      ..addAll(updated);
+  });
+
+  await _saveCompensativeBasketMovements();
+}
+
   Widget _buildTurnsHeader() {
   return Container(
     padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
@@ -2330,24 +2486,32 @@ final hasConfortoCdg = shift.genereDiConfortoCdg;
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          children: [
-            const Icon(
-              Icons.history_toggle_off_rounded,
-              color: DutyPayPalette.warning,
-            ),
-            const SizedBox(width: 10),
-            const Expanded(
-              child: Text(
-                'Basket compensativo',
-                style: TextStyle(
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.w800,
-                  color: DutyPayPalette.warning,
-                ),
-              ),
-            ),
-          ],
+  children: [
+    const Icon(
+      Icons.history_toggle_off_rounded,
+      color: DutyPayPalette.warning,
+    ),
+    const SizedBox(width: 10),
+    const Expanded(
+      child: Text(
+        'Basket compensativo',
+        style: TextStyle(
+          fontSize: 14.5,
+          fontWeight: FontWeight.w800,
+          color: DutyPayPalette.warning,
         ),
+      ),
+    ),
+    OutlinedButton.icon(
+      onPressed: _openCompensativeBasketAdjustmentDialog,
+      icon: const Icon(
+        Icons.add_rounded,
+        size: 16,
+      ),
+      label: const Text('Correzione'),
+    ),
+  ],
+),
         const SizedBox(height: 14),
         Row(
           children: [
@@ -2431,35 +2595,49 @@ final hasConfortoCdg = shift.genereDiConfortoCdg;
           ),
         ),
         child: Row(
-          children: [
-            Icon(icon, color: color, size: 18),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '$label • ${movement.hours.toStringAsFixed(1)}h',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: color,
-                    ),
-                  ),
-                  if (movement.note.isNotEmpty)
-                    Text(
-                      movement.note,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: DutyPayPalette.textSecondary,
-                      ),
-                    ),
-                ],
+  children: [
+    Icon(icon, color: color, size: 18),
+    const SizedBox(width: 10),
+    Expanded(
+      child: Column(
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
+        children: [
+          Text(
+            '$label • ${movement.hours.toStringAsFixed(1)}h',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+          if (movement.note.isNotEmpty)
+            Text(
+              movement.note,
+              style: const TextStyle(
+                fontSize: 12,
+                color: DutyPayPalette.textSecondary,
               ),
             ),
-          ],
+        ],
+      ),
+    ),
+        if (movement.type ==
+        CompensativeBasketMovementType.adjustment)
+      IconButton(
+        onPressed: () async {
+          await _deleteCompensativeBasketAdjustment(
+            movement.id,
+          );
+        },
+        icon: const Icon(
+          Icons.delete_outline_rounded,
+          color: DutyPayPalette.danger,
+          size: 18,
         ),
+      ),
+  ],
+),
       ),
     );
   }),
