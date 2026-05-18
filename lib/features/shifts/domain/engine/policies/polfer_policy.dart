@@ -36,18 +36,20 @@ class PolferPolicy implements DepartmentPolicy {
 
     final scheduledEnd = _resolvePolferScheduledEnd(shift);
 
-    final ordinaryHours = _calculateOrdinaryHours(
-      start: shift.start,
-      end: normalizedEnd,
-      scheduledEnd: scheduledEnd,
-      workedHours: workedHours,
-    );
+    final ordinaryHours =
+    shift.ordinaryHoursOverrideEnabled
+        ? shift.ordinaryHoursOverride.clamp(0.0, workedHours)
+        : _calculateOrdinaryHours(
+            start: shift.start,
+            end: normalizedEnd,
+            scheduledEnd: scheduledEnd,
+            workedHours: workedHours,
+          );
 
-    final overtimeHours = _calculateOvertimeHours(
-      end: normalizedEnd,
-      scheduledEnd: scheduledEnd,
-      workedHours: workedHours,
-    );
+final overtimeHours =
+    workedHours > ordinaryHours
+        ? workedHours - ordinaryHours
+        : 0.0;
 
     final dayHours = TimeBandHelper.calculateBandHours(
       shift.start,

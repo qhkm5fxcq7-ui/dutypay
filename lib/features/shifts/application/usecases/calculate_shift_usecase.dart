@@ -41,6 +41,12 @@ class CalculateShiftUseCase {
         polferScaloReducedNightHours: shift.polferScaloReducedNightHours,
         polferScaloFullDayHours: shift.polferScaloFullDayHours,
         polferScaloFullNightHours: shift.polferScaloFullNightHours,
+        ordinaryHoursOverrideEnabled:
+    shift.ordinaryHoursOverrideEnabled,
+ordinaryHoursOverride:
+    shift.ordinaryHoursOverride,
+ordinaryHoursOverrideNote:
+    shift.ordinaryHoursOverrideNote,
       ),
       domain_profile.UserPayProfile(
         overtimeDayRate: profile.overtimeDayRate,

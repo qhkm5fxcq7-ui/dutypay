@@ -286,22 +286,34 @@ if (programmedOvertimeHours > 0) {
           shiftWorkedHours,
         );
       } else {
-        final ordinaryEnd =
-            scheduledEnd.isBefore(normalizedEnd) ? scheduledEnd : normalizedEnd;
+  if (shift.ordinaryHoursOverrideEnabled &&
+      shift.ordinaryHoursOverride > 0) {
+    ordinaryHoursForShift =
+        shift.ordinaryHoursOverride.clamp(0.0, shiftWorkedHours);
 
-        final ordinaryMinutes = ordinaryEnd.isAfter(shift.start)
-            ? ordinaryEnd.difference(shift.start).inMinutes
-            : 0;
+    overtimeHoursForShift =
+        (shiftWorkedHours - ordinaryHoursForShift).clamp(
+      0.0,
+      shiftWorkedHours,
+    );
+  } else {
+    final ordinaryEnd =
+        scheduledEnd.isBefore(normalizedEnd) ? scheduledEnd : normalizedEnd;
 
-        ordinaryHoursForShift =
-            (ordinaryMinutes / 60.0).clamp(0.0, shiftWorkedHours);
+    final ordinaryMinutes = ordinaryEnd.isAfter(shift.start)
+        ? ordinaryEnd.difference(shift.start).inMinutes
+        : 0;
 
-        overtimeHoursForShift =
-            (shiftWorkedHours - ordinaryHoursForShift).clamp(
-          0.0,
-          shiftWorkedHours,
-        );
-      }
+    ordinaryHoursForShift =
+        (ordinaryMinutes / 60.0).clamp(0.0, shiftWorkedHours);
+
+    overtimeHoursForShift =
+        (shiftWorkedHours - ordinaryHoursForShift).clamp(
+      0.0,
+      shiftWorkedHours,
+    );
+  }
+}
     } else {
       final remainingOrdinaryHours =
     (ordinaryLimit - ordinaryHoursAlreadyConsumed)

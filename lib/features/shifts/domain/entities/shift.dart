@@ -23,6 +23,9 @@ class Shift {
   final double polferScaloReducedNightHours;
   final double polferScaloFullDayHours;
   final double polferScaloFullNightHours;
+  final bool ordinaryHoursOverrideEnabled;
+  final double ordinaryHoursOverride;
+  final String ordinaryHoursOverrideNote;
 
   const Shift({
     required this.description,
@@ -36,5 +39,8 @@ class Shift {
     this.polferScaloReducedNightHours = 0.0,
     this.polferScaloFullDayHours = 0.0,
     this.polferScaloFullNightHours = 0.0,
+    this.ordinaryHoursOverrideEnabled = false,
+    this.ordinaryHoursOverride = 0.0,
+    this.ordinaryHoursOverrideNote = '',
   });
 }

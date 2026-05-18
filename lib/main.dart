@@ -2405,37 +2405,50 @@ Future<void> _deleteCompensativeBasketAdjustment(String movementId) async {
         ),
         const SizedBox(height: 14),
         Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: DutyPayPalette.primary.withOpacity(0.09),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: DutyPayPalette.primary.withOpacity(0.22),
+  padding: const EdgeInsets.all(14),
+  decoration: BoxDecoration(
+    color: DutyPayPalette.primary.withOpacity(0.09),
+    borderRadius: BorderRadius.circular(18),
+    border: Border.all(
+      color: DutyPayPalette.primary.withOpacity(0.22),
+    ),
+  ),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Text(
+        'Netto stimato',
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          color: DutyPayPalette.primary,
+        ),
+      ),
+      const SizedBox(height: 12),
+      Row(
+        children: [
+          Expanded(
+            child: _statTile(
+              label: 'Giornaliero',
+              value: _formatCurrency(todayTotal),
+              valueColor: DutyPayPalette.primary,
+              icon: Icons.today_rounded,
             ),
           ),
-          child: Row(
-            children: [
-              const Icon(
-                Icons.trending_up_rounded,
-                color: DutyPayPalette.primary,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  workedDaysCount == 0
-                      ? 'Aggiungi i primi turni per vedere una proiezione del ritmo mensile.'
-                      : 'Se mantieni questo ritmo, potresti aggiungere circa ${_formatCurrency(projectedExtraFuture)} entro fine mese.',
-                  style: const TextStyle(
-                    fontSize: 13.8,
-                    fontWeight: FontWeight.w700,
-                    color: DutyPayPalette.primary,
-                    height: 1.4,
-                  ),
-                ),
-              ),
-            ],
+          const SizedBox(width: 10),
+          Expanded(
+            child: _statTile(
+              label: 'Mensile',
+              value: _formatCurrency(totalMonth),
+              valueColor: DutyPayPalette.primary,
+              icon: Icons.account_balance_wallet_rounded,
+            ),
           ),
-        ),
+        ],
+      ),
+    ],
+  ),
+),
         const SizedBox(height: 14),
         Row(
           children: [

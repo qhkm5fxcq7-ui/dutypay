@@ -22,11 +22,20 @@ class RepartoMobilePolicy implements DepartmentPolicy {
       shift.end,
     );
 
-    final ordinaryHours =
-        workedHours > standardHours ? standardHours : workedHours;
+    final ordinaryThreshold =
+    shift.ordinaryHoursOverrideEnabled
+        ? shift.ordinaryHoursOverride
+        : standardHours;
 
-    final overtimeHours =
-        workedHours > standardHours ? workedHours - standardHours : 0.0;
+final ordinaryHours =
+    workedHours > ordinaryThreshold
+        ? ordinaryThreshold
+        : workedHours;
+
+final overtimeHours =
+    workedHours > ordinaryThreshold
+        ? workedHours - ordinaryThreshold
+        : 0.0;
 
     final ordinaryRangeEnd = shift.start.add(
       Duration(minutes: (ordinaryHours * 60).round()),

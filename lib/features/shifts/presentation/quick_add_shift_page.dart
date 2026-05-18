@@ -95,6 +95,8 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
   late final TextEditingController _polferFullNightController;
   late final TextEditingController _compensativeOvertimeHoursController;
 late final TextEditingController _compensativeOvertimeNoteController;
+  late final TextEditingController _ordinaryHoursOverrideController;
+late final TextEditingController _ordinaryHoursOverrideNoteController;
 
   late DateTime _serviceDate;
   late DateTime _realStartDate;
@@ -144,6 +146,8 @@ late final TextEditingController _compensativeOvertimeNoteController;
 
   OvertimeDestination _overtimeDestination =
     OvertimeDestination.payment;
+
+  bool _ordinaryHoursOverrideEnabled = false;
 
 bool get _usesCompensativeOvertime =>
     _overtimeDestination == OvertimeDestination.compensative;
@@ -253,6 +257,18 @@ _compensativeOvertimeNoteController = TextEditingController(
 _overtimeDestination =
     initialShift?.overtimeDestination ??
         OvertimeDestination.payment;
+_ordinaryHoursOverrideEnabled =
+    initialShift?.ordinaryHoursOverrideEnabled ?? false;
+
+_ordinaryHoursOverrideController = TextEditingController(
+  text: (initialShift?.ordinaryHoursOverride ?? 0) > 0
+      ? initialShift!.ordinaryHoursOverride.toStringAsFixed(2)
+      : '',
+);
+
+_ordinaryHoursOverrideNoteController = TextEditingController(
+  text: initialShift?.ordinaryHoursOverrideNote ?? '',
+);
 
     _serviceDate = _normalizeDate(baseServiceDate);
     _realStartDate = _normalizeDate(baseStart);
@@ -328,6 +344,8 @@ _overtimeDestination =
     _polferFullNightController.dispose();
     _compensativeOvertimeHoursController.dispose();
 _compensativeOvertimeNoteController.dispose();
+_ordinaryHoursOverrideController.dispose();
+_ordinaryHoursOverrideNoteController.dispose();
     super.dispose();
   }
 
@@ -786,6 +804,9 @@ _compensativeOvertimeNoteController.dispose();
         overtimeDestination: OvertimeDestination.payment,
 compensativeOvertimeHours: 0.0,
 compensativeOvertimeNote: '',
+        ordinaryHoursOverrideEnabled: false,
+ordinaryHoursOverride: 0.0,
+ordinaryHoursOverrideNote: '',
         hasCompensazione: false,
         hasReperibilita: false,
         note: _noteController.text.trim(),
@@ -830,6 +851,20 @@ compensativeOvertimeHours:
 compensativeOvertimeNote:
     _usesCompensativeOvertime
         ? _compensativeOvertimeNoteController.text.trim()
+        : '',
+      ordinaryHoursOverrideEnabled:
+    _ordinaryHoursOverrideEnabled,
+
+ordinaryHoursOverride:
+    _ordinaryHoursOverrideEnabled
+        ? _parseDouble(
+            _ordinaryHoursOverrideController.text,
+          )
+        : 0.0,
+
+ordinaryHoursOverrideNote:
+    _ordinaryHoursOverrideEnabled
+        ? _ordinaryHoursOverrideNoteController.text.trim()
         : '',
 
       hasCompensazione: _includeCompensazione,
@@ -1961,6 +1996,17 @@ compensativeOvertimeNote:
   return computation.breakdown.map((item) {
     final label = item['label'] as String? ?? '';
     final amount = (item['amount'] as num?)?.toDouble() ?? 0.0;
+    final category = item['category'] as String? ?? '';
+    
+
+if (widget.activeDepartment == Department.polfer &&
+    previewShift.ordinaryHoursOverrideEnabled &&
+    category == 'ordinary_night') {
+  return {
+    ...item,
+    'label': 'Indennità notturna ordinaria',
+  };
+}
 
     if (label.toLowerCase().contains('straordinario') &&
         result.totalAmount < amount) {
@@ -2046,10 +2092,19 @@ compensativeOvertimeNote:
   Widget build(BuildContext context) {
     final previewShift = _buildShiftPreview();
     final breakdown = _buildEnginePreviewBreakdown(previewShift);
-    final total = _buildEnginePreviewTotal(previewShift);
-    final informativeItems = _buildInformativePreviewItems(previewShift);
-    final workedHours = previewShift.workedHours;
-    final overtimeHours = previewShift.overtimeHours;
+final total = _buildEnginePreviewTotal(previewShift);
+final informativeItems = _buildInformativePreviewItems(previewShift);
+final workedHours = previewShift.workedHours;
+
+const previewUseCase = BuildDailyShiftResultUseCase();
+final previewResult = previewUseCase.execute(
+  shifts: [previewShift],
+  profile: widget.rates,
+  department: widget.activeDepartment,
+);
+
+final previewComputation = previewResult.computations[previewShift];
+final overtimeHours = previewComputation?.overtimeHours ?? 0.0;
     final autoExtra = _autoMealAndComfortAmount();
     final fieldsLockedByPreset = _isSmontanteOrRiposoLocked;
 
@@ -2349,7 +2404,51 @@ IgnorePointer(
               ),
               onChanged: (_) => setState(() {}),
             ),
-          ],
+            ],
+            const SizedBox(height: 14),
+SwitchListTile(
+  value: _ordinaryHoursOverrideEnabled,
+  onChanged: (value) {
+    setState(() {
+      _ordinaryHoursOverrideEnabled = value;
+    });
+  },
+  title: const Text(
+    'Orario in deroga',
+    style: TextStyle(
+      fontWeight: FontWeight.w700,
+    ),
+  ),
+  subtitle: const Text(
+    'Imposta manualmente quante ore sono ordinarie.',
+  ),
+  contentPadding: EdgeInsets.zero,
+),
+
+if (_ordinaryHoursOverrideEnabled) ...[
+  const SizedBox(height: 10),
+  TextField(
+    controller: _ordinaryHoursOverrideController,
+    keyboardType: const TextInputType.numberWithOptions(
+      decimal: true,
+    ),
+    decoration: const InputDecoration(
+      labelText: 'Ore ordinarie previste',
+      hintText: 'Es. 8',
+    ),
+    onChanged: (_) => setState(() {}),
+  ),
+  const SizedBox(height: 10),
+  TextField(
+    controller: _ordinaryHoursOverrideNoteController,
+    decoration: const InputDecoration(
+      labelText: 'Nota orario in deroga',
+      hintText: 'Es. Servizio in deroga autorizzato',
+    ),
+    onChanged: (_) => setState(() {}),
+  ),
+],
+          
         ],
       ),
     ),
