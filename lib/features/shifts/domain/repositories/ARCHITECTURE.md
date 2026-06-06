@@ -1,359 +1,415 @@
-# DUTYPAY – ARCHITETTURA
+# DUTYPAY — ARCHITECTURE
 
-## Struttura generale
+## Obiettivo
 
-L'app è divisa in 3 livelli:
+Definire l'architettura ufficiale di DutyPay.
 
-### 1. ENTITIES (core logico)
-- Shift
-- UserPayProfile
+Questo documento descrive:
 
-Contengono:
-- dati
-- logiche di base (calcoli grezzi)
+- componenti
+- responsabilità
+- pipeline dati
+- vincoli architetturali
+
+Non descrive roadmap o backlog.
 
 ---
 
-### 2. ENGINE (logica per reparto)
+# Architettura Generale
 
-Ogni reparto ha una sua policy:
+DutyPay è organizzata in tre livelli:
+
+1. Presentation
+2. Application
+3. Domain
+
+---
+
+# Presentation Layer
+
+Responsabilità:
+
+- Flutter UI
+- schermate
+- cards
+- dashboard
+- calendario
+- form inserimento turno
+- preview
+
+Può:
+
+- leggere dati
+- visualizzare dati
+
+Non può:
+
+- calcolare overtime
+- calcolare importi
+- classificare ore
+- classificare festivi
+- implementare logiche reparto
+
+---
+
+# Application Layer
+
+Responsabilità:
+
+- orchestrazione
+- aggregazione
+- costruzione summary
+- costruzione pipeline economiche
+
+UseCase principali:
+
+- BuildDailyShiftResultUseCase
+- BuildShiftComputationUseCase
+- BuildMonthlySummaryUseCase
+- BuildCompensativeBasketMovementsUseCase
+- BuildCompensativeBasketSummaryFromMovementsUseCase
+
+I UseCase NON devono contenere regole reparto.
+
+---
+
+# Domain Layer
+
+Responsabilità:
+
+- logiche reparto
+- regole economiche
+- classificazione ore
+- overtime
+- notturno
+- festivo
+
+---
+
+# Source of Truth
+
+La fonte di verità assoluta è:
+
+BuildDailyShiftResultUseCase
+
+Responsabile di:
+
+- overtime
+- notturno
+- festivo
+- OP
+- servizi esterni
+- compensativi
+- breakdown
+- totale turno
+- totale giorno
+
+Regola:
+
+Qualsiasi schermata deve derivare dai risultati di questo motore.
+
+---
+
+# Pipeline Principale
+
+Shift
+↓
+BuildDailyShiftResultUseCase
+↓
+BuildShiftComputationUseCase
+↓
+DepartmentPolicy
+↓
+DailyShiftResult
+↓
+UI / Summary / Cedolino
+
+---
+
+# Policy Reparto
+
+Factory:
+
+DepartmentPolicyFactory
+
+Policy attive:
 
 - RepartoMobilePolicy
 - PolferPolicy
-
-Ogni policy:
-- riceve Shift + UserPayProfile
-- restituisce ShiftCalculationResult
-
-NON deve:
-- sapere nulla della UI
-- duplicare logiche presenti in Shift
+- QuesturaPolicy
 
 ---
 
-### 3. USE CASE
+# Reparto Mobile
 
-BuildShiftComputationUseCase
+Gestisce:
 
-Serve per:
-- trasformare il risultato dell’engine in dati per la UI
-- unire:
-  - risultato engine
-  - logiche legacy Shift
-
----
-
-## Flusso dati
-
-UI → Shift → UseCase → Policy → Result → UI
-
----
-
-## Regola fondamentale
-
-- La logica vive nelle Policy
-- La UI NON deve calcolare nulla
-- Shift contiene solo logiche di base riutilizzabili
-
----
-
-## Problemi attuali noti
-
-- duplicazione logica tra Shift e Policy
-- Polfer ha logica mista (6h vs orari teorici)
-- basket RFI non completamente isolato
-
----
-
-## Obiettivo architetturale
-
-- ogni reparto completamente isolato
-- nessuna duplicazione
-- aggiunta nuovi reparti semplice (plug & play)
-## Vincoli architetturali avanzati
-
-### Separazione totale RFI
-Il flusso RFI è completamente separato da:
-- accessorie normali
-- overtime standard
-- reference month
-
-### Pipeline doppia
-- monthlySummaries → accessorie normali
-- rfiMonthlySummaries → RFI
-
-Questi flussi NON devono mai essere unificati.
-# DUTYPAY — ARCHITECTURE (UPDATED)
-
-## Core Principle
-The system is built around a strict separation:
-
-- UI → presentation only
-- UseCases → orchestration only
-- Engine (Policy) → single source of truth
-
-NO business logic must live in:
-- UI
-- Shift model (legacy only allowed for transitional data)
-
----
-
-## Calculation Flow (Final)
-
-Shift → DepartmentPolicy → ShiftCalculationResult  
-→ BuildShiftComputationUseCase  
-→ BuildShiftMoneyComponentsUseCase  
-→ Daily → Monthly → Payslip
-
----
-
-## Source of Truth
-
-### Overtime
-ONLY from:
-DepartmentPolicy → ShiftCalculationResult
-
-Never from:
-- Shift.overtimeHours
-- legacy calculations
-
----
-
-### Breakdown
-Comes from:
-result.breakdown (engine)
-
-Then enriched ONLY with:
-- order public
-- external service
-- comfort
-- manual extra
-- Polfer scalo (RFI basket)
-
-NO legacy merge allowed.
-
----
-
-## Basket Separation
-
-### Overtime Basket (Reparto Mobile)
-- generated only above monthly payable limit
-- paid manually by user
-- not immediate
-
-### RFI Basket (Polfer)
-- generated immediately at shift level
-- excluded from:
-  - stipendio
-  - accessorie normali
-- stored separately
-- paid manually (≈ every 3 months)
-
----
-
-## Money Flow Separation
-
-Each shift is split into:
-
-- overtimeGross
-- nonOvertimeGross
-- rfiBasketGross
-
-These flows MUST remain separated until final aggregation.
-
----
-
-## Monthly Aggregation
-
-### MonthlySummary
-- UI/analytics
-- includes RFI for visibility
-
-### MonthlyAccessorySummary
-- economic aggregation
-- still includes RFI (NOT filtered here)
-
-Filtering for payslip happens later.
-
----
-
-## Key Rule
-
-RFI is NOT:
+- soglia 6h
 - overtime
-- accessory PdS
-- part of payslip projection
-
-It is a separate financial flow.
-# PAYSLIP UI — LINEE GUIDA
-
-## OBIETTIVO
-
-Mostrare una simulazione fiscale chiara e affidabile del mese.
+- OP
+- servizi esterni
+- notturno
+- festivo
 
 ---
 
-## TERMINOLOGIA UFFICIALE
+# Polfer
 
-- Netto previsto → valore principale
-- Accessorie lorde stimate → componenti accessorie
-- Base netta stimata → stipendio fisso
+Gestisce:
 
----
+- scheduled end
+- controllo territorio
+- notturno
+- scalo ferroviario
 
-## HERO CARD
+Regola:
 
-Contiene:
-- mese
-- netto previsto (numero principale)
-- indicatore precisione
-- microcopy fiscale
-
-Microcopy:
-"Il netto previsto deriva da una proiezione fiscale basata sui cedolini caricati."
+nessuna soglia fissa 6h.
 
 ---
 
-## SUMMARY
+# Questura Uffici
 
-Sezione:
-- Base netta stimata
-- Accessorie lorde stimate
-- Netto previsto (totale)
+Gestisce:
 
----
+- ordinario configurabile
+- overtime automatico
 
-## BREAKDOWN
+Supportati:
 
-Mostra:
-- Base netta
-- Accessorie lorde stimate
-- Trattenute
-- Totale finale stimato
+- 6h
+- 7h12
+- custom
 
 ---
 
-## DISCLAIMER
+# Questura Volanti
 
-La pagina:
-- NON sostituisce NoiPA
-- è una proiezione fiscale
-- migliora con calibrazione
+Preset:
+
+- Mattina
+- Pomeriggio
+- Sera
+- Notte
+
+Regola:
+
+servizio ordinario fino a fine preset
+
+overtime dopo fine preset
+
+Supporta:
+
+- override ordinario
+- straordinario programmato
 
 ---
 
-## NOTA TECNICA (IMPORTANTE)
+# Programmed Overtime Architecture
 
-Attualmente:
-- alcune voci mostrate come “lorde” derivano da valori netti stimati
+Lo straordinario programmato è gestito come:
 
-Motivo:
-- evitare refactor dell’engine in questa fase
+segmento temporale
 
-Stato:
-- accettato per release
-- da riallineare in futura revisione engine
-## RFI Basket Architecture
+Campi:
 
-Il sistema RFI è separato dal basket straordinari.
+- programmedOvertimeEnabled
+- programmedOvertimeStart
+- programmedOvertimeEnd
+- overtimeDestination
 
-### Componenti:
-- MonthlyAccessorySummary.rfiBasketGross
-- RfiBasketOpenEntry
-- RfiBasketPaidEntry
-- RfiBasketPayment
+Pipeline:
 
-### Flusso:
-Shift → MonthlySummary → RFI Basket
-
-### Nota:
-Non condivide logica con:
-- overtime basket
-- accessory delay system
-## Stato dopo il fix parser cedolini
-
-Dopo la correzione del parser e la validazione automatica:
-- il caricamento dei cedolini reali produce valori coerenti
-- la schermata delle rate derivate dai cedolini può basarsi su dati realmente letti
-- la parte parser è da considerarsi stabilizzata e pronta per il rilascio, salvo nuovi bug emersi dai tester reali
-## Segmented Programmed Overtime Architecture
-
-Programmed overtime is not a global whole-shift flag anymore.
-
-The calculation flow is:
-
-```text
 Shift
- ├─ actual worked interval
- ├─ optional programmed overtime interval
- ├─ optional ordinary-hours override
- └─ overtime destination
+↓
+segment overlap
+↓
+clamp
+↓
+certain overtime
 
-## 2. `ARCHITECTURE.md`
+Destinazioni:
 
-Aggiungi:
+- payment
+- compensative
 
-```md
-## Compensative Basket Architecture
+---
 
-The Compensative Basket is an independent hours pipeline.
+# Basket RFI Architecture
 
-### Domain models
+Pipeline indipendente.
 
-- `CompensativeBasketMovement`
-- `CompensativeBasketSummary`
+Flusso:
 
-Movement types:
-- `earned`
-- `recovered`
-- `adjustment`
+Turno con scalo
+↓
+rfiBasketGross
+↓
+OPEN
+↓
+PAID
+↓
+Cedolino
 
-### Movement sources
+Separato da:
 
-Automatic movements:
-- generated from shifts at runtime
-- `earned` comes from compensative overtime
-- `recovered` comes from absence `Recupero compensativo`
-- automatic movements are not persisted separately
-- automatic movements are not manually deletable
+- overtime
+- accessorie
+- compensativi
 
-Manual movements:
-- persisted separately
-- currently only `adjustment`
-- can be positive or negative
-- require a note
-- can be deleted by the user
+Storage:
 
-### Runtime merge
+rfiMonthlySummaries
 
-```text
+Mai utilizzare:
+
+monthlySummaries
+
+---
+
+# Basket Compensativo Architecture
+
+Pipeline indipendente basata su ore.
+
+Domain Models:
+
+- CompensativeBasketMovement
+- CompensativeBasketSummary
+
+Tipi:
+
+- earned
+- recovered
+- adjustment
+
+---
+
+## Earned
+
+Origine:
+
+compensative overtime
+
+---
+
+## Recovered
+
+Origine:
+
+assenza Recupero compensativo
+
+---
+
+## Adjustment
+
+Origine:
+
+utente
+
+Regole:
+
+- nota obbligatoria
+- positivo o negativo
+- eliminabile
+
+---
+
+## Runtime Merge
+
 BuildCompensativeBasketMovementsUseCase(shifts)
 +
-manualCompensativeBasketMovements from SharedPreferences
+manualCompensativeBasketMovements
 =
 compensativeBasketMovements
-DepartmentPolicyFactory
 
-Reparti supportati:
+---
+
+# Cedolino Architecture
+
+Pipeline:
+
+Breakdown turno
+↓
+Aggregazione mensile
+↓
+Esclusione benefit
+↓
+Esclusione RFI
+↓
+Totale lordo
+↓
+Fiscalità stimata
+↓
+Netto previsto
+
+---
+
+# Benefit Architecture
+
+Categorie:
+
+- ticket_meal
+- comfort
+- comfort_cdg
+
+Regole:
+
+- amount = 0
+- benefitAmount valorizzato
+- isBenefit = true
+
+Mai inclusi in:
+
+- totalAmount
+- extraAmount
+- cedolino
+
+---
+
+# Parser Cedolini
+
+Validato tramite fixture reali.
+
+Copertura:
+
+- RM Febbraio 2026
+- RM Marzo 2026
+- Polfer Marzo 2026
+
+Regola:
+
+utilizzare sempre l'ultima occorrenza del blocco:
+
+"Assegni accessori"
+
+---
+
+# Vincoli Architetturali
+
+È vietato:
+
+- logica economica in UI
+- duplicazione Shift/Policy
+- fallback legacy
+- merge breakdown legacy
+- uso monthlySummaries per RFI
+- calcoli paralleli nella preview
+
+---
+
+# Baseline
+
+Release:
+
+DutyPay 1.0.5
+
+Reparti:
 
 - Reparto Mobile
 - Polfer
 - Questura Uffici
 - Questura Volanti
 
-Questura Volanti:
+Stato:
 
-Preset:
-- Mattina
-- Pomeriggio
-- Sera
-- Notte
-
-Calcolo:
-- servizio ordinario fino a fine preset
-- straordinario automatico dopo fine preset
-- supporto override manuale
-- supporto straordinario programmato
-
-Source of truth:
-BuildDailyShiftResultUseCase
+ARCHITETTURA STABILE

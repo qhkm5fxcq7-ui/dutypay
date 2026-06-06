@@ -1,126 +1,281 @@
+# TEST STRATEGY
+
 ## Parser Testing Strategy
 
-I test parser devono usare:
+I test parser devono utilizzare:
 
-- fixture reali (PDF o raw text reale)
-- non solo dati sintetici
+* fixture reali (PDF o raw text reale)
+* non solo dati sintetici
 
-Motivazione:
-I cedolini NoiPA presentano:
-- duplicazione blocchi
-- layout non lineare
-- variazioni di formattazione
+### Motivazione
 
-I test sintetici NON sono sufficienti per garantire affidabilità.
+I cedolini NoiPA presentano frequentemente:
+
+* duplicazione blocchi
+* layout non lineare
+* variazioni di formattazione
+* righe ripetute
+* differenze tra reparti
+
+I test sintetici non sono sufficienti per garantire affidabilità.
+
+### Regola obbligatoria
+
+Qualsiasi bug parser scoperto in produzione deve generare:
+
+1. nuova fixture reale
+2. nuovo test automatico
+3. successiva correzione del parser
+
+La fixture deve essere introdotta prima del refactor del parser.
+
+---
+
 ## Test RFI obbligatori
 
-- Inserimento scalo → deve entrare nel basket
-- Nessun impatto su accessorie
-- Pagamento manuale → sposta da OPEN a PAID
-- Cedolino → include solo se pagato nel mese
-- Preview = turno salvato (sempre)
-## Nuova copertura test — parser cedolini con fixture reali
+Copertura minima richiesta:
 
-È stato aggiunto e validato un test dedicato su fixture reali per blindare il parsing delle accessorie da cedolino.
+### Inserimento scalo
+
+Verificare:
+
+* generazione automatica basket RFI
+* inserimento movimento OPEN
+
+### Separazione contabile
+
+Verificare:
+
+* nessun impatto su accessorie
+* nessun impatto su straordinari
+* nessun impatto su compensativi
+
+### Pagamento
+
+Verificare:
+
+* pagamento manuale
+* passaggio OPEN → PAID
+
+### Cedolino
+
+Verificare:
+
+* inclusione solo nel mese di pagamento
+
+### UI
+
+Verificare sempre:
+
+* Preview = turno salvato
+* Card = dettaglio turno
+* Totale = breakdown
+
+---
+
+## Parser Cedolini – Fixture Reali
 
 ### File test
+
 `test/unit/parser/payslip_parser_service_test.dart`
 
-### Copertura introdotta
-Sono stati coperti i seguenti casi reali:
-- RM Marzo 2026
-- RM Febbraio 2026
-- Polfer Marzo 2026
+### Fixture validate
+
+* RM Marzo 2026
+* RM Febbraio 2026
+* Polfer Marzo 2026
 
 ### Verifiche effettuate
-Per ogni fixture vengono verificati:
-- parsing corretto del riepilogo cedolino
-- estrazione corretta delle `accessoryEntries`
-- estrazione corretta delle `operationalAccessoryEntries`
-- derivazione corretta delle tariffe di straordinario nel profilo dinamico
+
+Per ogni fixture:
+
+* parsing corretto riepilogo cedolino
+* estrazione corretta accessoryEntries
+* estrazione corretta operationalAccessoryEntries
+* derivazione corretta tariffe straordinario
+* costruzione corretta profilo dinamico
 
 ### Esito
-I test passano correttamente.
+
+Tutti i test passano.
 
 ### Impatto
-Questo test impedisce regressioni future sul parser cedolini, che rappresenta una componente critica per:
-- stima cedolino
-- calcolo accessorie reali
-- costruzione del profilo dinamico utente
 
-## 4. `TEST_STRATEGY.md`
+Questa copertura protegge:
 
-Aggiungi:
+* parser cedolino
+* accessorie reali
+* profilo dinamico
+* stima cedolino
+* regressioni future
 
-```md
+---
+
 ## Programmed Overtime Segment Tests
 
-Test file:
-- `test/unit/usecases/programmed_overtime_segment_test.dart`
+### File test
 
-Covered cases:
-1. Ordinary + programmed overtime:
-   - shift 07:00–16:00
-   - programmed 13:00–16:00
-   - expected overtime: 3h
+`test/unit/usecases/programmed_overtime_segment_test.dart`
 
-2. Programmed compensative overtime:
-   - shift 07:00–16:00
-   - programmed 13:00–16:00
-   - destination compensative
-   - expected total overtime: 3h
-   - expected compensative hours: 3h
-   - expected paid amount: 0 for programmed overtime
+### Covered Cases
 
-3. Out-of-range programmed segment:
-   - shift 07:00–13:00
-   - programmed 12:00–18:00
-   - expected overtime after clamp: 1h
+#### Caso 1 – Ordinary + Programmed Overtime
 
-Regression requirements:
-- RM daily overtime must remain stable.
-- Polfer preset closure must remain stable.
-- Questura/Volanti preset logic must not lose operational identity.
-- Compensative overtime must not enter payslip paid amount.
-- RFI basket must remain separate.
+Turno:
 
-## 4. `TEST_STRATEGY.md`
+* 07:00–16:00
 
-Aggiungi:
+Programmato:
 
-```md
+* 13:00–16:00
+
+Atteso:
+
+* overtime = 3h
+
+---
+
+#### Caso 2 – Programmed Compensative Overtime
+
+Turno:
+
+* 07:00–16:00
+
+Programmato:
+
+* 13:00–16:00
+
+Destinazione:
+
+* compensativo
+
+Atteso:
+
+* overtime totale = 3h
+* compensativo = 3h
+* importo pagato = 0
+
+---
+
+#### Caso 3 – Out of Range Segment
+
+Turno:
+
+* 07:00–13:00
+
+Programmato:
+
+* 12:00–18:00
+
+Atteso:
+
+* clamp corretto
+* overtime = 1h
+
+### Regression Requirements
+
+Devono rimanere stabili:
+
+* soglia RM 6h
+* logica Polfer notturno e territorio
+* logica Questura Uffici
+* logica preset Questura Volanti
+* overtime programmato
+* compensativi programmati
+* separazione basket RFI
+
+---
+
 ## Compensative Basket Test Coverage
 
-Covered areas:
+### Summary Model
 
-### Summary model
-- earned - recovered = residual
-- positive adjustment increases residual
-- negative adjustment decreases residual
+Copertura:
 
-### Movement model
-- JSON serialization
-- JSON deserialization
-- unknown movement type falls back safely to adjustment
+* earned − recovered = residual
+* adjustment positivo
+* adjustment negativo
 
-### Movement builder
-- earned movement from compensative shift
-- recovered movement from `Recupero compensativo`
-- earned + recovered history in the same month
+### Movement Model
 
-### Summary from movements
-- earned, recovered, adjustment aggregation
-- residual formula validation
+Copertura:
 
-### Adjustment governance
-- positive adjustment increases residual
-- negative adjustment decreases residual
-- empty note blocks adjustment
-- delete removes only adjustment
-- automatic earned movement cannot be deleted
+* JSON serialization
+* JSON deserialization
+* fallback sicuro movement type sconosciuto
 
-Regression requirements:
-- compensative movements must not affect payslip projection
-- compensative movements must not affect RFI basket
-- compensative movements must not affect payment basket
-- programmed overtime segmentation must remain stable
+### Movement Builder
+
+Copertura:
+
+* earned da turno compensativo
+* recovered da Recupero compensativo
+* storico misto nello stesso mese
+
+### Summary From Movements
+
+Copertura:
+
+* earned aggregation
+* recovered aggregation
+* adjustment aggregation
+* validazione formula residuale
+
+### Adjustment Governance
+
+Copertura:
+
+* adjustment positivo aumenta residuo
+* adjustment negativo diminuisce residuo
+* nota vuota blocca adjustment
+* delete consentito solo sugli adjustment
+
+### Immutability Rules
+
+Movimenti automatici:
+
+* earned = generato dal sistema
+* recovered = generato dal sistema
+
+Regole:
+
+* earned non modificabile
+* earned non eliminabile
+* recovered non modificabile
+* recovered non eliminabile
+
+L'unico movimento modificabile dall'utente è:
+
+* adjustment
+
+### Regression Requirements
+
+I compensativi:
+
+* non devono impattare il cedolino
+* non devono impattare il basket RFI
+* non devono impattare il basket pagamenti
+* non devono alterare la segmentazione overtime programmato
+* non devono alterare il motore centrale
+
+---
+
+## Release Baseline
+
+Versione validata:
+
+DutyPay 1.0.5
+
+Reparti coperti:
+
+* Reparto Mobile
+* Polfer
+* Questura Uffici
+* Questura Volanti
+
+Prima di ogni release:
+
+* flutter analyze
+* flutter test
+* smoke test multi reparto
+* verifica preview ↔ dettaglio ↔ summary

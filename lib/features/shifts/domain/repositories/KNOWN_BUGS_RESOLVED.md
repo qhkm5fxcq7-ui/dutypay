@@ -1,89 +1,429 @@
-# BUG RISOLTI – DUTYPAY
+# DUTYPAY — KNOWN BUGS RESOLVED
 
-## Polfer falso straordinario
-Causa:
-- uso soglia 6h
+## Obiettivo
 
-Soluzione:
-- uso fine turno teorica
+Mantenere traccia delle regressioni critiche risolte nel progetto.
 
----
+Ogni bug riportato in questo documento:
 
-## Scalo spariva dopo salvataggio
-Causa:
-- pipeline sporca
-
-Soluzione:
-- separazione engine / serialization
+* è stato riprodotto
+* è stato corretto
+* è stato validato tramite test o verifica manuale
 
 ---
 
-## Basket RFI a zero
-Causa:
-- uso monthlySummaries
+# Reparto Mobile
 
-Soluzione:
-- uso rfiMonthlySummaries
+## RM-001 — Perdita notturno con straordinario
 
----
+### Sintomo
 
-## Breakdown Polfer incoerente
-Causa:
-- merge con logica legacy
-
-Soluzione:
-- breakdown solo da engine
-# DutyPay — Known Bugs Resolved
-
----
-
-## BUG RM — perdita notturno con straordinario
-
-### Descrizione
-
-Nel Reparto Mobile:
-- la quota notturna veniva alterata in presenza di straordinario
-- in alcuni casi veniva ridotta o persa
-
----
+La quota di notturno ordinario veniva ridotta o persa in presenza di straordinario notturno.
 
 ### Causa
 
-Errore nella policy:
+Errore nella segmentazione tra:
 
-```text
-ordinaryNight = nightOrdinaryHours - overtimeNightHours
-## Benefit sommati erroneamente al totale
+* ordinary night
+* overtime night
 
-Bug risolti:
-- duplicazione del comfort
-- ticket assente nel post-salvataggio
-- benefit sommati erroneamente a totalAmount
-- benefit sommati erroneamente a extraAmount
+### Soluzione
 
-Categorie coinvolte:
-- ticket_meal
-- comfort
-- comfort_cdg
+Separazione completa delle due componenti.
 
-Soluzione:
-- normalizzazione benefit non economici con:
-  - amount = 0.0
-  - benefitAmount valorizzato
-  - isBenefit = true
+### Esito
 
-Esito:
-- preview e post-salvataggio allineati
-- benefit visibili ma non cumulati
-- duplicazione genere di conforto
-- ticket pasto non presente nel post-salvataggio
-- benefit conteggiati erroneamente nel totale
-- parser leggeva il blocco accessorie del riepilogo invece del dettaglio
-- accessorie non estratte dai PDF reali
-- derivazione rate straordinario errata per parsing incompleto
-## Ultimi fix critici
+* ordinary night sempre preservato
+* overtime night indipendente
+* breakdown corretto
 
-- Preview calcolo non coerente → RISOLTO
-- RFI mostrato con ore → RISOLTO (solo €)
-- Reset turno su selezione assenza → RISOLTO
-- Differenze preview vs salvataggio → RISOLTO
+Status:
+
+✅ RISOLTO
+
+---
+
+## RM-002 — Utilizzo scenari Volanti come baseline RM
+
+### Sintomo
+
+Venivano utilizzati turni tipo:
+
+06:55 → 13:08
+
+come riferimento RM.
+
+### Causa
+
+Confusione tra logiche Reparto Mobile e turnazione in quinta.
+
+### Soluzione
+
+Formalizzazione scenari canonici RM:
+
+* soglia ordinaria 6h
+
+### Esito
+
+Regole RM isolate.
+
+Status:
+
+✅ RISOLTO
+
+---
+
+# Polfer
+
+## POLFER-001 — Falso straordinario
+
+### Sintomo
+
+Turni standard producevano straordinario non dovuto.
+
+### Causa
+
+Utilizzo della soglia RM 6h.
+
+### Soluzione
+
+Utilizzo della fine turno teorica Polfer.
+
+### Esito
+
+* mattina standard corretta
+* sera standard corretta
+* notte standard corretta
+
+Status:
+
+✅ RISOLTO
+
+---
+
+## POLFER-002 — Breakdown incoerente
+
+### Sintomo
+
+Breakdown diverso dal risultato reale.
+
+### Causa
+
+Merge con logica legacy.
+
+### Soluzione
+
+Breakdown generato esclusivamente dal motore.
+
+### Esito
+
+Preview e dettaglio coerenti.
+
+Status:
+
+✅ RISOLTO
+
+---
+
+# RFI
+
+## RFI-001 — Scalo spariva dopo il salvataggio
+
+### Sintomo
+
+Lo scalo risultava corretto in preview ma non dopo il salvataggio.
+
+### Causa
+
+Pipeline mista engine/serializzazione.
+
+### Soluzione
+
+Separazione completa:
+
+* calcolo
+* persistenza
+
+### Esito
+
+Preview e turno salvato identici.
+
+Status:
+
+✅ RISOLTO
+
+---
+
+## RFI-002 — Basket RFI a zero
+
+### Sintomo
+
+Importi RFI non visualizzati correttamente.
+
+### Causa
+
+Uso errato di:
+
+monthlySummaries
+
+invece di:
+
+rfiMonthlySummaries
+
+### Soluzione
+
+Pipeline dedicata.
+
+### Esito
+
+Basket aggiornato correttamente.
+
+Status:
+
+✅ RISOLTO
+
+---
+
+## RFI-003 — RFI mostrato come ore
+
+### Sintomo
+
+Il basket RFI mostrava valori orari.
+
+### Soluzione
+
+Visualizzazione esclusivamente economica.
+
+### Esito
+
+Solo importi in euro.
+
+Status:
+
+✅ RISOLTO
+
+---
+
+# Benefit
+
+## BENEFIT-001 — Benefit sommati al totale
+
+### Sintomo
+
+Ticket e comfort venivano sommati agli importi economici.
+
+### Causa
+
+Mancata distinzione tra:
+
+* benefit
+* importi monetari
+
+### Soluzione
+
+Introduzione struttura standard:
+
+* amount = 0.0
+* benefitAmount valorizzato
+* isBenefit = true
+
+### Esito
+
+Benefit visibili ma non conteggiati.
+
+Status:
+
+✅ RISOLTO
+
+---
+
+## BENEFIT-002 — Duplicazione comfort
+
+### Sintomo
+
+Comfort visualizzato due volte.
+
+### Soluzione
+
+Normalizzazione pipeline benefit.
+
+Status:
+
+✅ RISOLTO
+
+---
+
+## BENEFIT-003 — Ticket assente post-salvataggio
+
+### Sintomo
+
+Ticket visibile in preview ma non dopo il salvataggio.
+
+### Soluzione
+
+Allineamento serializzazione.
+
+Status:
+
+✅ RISOLTO
+
+---
+
+# Parser Cedolini
+
+## PARSER-001 — Lettura blocco accessorie errato
+
+### Sintomo
+
+Accessorie incomplete.
+
+### Causa
+
+Parser utilizzava il riepilogo iniziale.
+
+### Soluzione
+
+Utilizzo dell'ultima occorrenza del blocco accessorie.
+
+### Esito
+
+Parsing corretto.
+
+Status:
+
+✅ RISOLTO
+
+---
+
+## PARSER-002 — PDF reali non estratti correttamente
+
+### Sintomo
+
+Accessorie mancanti.
+
+### Soluzione
+
+Introduzione fixture reali e copertura test.
+
+Status:
+
+✅ RISOLTO
+
+---
+
+## PARSER-003 — Derivazione rate straordinario errata
+
+### Sintomo
+
+Profilo dinamico non corretto.
+
+### Soluzione
+
+Parsing completo delle accessorie.
+
+Status:
+
+✅ RISOLTO
+
+---
+
+# Questura
+
+## QUESTURA-001 — Preview override ordinario errata
+
+### Sintomo
+
+Preview mostrava valori overtime diversi dal motore.
+
+### Soluzione
+
+Preview collegata direttamente al computation del motore.
+
+### Esito
+
+Override 6h, 7h12 e custom corretti.
+
+Status:
+
+✅ RISOLTO
+
+---
+
+## QUESTURA-002 — Totale turno a zero con breakdown valorizzato
+
+### Sintomo
+
+Preview:
+
+€0.00
+
+nonostante breakdown corretto.
+
+### Causa
+
+TotalAmount non ricostruito dal breakdown.
+
+### Soluzione
+
+Ricostruzione del totale dai valori del motore.
+
+### Esito
+
+Preview coerente.
+
+Status:
+
+✅ RISOLTO
+
+---
+
+## QUESTURA-003 — Preview diversa dal dettaglio turno
+
+### Sintomo
+
+Valori differenti tra:
+
+* preview
+* turno salvato
+
+### Soluzione
+
+Entrambi leggono la stessa computation.
+
+### Esito
+
+Allineamento completo.
+
+Status:
+
+✅ RISOLTO
+
+---
+
+# UI
+
+## UI-001 — Reset turno dopo selezione assenza
+
+### Sintomo
+
+Campi turno azzerati in modo errato.
+
+### Soluzione
+
+Correzione gestione stato.
+
+Status:
+
+✅ RISOLTO
+
+---
+
+# Baseline 1.0.5
+
+Tutti i bug sopra riportati risultano:
+
+✅ corretti
+
+✅ validati
+
+✅ inclusi nella release 1.0.5

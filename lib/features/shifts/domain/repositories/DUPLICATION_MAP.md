@@ -1,334 +1,373 @@
-# DUTYPAY – DUPLICATION MAP
+# DUTYPAY — DUPLICATION GOVERNANCE
 
 ## Obiettivo
 
-Identificare e rimuovere tutte le duplicazioni logiche tra:
-- Shift (entity)
-- Policy (engine)
-- UseCase (application)
+Prevenire la reintroduzione di duplicazioni logiche nel progetto.
+
+Questo documento definisce:
+
+* dove deve vivere ogni logica
+* cosa è stato centralizzato
+* cosa è temporaneamente tollerato
+* cosa è vietato
 
 ---
 
-## PROBLEMA ATTUALE
+# Principio Fondamentale
 
-Oggi esistono duplicazioni critiche tra:
+Una sola fonte della verità.
 
-### Shift
-- _buildOvertimeSegments
-- _calculateNightOnlyHours
-- _calculateBandHours
-- overtimeHours
-- segmentedOvertime*
+Qualsiasi regola di business deve avere un solo proprietario.
 
-### RepartoMobilePolicy
-- _buildOvertimeSegments
-- _calculateNightHours
-- _overlapMinutes
-- _isNightMoment
-- _isHolidayDate
+Sono vietate:
 
-### PolferPolicy
-- _calculateBandHours
-- _overlapMinutes
-- gestione ore giorno/notte
-- logica simile ma non identica a Shift
+* duplicazioni
+* fallback legacy
+* calcoli paralleli
 
 ---
 
-## RISCHIO
+# Source of Truth
 
-- bug silenziosi
-- incoerenza tra preview e salvataggio
-- regressioni quando si modifica una sola parte
-- comportamento diverso tra reparti
-- difficoltà nel debugging
+Fonte assoluta:
 
----
+BuildDailyShiftResultUseCase
 
-## PRINCIPIO ARCHITETTURALE
+Responsabile di:
 
-UNA SOLA FONTE DELLA VERITÀ
+* overtime
+* notturno
+* festivo
+* OP
+* servizi esterni
+* compensativi
+* basket
+* breakdown
+* totale turno
+* totale giorno
 
-### Regola chiave:
-- Shift NON deve contenere logica di business di reparto
-- Policy è il cervello del calcolo
-- UseCase orchestra, NON calcola
-
----
-
-## CLASSIFICAZIONE LOGICA
-
-### 1. LOGICA BASE (deve stare in Shift o helper condivisi)
-
-✔ consentita in Shift:
-- normalizzazione date
-- start/end
-- crossesMidnight
-- serializzazione JSON
-- helper generici senza logica di business
-
-❌ NON deve stare in Shift:
-- straordinario
-- segmentazione notte/giorno
-- logica festivi avanzata
-- breakdown economico
-- logiche Polfer/RM
+Nessun widget può eseguire logiche economiche autonome.
 
 ---
 
-### 2. LOGICA DI CALCOLO (deve stare SOLO nelle Policy)
-
-✔ deve stare in Policy:
-- soglia straordinario
-- segmentazione ore
-- classificazione notte/giorno
-- classificazione festivo
-- calcolo importi
-- logiche specifiche reparto
-
----
-
-### 3. ORCHESTRAZIONE (UseCase)
-
-✔ deve stare nei UseCase:
-- merge breakdown
-- esclusione basket da extraAmount
-- adattamento dati per UI
-
-❌ NON deve fare:
-- calcoli complessi
-- logiche reparto
-
----
-
-## DUPLICAZIONI IDENTIFICATE
-
-### 🔴 BLOCCO 1 — OVERTIME SEGMENTATION
-
-Duplicata in:
-- Shift._buildOvertimeSegments
-- RepartoMobilePolicy._buildOvertimeSegments
-
-👉 DESTINAZIONE CORRETTA:
-➡ Policy
-
-👉 AZIONE:
-- rimuovere da Shift
-- mantenere solo in Policy
-
----
-
-### 🔴 BLOCCO 2 — NIGHT HOURS
-
-Duplicata in:
-- Shift._calculateNightOnlyHours
-- RepartoMobilePolicy._calculateNightHours
-
-👉 DESTINAZIONE:
-➡ Policy
-
----
-
-### 🔴 BLOCCO 3 — BAND HOURS (giorno/notte)
-
-Duplicata in:
-- Shift._calculateBandHours
-- PolferPolicy._calculateBandHours
-
-👉 DESTINAZIONE:
-➡ helper condiviso nel dominio OPPURE Policy
-
----
-
-### 🔴 BLOCCO 4 — HOLIDAY LOGIC
-
-Duplicata in:
-- Shift._isHolidayDate
-- Policy
-
-👉 DESTINAZIONE:
-➡ helper condiviso (es: date_utils.dart)
-
----
-
-### 🔴 BLOCCO 5 — OVERTIME HOURS
-
-In Shift:
-- overtimeHours
-- segmentedOvertime*
-
-In Policy:
-- overtimeHours calcolato diversamente
-
-👉 PROBLEMA:
-2 verità diverse
-
-👉 DESTINAZIONE:
-➡ SOLO Policy
-
----
-
-### 🔴 BLOCCO 6 — BREAKDOWN
-
-Duplicazione tra:
-- Shift.getBreakdown
-- Policy breakdown
-
-👉 DESTINAZIONE:
-➡ SOLO Policy
-
----
-
-## STRATEGIA DI RISOLUZIONE
-
-### FASE 1 (SICURA)
-- NON cancellare subito codice da Shift
-- smettere di usarlo nei UseCase
-
-### FASE 2
-- far usare SOLO:
-  Policy → Result → UseCase
-
-### FASE 3
-- eliminare gradualmente metodi da Shift
-
----
-
-## REGOLE OPERATIVE
-
-1. Se una logica riguarda:
-   - RM o Polfer → deve stare in Policy
-
-2. Se una logica calcola soldi → Policy
-
-3. Se una logica segmenta ore → Policy
-
-4. Shift deve diventare:
-   👉 puro contenitore dati + helper base
-
----
-
-## OBIETTIVO FINALE
-
-Arrivare a questo flusso:
+# Architettura Corretta
 
 Shift (dati)
-    ↓
-Policy (calcolo completo)
-    ↓
-ShiftCalculationResult
-    ↓
-UseCase (adattamento)
-    ↓
+↓
+BuildDailyShiftResultUseCase
+↓
+BuildShiftComputationUseCase
+↓
+DepartmentPolicy
+↓
+DailyShiftResult
+↓
 UI
 
 ---
 
-## STATO ATTUALE
+# Classificazione Logica
 
-Sistema funzionante ma con duplicazioni.
+## Shift
 
-Priorità:
-1. eliminare duplicazioni overtime
-2. eliminare duplicazioni notte/giorno
-3. eliminare breakdown da Shift
-## Stato dopo refactor engine base
+Consentito:
 
-Completata la centralizzazione degli helper tecnici nel dominio engine:
+* serializzazione
+* deserializzazione
+* start/end
+* crossesMidnight
+* helper generici
 
-### Helper introdotti
-- ShiftTimeHelper
-- TimeBandHelper
-- DateClassificationHelper
+Vietato:
 
-### Engine pulito
-RepartoMobilePolicy:
-- non duplica più normalizedEnd / workedHours / overlapMinutes
-- non duplica più isNightMoment / nextBoundary / calculateNightHours
-- non duplica più isHolidayDate / superHolidayDates / easter calculation
-
-PolferPolicy:
-- non duplica più normalizedEnd / workedHours / overlapMinutes
-- non duplica più calculateBandHours
-
-### Shift
-Shift mantiene ancora metodi legacy di computation e money breakdown.
-Questi metodi restano solo per compatibilità transitoria e non devono essere usati come source of truth nei nuovi flussi.
-# DUPLICATION MAP — FINAL STATE
-
-## RESOLVED DUPLICATIONS
-
-### Time logic
-- _normalizedEnd → ShiftTimeHelper
-- _overlapMinutes → TimeBandHelper
-- night calculation → TimeBandHelper
-- holiday detection → DateClassificationHelper
-
-Status: CLEAN
+* overtime
+* breakdown economico
+* notturno
+* festivo
+* logiche reparto
 
 ---
 
-### Breakdown logic
-Before:
-- engine breakdown
-- Shift legacy breakdown
-- UI merge
+## Policy
 
-Now:
-- ONLY engine breakdown
-- + controlled enrichment layer
+Responsabili di:
 
-Status: CLEAN
+* overtime
+* notturno
+* festivo
+* classificazione giorno/notte
+* logiche reparto
+* importi
 
----
+Policy attive:
 
-### Polfer overtime logic
-Before:
-- mixed with RM 6h rule
-- fallback from Shift
-
-Now:
-- based on scheduled end
-- no fallback
-
-Status: CLEAN
+* RepartoMobilePolicy
+* PolferPolicy
+* QuesturaPolicy
 
 ---
 
-### RFI Basket
-Before:
-- treated as accessory
-- lost in pipeline
+## UseCase
 
-Now:
-- explicit flags:
-  - isBasketItem = true
-  - basketKey = 'rfi'
+Responsabili di:
 
-- separate flow in:
-  - Daily
-  - Monthly
-  - Payslip
+* orchestrazione
+* aggregazione
+* adattamento dati
 
-Status: CLEAN
+Non devono:
+
+* calcolare soldi
+* implementare logiche reparto
 
 ---
 
-## REMAINING (INTENTIONAL)
+# Centralizzazioni Completate
 
-### Transitional accessory methods in Shift
-Used only for:
-- order public
-- comfort
-- external service
+## Time Logic
 
-Status: TEMPORARY (acceptable)
+Centralizzato in:
+
+* ShiftTimeHelper
+* TimeBandHelper
+
+Copertura:
+
+* normalizedEnd
+* overlapMinutes
+* night calculation
+* band calculation
+
+Status:
+
+✅ CLEAN
 
 ---
 
-## FORBIDDEN PATTERNS
+## Holiday Logic
 
-❌ shift.getSalaryBreakdown  
-❌ shift.overtimeHours as source  
-❌ merging legacy breakdown  
-❌ using monthlySummaries for RFI  
+Centralizzato in:
+
+* DateClassificationHelper
+
+Copertura:
+
+* holiday detection
+* super holidays
+* Easter calculation
+
+Status:
+
+✅ CLEAN
+
+---
+
+## Breakdown Logic
+
+Prima:
+
+* engine breakdown
+* Shift breakdown
+* UI merge
+
+Ora:
+
+* solo engine breakdown
+* enrichment layer controllato
+
+Status:
+
+✅ CLEAN
+
+---
+
+## Overtime Logic
+
+Prima:
+
+* Shift
+* RM
+* Polfer
+
+Ora:
+
+* DepartmentPolicy
+* BuildDailyShiftResultUseCase
+
+Status:
+
+✅ CLEAN
+
+---
+
+## Polfer Logic
+
+Prima:
+
+* contaminazione RM 6h
+
+Ora:
+
+* scheduled end
+* chiusura teorica turno
+
+Status:
+
+✅ CLEAN
+
+---
+
+## Questura Logic
+
+Implementata tramite:
+
+QuesturaPolicy
+
+Supporta:
+
+* Uffici
+* Volanti
+
+Status:
+
+✅ CLEAN
+
+---
+
+## Programmed Overtime
+
+Prima:
+
+* override turno
+
+Ora:
+
+* segmento temporale dedicato
+
+Gestione:
+
+* paid
+* compensative
+
+Status:
+
+✅ CLEAN
+
+---
+
+## Basket RFI
+
+Pipeline separata.
+
+Mai trattato come accessoria.
+
+Flusso:
+
+OPEN
+↓
+PAID
+↓
+Cedolino
+
+Status:
+
+✅ CLEAN
+
+---
+
+## Basket Compensativo
+
+Pipeline autonoma.
+
+Separato da:
+
+* overtime pagato
+* RFI
+* accessorie
+
+Status:
+
+✅ CLEAN
+
+---
+
+# Elementi Transitori Consentiti
+
+## Shift Legacy Methods
+
+Possono rimanere solo se:
+
+* non utilizzati dal motore
+* necessari per retrocompatibilità
+
+Esempi tollerati:
+
+* OP helper
+* comfort helper
+* servizio esterno helper
+
+Status:
+
+⚠ TEMPORARY
+
+---
+
+# Pattern Vietati
+
+Mai introdurre:
+
+❌ shift.getSalaryBreakdown
+
+❌ shift.overtimeHours come source of truth
+
+❌ logiche economiche in UI
+
+❌ merge breakdown legacy
+
+❌ monthlySummaries per RFI
+
+❌ calcoli duplicati preview
+
+❌ logiche Questura nei widget
+
+❌ logiche Polfer nei widget
+
+❌ logiche RM nei widget
+
+---
+
+# Checklist Anti-Duplicazione
+
+Prima di aggiungere una nuova regola:
+
+1. Esiste già nel motore?
+2. Esiste già in una policy?
+3. Esiste già in un helper condiviso?
+4. Sto duplicando una logica esistente?
+5. Sto creando una seconda fonte di verità?
+
+Se una risposta è "sì":
+
+fermarsi e centralizzare.
+
+---
+
+# Stato Baseline
+
+Release:
+
+DutyPay 1.0.5
+
+Duplicazioni critiche:
+
+✅ eliminate
+
+Duplicazioni residue:
+
+⚠ solo helper legacy non utilizzati come source of truth
+
+Architettura:
+
+✅ stabile
+✅ multi reparto
+✅ pronta per ulteriori espansioni
