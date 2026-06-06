@@ -31,12 +31,20 @@ class BuildShiftComputationUseCase {
 
     switch (department) {
       case Department.repartoMobile:
-      case Department.questura:
-        return _buildRepartoMobileViewData(
-          shift: shift,
-          profile: profile,
-          result: calculation,
-        );
+  return _buildRepartoMobileViewData(
+    shift: shift,
+    profile: profile,
+    result: calculation,
+  );
+
+case Department.questura:
+  return _buildQuesturaViewData(
+    shift: shift,
+    profile: profile,
+    result: calculation,
+  );
+
+
 
       case Department.polfer:
         return _buildPolferViewData(
@@ -78,6 +86,38 @@ class BuildShiftComputationUseCase {
       breakdown: breakdown,
     );
   }
+
+  ShiftComputationViewData _buildQuesturaViewData({
+  required Shift shift,
+  required UserPayProfile profile,
+  required ShiftCalculationResult result,
+}) {
+  final breakdown = _appendTransitionalAccessoryItems(
+    breakdown: [...result.breakdown],
+    shift: shift,
+    profile: profile,
+  );
+
+  final totalAmount = _sumBreakdown(breakdown);
+
+  final extraAmount = breakdown
+      .where(
+        (item) =>
+            item['category'] != 'order_public' &&
+            item['isBasketItem'] != true,
+      )
+      .fold<double>(
+        0.0,
+        (sum, item) => sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
+      );
+
+  return ShiftComputationViewData(
+    overtimeHours: result.overtimeHours,
+    totalAmount: totalAmount,
+    extraAmount: extraAmount,
+    breakdown: breakdown,
+  );
+}
 
   // Source of truth:
   // - primary overtime and breakdown logic must come from DepartmentPolicy

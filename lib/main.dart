@@ -526,6 +526,56 @@ final BuildCompensativeBasketSummaryFromMovementsUseCase
   UserPayProfile payProfile = UserPayProfile.defaultProfile();
   String searchQuery = '';
 
+  Future<void> _confirmAndClearAllData() async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Cancella tutti i dati'),
+      content: const Text(
+        'Questa operazione elimina turni, profilo, basket, note e dati salvati del reparto attivo. Vuoi continuare?',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Annulla'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('Cancella'),
+        ),
+      ],
+    ),
+  );
+
+  if (confirmed != true) return;
+
+  final prefs = await SharedPreferences.getInstance();
+
+  await prefs.remove(shiftsStorageKey);
+  await prefs.remove(payProfileStorageKey);
+  await prefs.remove(basketPaymentsStorageKey);
+  await prefs.remove(rfiBasketPaymentsStorageKey);
+  await prefs.remove(compensativeBasketMovementsStorageKey);
+  await prefs.remove(monthNotesStorageKey);
+
+  setState(() {
+    shifts.clear();
+    basketPayments.clear();
+    rfiBasketPayments.clear();
+    manualCompensativeBasketMovements.clear();
+    payProfile = UserPayProfile.defaultProfile();
+    searchQuery = '';
+  });
+
+  if (!mounted) return;
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text('Dati del reparto cancellati'),
+    ),
+  );
+}
+
   @override
   void initState() {
     super.initState();
@@ -976,6 +1026,13 @@ DailyShiftResult _buildDailyShiftResultForDate(DateTime date) {
   return _buildDailyShiftResult(dayShifts);
 }
 
+double _totalPayableFromDailyResult(DailyShiftResult result) {
+  return result.computations.values.fold<double>(
+    0.0,
+    (sum, computation) => sum + computation.totalAmount,
+  );
+}
+
 Iterable<DailyShiftResult> _buildDailyResultsForRange(
   Iterable<Shift> input,
 ) sync* {
@@ -1045,10 +1102,35 @@ List<Shift> get selectedDayShifts {
     ..sort((a, b) => a.start.compareTo(b.start));
 }
 
-double get totalMonth => monthlySummary.totalAmount;
+double get _netEstimateMultiplier {
+  final raw = payProfile.straordinarioNetMultiplier;
+
+  if (raw.isNaN || !raw.isFinite || raw <= 0 || raw > 1) {
+    return 0.67;
+  }
+
+  return raw;
+}
+
+double get selectedDayGross {
+  return _totalPayableFromDailyResult(
+    _buildDailyShiftResultForDate(selectedDay),
+  );
+}
+
+double get selectedDayNet => selectedDayGross * _netEstimateMultiplier;
+
+double get totalMonthGross => monthlySummary.totalAmount;
+
+double get totalMonthNet => totalMonthGross * _netEstimateMultiplier;
+
+double get weekTotalGross => monthlySummary.weekTotal;
+
+double get averagePerWorkedDayGross =>
+    monthlySummary.averagePerDay;
+
 double get monthlyOvertimeHours => monthlySummary.totalOvertimeHours;
-double get todayTotal => monthlySummary.todayTotal;
-double get weekTotal => monthlySummary.weekTotal;
+
 int get workedDaysCount => monthlySummary.workedDays;
 double get averagePerWorkedDay => monthlySummary.averagePerDay;
 double get projectedExtraFuture => monthlySummary.projectedExtraFuture;
@@ -1120,7 +1202,9 @@ double get monthlyGenereDiConfortoTotal {
 }
 
 double _dailyTotal(DateTime date) {
-  return _buildDailyShiftResultForDate(date).totalAmount;
+  return _totalPayableFromDailyResult(
+    _buildDailyShiftResultForDate(date),
+  );
 }
 
 bool _hasTicketInDate(DateTime date) {
@@ -1201,19 +1285,29 @@ String? _extractSpmnLabelFromShift(Shift shift) {
   if (shift.hasAbsence) return null;
 
   final code = shift.spmnPresetCode.trim().toLowerCase();
+
   switch (code) {
     case 'sera':
       return 'SERA';
+
     case 'pomeriggio':
       return 'POM';
+
     case 'mattina':
       return 'MAT';
+
     case 'notte':
       return 'NOTTE';
+
     case 'riposo':
       return 'RIP';
+
     case 'aggiornamento':
       return 'AGG';
+
+    case 'smontante':
+      return 'SM';
+
     default:
       return null;
   }
@@ -1257,7 +1351,10 @@ String _resolvePredictedSpmnLabelForDate({
 }
 
 Map<String, String> _buildPredictedSpmnCalendarMap() {
-  if (widget.activeDepartment != Department.polfer) return {};
+  if (widget.activeDepartment != Department.polfer &&
+    widget.activeDepartment != Department.questura) {
+  return {};
+}
   if (shifts.isEmpty) return {};
 
   final spmnSource = shifts
@@ -1326,7 +1423,10 @@ String? _nextSpmnPresetCode(String currentCode, DateTime nextServiceDate) {
 }
 
 String? _suggestedSpmnPresetCodeForDate(DateTime targetDate) {
-  if (widget.activeDepartment != Department.polfer) return null;
+  if (widget.activeDepartment != Department.polfer &&
+    widget.activeDepartment != Department.questura) {
+  return null;
+}
 
   final normalizedTarget = _normalizeDate(targetDate);
 
@@ -2366,7 +2466,7 @@ Future<void> _deleteCompensativeBasketAdjustment(String movementId) async {
             Expanded(
               child: _statTile(
                 label: 'Oggi',
-                value: _formatCurrency(todayTotal),
+                value: _formatCurrency(selectedDayGross),
                 valueColor: DutyPayPalette.primary,
                 icon: Icons.today_rounded,
               ),
@@ -2375,7 +2475,7 @@ Future<void> _deleteCompensativeBasketAdjustment(String movementId) async {
             Expanded(
               child: _statTile(
                 label: 'Settimana',
-                value: _formatCurrency(weekTotal),
+                value: _formatCurrency(weekTotalGross),
                 valueColor: DutyPayPalette.info,
                 icon: Icons.date_range_rounded,
               ),
@@ -2396,7 +2496,7 @@ Future<void> _deleteCompensativeBasketAdjustment(String movementId) async {
             Expanded(
               child: _statTile(
                 label: 'Media giornaliera',
-                value: _formatCurrency(averagePerWorkedDay),
+                value: _formatCurrency(averagePerWorkedDayGross),
                 valueColor: DutyPayPalette.warning,
                 icon: Icons.analytics_outlined,
               ),
@@ -2430,7 +2530,7 @@ Future<void> _deleteCompensativeBasketAdjustment(String movementId) async {
           Expanded(
             child: _statTile(
               label: 'Giornaliero',
-              value: _formatCurrency(todayTotal),
+              value: _formatCurrency(selectedDayNet),
               valueColor: DutyPayPalette.primary,
               icon: Icons.today_rounded,
             ),
@@ -2439,7 +2539,7 @@ Future<void> _deleteCompensativeBasketAdjustment(String movementId) async {
           Expanded(
             child: _statTile(
               label: 'Mensile',
-              value: _formatCurrency(totalMonth),
+              value: _formatCurrency(totalMonthNet),
               valueColor: DutyPayPalette.primary,
               icon: Icons.account_balance_wallet_rounded,
             ),
@@ -2502,6 +2602,15 @@ Future<void> _deleteCompensativeBasketAdjustment(String movementId) async {
             ),
           ],
         ),
+        const SizedBox(height: 12),
+SizedBox(
+  width: double.infinity,
+  child: OutlinedButton.icon(
+    onPressed: _confirmAndClearAllData,
+    icon: const Icon(Icons.delete_outline_rounded),
+    label: const Text('Cancella tutti i dati'),
+  ),
+),
       ],
     ),
   );
@@ -2562,7 +2671,7 @@ Future<void> _deleteCompensativeBasketAdjustment(String movementId) async {
     Widget _buildSelectedDaySection() {
     final dayResult = _buildDailyShiftResultForDate(selectedDay);
     final dayComputations = dayResult.computations;
-    final selectedDayTotal = dayResult.totalAmount;
+    final selectedDayTotal = _totalPayableFromDailyResult(dayResult);
     final selectedDayRfiBasket = dayResult.rfiBasketAmount;
 
     return Container(

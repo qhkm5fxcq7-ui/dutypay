@@ -41,19 +41,25 @@ class BuildCompensativeBasketMovementsUseCase {
 
       final isRecovery = shift.absence == 'Recupero compensativo';
 
-      if (isRecovery && shift.workedHours > 0) {
-        movements.add(
-          CompensativeBasketMovement(
-            id: 'recovered_${shift.serviceDate.toIso8601String()}_${movements.length}',
-            month: month,
-            type: CompensativeBasketMovementType.recovered,
-            hours: shift.workedHours,
-            note: shift.note.isNotEmpty
-                ? shift.note
-                : 'Recupero compensativo',
-            createdAt: shift.serviceDate,
-          ),
-        );
+      if (isRecovery) {
+        final recoveredHours = shift.compensativeRecoveryHours > 0
+            ? shift.compensativeRecoveryHours
+            : shift.workedHours;
+
+        if (recoveredHours > 0) {
+          movements.add(
+            CompensativeBasketMovement(
+              id: 'recovered_${shift.serviceDate.toIso8601String()}_${movements.length}',
+              month: month,
+              type: CompensativeBasketMovementType.recovered,
+              hours: recoveredHours,
+              note: shift.note.isNotEmpty
+                  ? shift.note
+                  : 'Recupero compensativo',
+              createdAt: shift.serviceDate,
+            ),
+          );
+        }
       }
     }
 

@@ -332,3 +332,28 @@ BuildCompensativeBasketMovementsUseCase(shifts)
 manualCompensativeBasketMovements from SharedPreferences
 =
 compensativeBasketMovements
+DepartmentPolicyFactory
+
+Reparti supportati:
+
+- Reparto Mobile
+- Polfer
+- Questura Uffici
+- Questura Volanti
+
+Questura Volanti:
+
+Preset:
+- Mattina
+- Pomeriggio
+- Sera
+- Notte
+
+Calcolo:
+- servizio ordinario fino a fine preset
+- straordinario automatico dopo fine preset
+- supporto override manuale
+- supporto straordinario programmato
+
+Source of truth:
+BuildDailyShiftResultUseCase

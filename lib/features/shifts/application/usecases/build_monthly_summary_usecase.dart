@@ -46,7 +46,12 @@ class BuildMonthlySummaryUseCase {
 
       dailyResults[entry.key] = result;
 
-      totalAmount += result.totalAmount;
+      final dailyTotal = result.computations.values.fold<double>(
+  0.0,
+  (sum, computation) => sum + computation.totalAmount,
+);
+
+totalAmount += dailyTotal;
       totalOvertimeHours += result.totalOvertimeHours;
       totalRfiBasket += result.rfiBasketAmount;
 
@@ -64,7 +69,10 @@ class BuildMonthlySummaryUseCase {
     final todayKey = '${now.year}-${now.month}-${now.day}';
 
     final todayTotal = dailyResults.containsKey(todayKey)
-    ? (dailyResults[todayKey]?.totalAmount ?? 0.0)
+    ? dailyResults[todayKey]!.computations.values.fold<double>(
+    0.0,
+    (sum, computation) => sum + computation.totalAmount,
+  )
     : 0.0;
 
     final startOfWeek =
@@ -76,7 +84,13 @@ class BuildMonthlySummaryUseCase {
       final key = '${day.year}-${day.month}-${day.day}';
 
       if (dailyResults.containsKey(key)) {
-        weekTotal += dailyResults[key]?.totalAmount ?? 0.0;
+        final weekResult = dailyResults[key];
+if (weekResult != null) {
+  weekTotal += weekResult.computations.values.fold<double>(
+    0.0,
+    (sum, computation) => sum + computation.totalAmount,
+  );
+}
       }
     }
 

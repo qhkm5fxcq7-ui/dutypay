@@ -121,6 +121,7 @@ class Shift {
 
   final double compensativeOvertimeHours;
   final String compensativeOvertimeNote;
+  final double compensativeRecoveryHours;
 
   final bool programmedOvertimeEnabled;
   final DateTime? programmedOvertimeStart;
@@ -203,6 +204,7 @@ class Shift {
     OvertimeDestination overtimeDestination = OvertimeDestination.payment,
     double compensativeOvertimeHours = 0.0,
     String compensativeOvertimeNote = '',
+    double compensativeRecoveryHours = 0.0,
     bool programmedOvertimeEnabled = false,
     DateTime? programmedOvertimeStart,
     DateTime? programmedOvertimeEnd,
@@ -282,6 +284,7 @@ class Shift {
       overtimeDestination: overtimeDestination,
       compensativeOvertimeHours: compensativeOvertimeHours,
       compensativeOvertimeNote: compensativeOvertimeNote,
+      compensativeRecoveryHours: compensativeRecoveryHours,
       programmedOvertimeEnabled: programmedOvertimeEnabled,
       programmedOvertimeStart: programmedOvertimeStart,
       programmedOvertimeEnd: programmedOvertimeEnd,
@@ -333,6 +336,7 @@ class Shift {
     required this.overtimeDestination,
     required this.compensativeOvertimeHours,
     required this.compensativeOvertimeNote,
+    required this.compensativeRecoveryHours,
     required this.programmedOvertimeEnabled,
     required this.programmedOvertimeStart,
     required this.programmedOvertimeEnd,
@@ -383,6 +387,7 @@ class Shift {
     OvertimeDestination? overtimeDestination,
     double? compensativeOvertimeHours,
     String? compensativeOvertimeNote,
+    double? compensativeRecoveryHours,
     bool? programmedOvertimeEnabled,
     DateTime? programmedOvertimeStart,
     DateTime? programmedOvertimeEnd,
@@ -448,6 +453,8 @@ class Shift {
           compensativeOvertimeHours ?? this.compensativeOvertimeHours,
       compensativeOvertimeNote:
           compensativeOvertimeNote ?? this.compensativeOvertimeNote,
+          compensativeRecoveryHours:
+    compensativeRecoveryHours ?? this.compensativeRecoveryHours,
       programmedOvertimeEnabled:
           programmedOvertimeEnabled ?? this.programmedOvertimeEnabled,
       programmedOvertimeStart:
@@ -998,22 +1005,30 @@ class Shift {
   }
 
   double getPolferTerritoryControlAmount([UserPayProfile? profile]) {
-    if (hasAbsence) return 0.0;
-    if (polferTerritoryControlType == PolferTerritoryControlType.none) {
-      return 0.0;
-    }
+  if (polferTerritoryControlType == PolferTerritoryControlType.none) {
+    return 0.0;
+  }
 
-    final p = _effectiveProfile(profile);
-
+  if (questuraMode == QuesturaMode.volanti) {
     switch (polferTerritoryControlType) {
+      case PolferTerritoryControlType.serale:
+        return 5.0;
+      case PolferTerritoryControlType.notturno:
+        return 10.0;
       case PolferTerritoryControlType.none:
         return 0.0;
-      case PolferTerritoryControlType.serale:
-        return _resolvedTerritorySeraleRate(p);
-      case PolferTerritoryControlType.notturno:
-        return _resolvedTerritoryNotturnoRate(p);
     }
   }
+
+  switch (polferTerritoryControlType) {
+    case PolferTerritoryControlType.serale:
+      return 5.00;
+    case PolferTerritoryControlType.notturno:
+      return 10.00;
+    case PolferTerritoryControlType.none:
+      return 0.0;
+  }
+}
 
   String get polferTerritoryControlLabel {
     switch (polferTerritoryControlType) {
@@ -1533,6 +1548,7 @@ class Shift {
       'overtimeDestination': overtimeDestination.name,
       'compensativeOvertimeHours': compensativeOvertimeHours,
       'compensativeOvertimeNote': compensativeOvertimeNote,
+      'compensativeRecoveryHours': compensativeRecoveryHours,
       'programmedOvertimeEnabled': programmedOvertimeEnabled,
       'programmedOvertimeStart': programmedOvertimeStart?.toIso8601String(),
       'programmedOvertimeEnd': programmedOvertimeEnd?.toIso8601String(),
@@ -1636,6 +1652,8 @@ class Shift {
           _toDouble(json['compensativeOvertimeHours']),
       compensativeOvertimeNote:
           json['compensativeOvertimeNote']?.toString() ?? '',
+      compensativeRecoveryHours:
+    _toDouble(json['compensativeRecoveryHours']),
       programmedOvertimeEnabled:
           json['programmedOvertimeEnabled'] as bool? ?? false,
       programmedOvertimeStart: json['programmedOvertimeStart'] != null

@@ -17,6 +17,13 @@ enum SpmnPreset {
   aggiornamento,
 }
 
+enum QuesturaProgrammedOvertimePreset {
+  none,
+  morning912,
+  afternoon1518,
+  evening2023,
+}
+
 class QuickAddShiftPage extends StatefulWidget {
   const QuickAddShiftPage({
     super.key,
@@ -52,6 +59,7 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
     'Ferie',
     'Malattia',
     'Riposo',
+    'Recupero compensativo',
     'Permesso',
     'Altro',
   ];
@@ -95,6 +103,7 @@ class _QuickAddShiftPageState extends State<QuickAddShiftPage> {
   late final TextEditingController _polferFullNightController;
   late final TextEditingController _compensativeOvertimeHoursController;
 late final TextEditingController _compensativeOvertimeNoteController;
+late final TextEditingController _compensativeRecoveryHoursController;
   late final TextEditingController _ordinaryHoursOverrideController;
 late final TextEditingController _ordinaryHoursOverrideNoteController;
 
@@ -125,10 +134,22 @@ late final TextEditingController _ordinaryHoursOverrideNoteController;
   bool _includeReperibilita = false;
 
   late SpmnPreset _selectedSpmnPreset;
+  QuesturaMode _questuraMode = QuesturaMode.uffici;
+QuesturaPreset _questuraPreset = QuesturaPreset.none;
+QuesturaProgrammedOvertimePreset _questuraProgrammedOvertimePreset =
+    QuesturaProgrammedOvertimePreset.none;
+    bool _programmedOvertimeEnabled = false;
+
+late TimeOfDay _programmedOvertimeStartTime;
+late TimeOfDay _programmedOvertimeEndTime;
+QuesturaOfficeProfile _questuraOfficeProfile =
+    QuesturaOfficeProfile.sixHours;
+  
 
   bool get _isEditing => widget.initialShift != null;
   bool get _hasAbsence => _selectedAbsence != 'Nessuna';
   bool get _isPolfer => widget.activeDepartment == Department.polfer;
+  bool get _isQuestura => widget.activeDepartment == Department.questura;
   bool get _hasPolferScalo => _polferScaloMode != PolferScaloMode.none;
 
   bool get _absenceNeedsCustomDescription =>
@@ -148,6 +169,9 @@ late final TextEditingController _ordinaryHoursOverrideNoteController;
     OvertimeDestination.payment;
 
   bool _ordinaryHoursOverrideEnabled = false;
+
+TimeOfDay _ordinaryHoursOverrideTime =
+    const TimeOfDay(hour: 6, minute: 0);
 
 bool get _usesCompensativeOvertime =>
     _overtimeDestination == OvertimeDestination.compensative;
@@ -254,6 +278,12 @@ _compensativeOvertimeNoteController = TextEditingController(
   text: initialShift?.compensativeOvertimeNote ?? '',
 );
 
+_compensativeRecoveryHoursController = TextEditingController(
+  text: (initialShift?.compensativeRecoveryHours ?? 0) > 0
+      ? initialShift!.compensativeRecoveryHours.toStringAsFixed(2)
+      : '6',
+);
+
 _overtimeDestination =
     initialShift?.overtimeDestination ??
         OvertimeDestination.payment;
@@ -266,8 +296,25 @@ _ordinaryHoursOverrideController = TextEditingController(
       : '',
 );
 
+_ordinaryHoursOverrideTime = _decimalHoursToTimeOfDay(
+  initialShift?.ordinaryHoursOverride ?? 6.0,
+);
+
 _ordinaryHoursOverrideNoteController = TextEditingController(
   text: initialShift?.ordinaryHoursOverrideNote ?? '',
+);
+
+_programmedOvertimeEnabled =
+    initialShift?.programmedOvertimeEnabled ?? false;
+
+_programmedOvertimeStartTime = TimeOfDay(
+  hour: initialShift?.programmedOvertimeStart?.hour ?? 20,
+  minute: initialShift?.programmedOvertimeStart?.minute ?? 0,
+);
+
+_programmedOvertimeEndTime = TimeOfDay(
+  hour: initialShift?.programmedOvertimeEnd?.hour ?? 23,
+  minute: initialShift?.programmedOvertimeEnd?.minute ?? 0,
 );
 
     _serviceDate = _normalizeDate(baseServiceDate);
@@ -292,6 +339,15 @@ _ordinaryHoursOverrideNoteController = TextEditingController(
     _polferScaloMode = initialShift?.polferScaloMode ?? PolferScaloMode.none;
     _polferScaloManualOverride =
         initialShift?.polferScaloManualOverride ?? false;
+    _questuraMode =
+    initialShift?.questuraMode ?? QuesturaMode.uffici;
+
+_questuraPreset =
+    initialShift?.questuraPreset ?? QuesturaPreset.none;
+
+_questuraOfficeProfile =
+    initialShift?.questuraOfficeProfile ??
+        QuesturaOfficeProfile.sixHours;    
 
     _includeGenereDiConfortoCdg = hadGenereCdg;
     _includeGenereDiConforto = hadGenere;
@@ -332,6 +388,27 @@ _ordinaryHoursOverrideNoteController = TextEditingController(
     }
   }
 
+  SpmnPreset _spmnPresetFromQuesturaPreset(QuesturaPreset preset) {
+  switch (preset) {
+    case QuesturaPreset.none:
+      return SpmnPreset.none;
+    case QuesturaPreset.mattina:
+      return SpmnPreset.mattina;
+    case QuesturaPreset.pomeriggio:
+      return SpmnPreset.pomeriggio;
+    case QuesturaPreset.sera:
+      return SpmnPreset.sera;
+    case QuesturaPreset.notte:
+      return SpmnPreset.notte;
+    case QuesturaPreset.smontante:
+      return SpmnPreset.smontante;
+    case QuesturaPreset.riposo:
+      return SpmnPreset.riposo;
+    case QuesturaPreset.aggiornamento:
+      return SpmnPreset.aggiornamento;
+  }
+}
+
   @override
   void dispose() {
     _descriptionController.dispose();
@@ -344,6 +421,7 @@ _ordinaryHoursOverrideNoteController = TextEditingController(
     _polferFullNightController.dispose();
     _compensativeOvertimeHoursController.dispose();
 _compensativeOvertimeNoteController.dispose();
+_compensativeRecoveryHoursController.dispose();
 _ordinaryHoursOverrideController.dispose();
 _ordinaryHoursOverrideNoteController.dispose();
     super.dispose();
@@ -433,6 +511,21 @@ _ordinaryHoursOverrideNoteController.dispose();
     }
   }
 
+  String _questuraProgrammedOvertimeLabel(
+  QuesturaProgrammedOvertimePreset preset,
+) {
+  switch (preset) {
+    case QuesturaProgrammedOvertimePreset.none:
+      return 'Nessuno';
+    case QuesturaProgrammedOvertimePreset.morning912:
+      return '09:00 → 12:00';
+    case QuesturaProgrammedOvertimePreset.afternoon1518:
+      return '15:00 → 18:00';
+    case QuesturaProgrammedOvertimePreset.evening2023:
+      return '20:00 → 23:00';
+  }
+}
+
   String _spmnPresetSummary(SpmnPreset preset) {
     switch (preset) {
       case SpmnPreset.none:
@@ -498,12 +591,14 @@ _ordinaryHoursOverrideNoteController.dispose();
           break;
 
         case SpmnPreset.notte:
-          _selectedAbsence = 'Nessuna';
-          _descriptionController.text = 'Turno Notte';
-          _realStartDate = _serviceDate;
-          _startTime = const TimeOfDay(hour: 23, minute: 55);
-          _endTime = const TimeOfDay(hour: 7, minute: 8);
-          break;
+  _selectedAbsence = 'Nessuna';
+  _descriptionController.text = 'Turno Notte';
+  _realStartDate = _serviceDate.subtract(
+    const Duration(days: 1),
+  );
+  _startTime = const TimeOfDay(hour: 23, minute: 55);
+  _endTime = const TimeOfDay(hour: 7, minute: 8);
+  break;
 
         case SpmnPreset.smontante:
           _selectedAbsence = 'Riposo';
@@ -642,6 +737,19 @@ _ordinaryHoursOverrideNoteController.dispose();
     return '$hh:$mm';
   }
 
+  double _timeOfDayToDecimalHours(TimeOfDay time) {
+  return time.hour + (time.minute / 60.0);
+}
+
+TimeOfDay _decimalHoursToTimeOfDay(double value) {
+  final totalMinutes = (value * 60).round();
+
+  return TimeOfDay(
+    hour: totalMinutes ~/ 60,
+    minute: totalMinutes % 60,
+  );
+}
+
   String _formatDuration(double hours) {
     final totalMinutes = (hours * 60).round();
     final h = totalMinutes ~/ 60;
@@ -683,6 +791,8 @@ _ordinaryHoursOverrideNoteController.dispose();
         return 'Riposo';
       case 'Permesso':
         return 'Permesso';
+      case 'Recupero compensativo':
+  return 'Recupero compensativo';
       case 'Altro':
         return 'Altro';
       default:
@@ -711,6 +821,129 @@ _ordinaryHoursOverrideNoteController.dispose();
         return 'Intera';
     }
   }
+
+  String _questuraModeLabel(QuesturaMode mode) {
+  switch (mode) {
+    case QuesturaMode.uffici:
+      return 'Uffici';
+    case QuesturaMode.volanti:
+      return 'Volanti';
+  }
+}
+
+String _questuraPresetLabel(QuesturaPreset preset) {
+  switch (preset) {
+    case QuesturaPreset.none:
+      return 'Nessuno';
+    case QuesturaPreset.mattina:
+      return 'Mattina';
+    case QuesturaPreset.pomeriggio:
+      return 'Pomeriggio';
+    case QuesturaPreset.sera:
+      return 'Sera';
+    case QuesturaPreset.notte:
+      return 'Notte';
+    case QuesturaPreset.smontante:
+      return 'Smontante';
+    case QuesturaPreset.riposo:
+      return 'Riposo';
+    case QuesturaPreset.aggiornamento:
+      return 'Aggiornamento';
+  }
+}
+
+String _questuraOfficeProfileLabel(QuesturaOfficeProfile profile) {
+  switch (profile) {
+    case QuesturaOfficeProfile.sixHours:
+      return '6 ore';
+    case QuesturaOfficeProfile.settimanaCorta:
+      return 'Settimana corta';
+    case QuesturaOfficeProfile.settimanaLunga:
+      return 'Settimana lunga';
+    case QuesturaOfficeProfile.custom:
+      return 'Personalizzato';
+  }
+}
+
+double _questuraOfficeOrdinaryHours() {
+  switch (_questuraOfficeProfile) {
+    case QuesturaOfficeProfile.custom:
+      return _ordinaryHoursOverrideEnabled
+          ? double.tryParse(
+                _ordinaryHoursOverrideController.text.replaceAll(',', '.'),
+              ) ??
+              6.0
+          : 6.0;
+
+    case QuesturaOfficeProfile.sixHours:
+    case QuesturaOfficeProfile.settimanaCorta:
+    case QuesturaOfficeProfile.settimanaLunga:
+      return 6.0;
+  }
+}
+
+DateTime? _buildQuesturaProgrammedOvertimeStart() {
+  if (!_isQuestura || _questuraMode != QuesturaMode.volanti) {
+    return null;
+  }
+
+  switch (_questuraProgrammedOvertimePreset) {
+    case QuesturaProgrammedOvertimePreset.morning912:
+      return DateTime(_serviceDate.year, _serviceDate.month, _serviceDate.day, 9);
+    case QuesturaProgrammedOvertimePreset.afternoon1518:
+      return DateTime(_serviceDate.year, _serviceDate.month, _serviceDate.day, 15);
+    case QuesturaProgrammedOvertimePreset.evening2023:
+      return DateTime(_serviceDate.year, _serviceDate.month, _serviceDate.day, 20);
+    case QuesturaProgrammedOvertimePreset.none:
+      return null;
+  }
+}
+
+DateTime? _buildQuesturaProgrammedOvertimeEnd() {
+  if (!_isQuestura || _questuraMode != QuesturaMode.volanti) {
+    return null;
+  }
+
+  switch (_questuraProgrammedOvertimePreset) {
+    case QuesturaProgrammedOvertimePreset.morning912:
+      return DateTime(_serviceDate.year, _serviceDate.month, _serviceDate.day, 12);
+    case QuesturaProgrammedOvertimePreset.afternoon1518:
+      return DateTime(_serviceDate.year, _serviceDate.month, _serviceDate.day, 18);
+    case QuesturaProgrammedOvertimePreset.evening2023:
+      return DateTime(_serviceDate.year, _serviceDate.month, _serviceDate.day, 23);
+    case QuesturaProgrammedOvertimePreset.none:
+      return null;
+  }
+}
+
+DateTime? _buildCustomProgrammedOvertimeStart() {
+  if (!_programmedOvertimeEnabled) return null;
+
+  return DateTime(
+    _serviceDate.year,
+    _serviceDate.month,
+    _serviceDate.day,
+    _programmedOvertimeStartTime.hour,
+    _programmedOvertimeStartTime.minute,
+  );
+}
+
+DateTime? _buildCustomProgrammedOvertimeEnd() {
+  if (!_programmedOvertimeEnabled) return null;
+
+  final startMinutes =
+      _programmedOvertimeStartTime.hour * 60 + _programmedOvertimeStartTime.minute;
+  final endMinutes =
+      _programmedOvertimeEndTime.hour * 60 + _programmedOvertimeEndTime.minute;
+
+  return DateTime(
+    _serviceDate.year,
+    _serviceDate.month,
+    _serviceDate.day + (endMinutes <= startMinutes ? 1 : 0),
+    _programmedOvertimeEndTime.hour,
+    _programmedOvertimeEndTime.minute,
+  );
+}
 
   void _clearPolferFields() {
     _polferTerritoryControlType = PolferTerritoryControlType.none;
@@ -783,15 +1016,19 @@ _ordinaryHoursOverrideNoteController.dispose();
       return Shift(
         description: description,
         start: DateTime(
-          _serviceDate.year,
-          _serviceDate.month,
-          _serviceDate.day,
-        ),
-        end: DateTime(
-          _serviceDate.year,
-          _serviceDate.month,
-          _serviceDate.day,
-        ),
+  _serviceDate.year,
+  _serviceDate.month,
+  _serviceDate.day,
+  8,
+  0,
+),
+end: DateTime(
+  _serviceDate.year,
+  _serviceDate.month,
+  _serviceDate.day,
+  14,
+  0,
+),
         serviceDate: _serviceDate,
         orderPublic: 'Nessuno',
         externalService: false,
@@ -804,9 +1041,22 @@ _ordinaryHoursOverrideNoteController.dispose();
         overtimeDestination: OvertimeDestination.payment,
 compensativeOvertimeHours: 0.0,
 compensativeOvertimeNote: '',
+compensativeRecoveryHours:
+    _selectedAbsence == 'Recupero compensativo'
+        ? _parseDouble(_compensativeRecoveryHoursController.text)
+        : 0.0,
         ordinaryHoursOverrideEnabled: false,
+        programmedOvertimeEnabled: false,
+programmedOvertimeStart: null,
+programmedOvertimeEnd: null,
+programmedOvertimeNote: '',
+        
 ordinaryHoursOverride: 0.0,
 ordinaryHoursOverrideNote: '',
+questuraMode: QuesturaMode.uffici,
+questuraPreset: QuesturaPreset.none,
+questuraOfficeProfile: QuesturaOfficeProfile.sixHours,
+questuraOfficeOrdinaryHours: 6.0,
         hasCompensazione: false,
         hasReperibilita: false,
         note: _noteController.text.trim(),
@@ -817,8 +1067,9 @@ ordinaryHoursOverrideNote: '',
         polferScaloReducedNightHours: 0,
         polferScaloFullDayHours: 0,
         polferScaloFullNightHours: 0,
-        spmnPresetCode:
-            _selectedSpmnPreset == SpmnPreset.none ? '' : _selectedSpmnPreset.name,
+        spmnPresetCode: _isQuestura
+    ? (_questuraPreset == QuesturaPreset.none ? '' : _questuraPreset.name)
+    : (_selectedSpmnPreset == SpmnPreset.none ? '' : _selectedSpmnPreset.name),
       );
     }
 
@@ -839,9 +1090,15 @@ ordinaryHoursOverrideNote: '',
       absence: 'Nessuna',
       manualExtraAmount: manualAmount,
       manualExtraLabel: manualLabel,
-      genereDiConfortoCdg: _includeGenereDiConfortoCdg,
-      genereDiConforto: _includeGenereDiConforto,
-      ticketPasto: _includeTicketPasto,
+      genereDiConfortoCdg:
+    widget.activeDepartment == Department.repartoMobile
+        ? _includeGenereDiConfortoCdg
+        : false,
+genereDiConforto:
+    widget.activeDepartment == Department.repartoMobile
+        ? _includeGenereDiConforto
+        : false,
+ticketPasto: _includeTicketPasto,
       
 overtimeDestination: _overtimeDestination,
 compensativeOvertimeHours:
@@ -855,24 +1112,63 @@ compensativeOvertimeNote:
       ordinaryHoursOverrideEnabled:
     _ordinaryHoursOverrideEnabled,
 
+
 ordinaryHoursOverride:
     _ordinaryHoursOverrideEnabled
-        ? _parseDouble(
-            _ordinaryHoursOverrideController.text,
+        ? _timeOfDayToDecimalHours(
+            _ordinaryHoursOverrideTime,
           )
         : 0.0,
 
-ordinaryHoursOverrideNote:
-    _ordinaryHoursOverrideEnabled
-        ? _ordinaryHoursOverrideNoteController.text.trim()
-        : '',
+programmedOvertimeEnabled:
+    _programmedOvertimeEnabled ||
+    (_isQuestura &&
+        _questuraMode == QuesturaMode.volanti &&
+        _questuraProgrammedOvertimePreset !=
+            QuesturaProgrammedOvertimePreset.none),
+
+programmedOvertimeStart:
+    _programmedOvertimeEnabled
+        ? _buildCustomProgrammedOvertimeStart()
+        : _buildQuesturaProgrammedOvertimeStart(),
+
+programmedOvertimeEnd:
+    _programmedOvertimeEnabled
+        ? _buildCustomProgrammedOvertimeEnd()
+        : _buildQuesturaProgrammedOvertimeEnd(),
+
+programmedOvertimeNote:
+    _programmedOvertimeEnabled
+        ? 'Straordinario programmato personalizzato'
+        : (_isQuestura &&
+                _questuraMode == QuesturaMode.volanti &&
+                _questuraProgrammedOvertimePreset !=
+                    QuesturaProgrammedOvertimePreset.none
+            ? 'Straordinario programmato Volanti'
+            : ''),
+questuraMode:
+    _isQuestura ? _questuraMode : QuesturaMode.uffici,
+
+questuraPreset:
+    _isQuestura ? _questuraPreset : QuesturaPreset.none,
+
+questuraOfficeProfile:
+    _isQuestura
+        ? _questuraOfficeProfile
+        : QuesturaOfficeProfile.sixHours,
+
+questuraOfficeOrdinaryHours:
+    _isQuestura
+        ? _questuraOfficeOrdinaryHours()
+        : 6.0,
 
       hasCompensazione: _includeCompensazione,
       hasReperibilita: _includeReperibilita,
       note: _noteController.text.trim(),
-      polferTerritoryControlType: _isPolfer
-          ? _polferTerritoryControlType
-          : PolferTerritoryControlType.none,
+      polferTerritoryControlType:
+    (_isPolfer || (_isQuestura && _questuraMode == QuesturaMode.volanti))
+        ? _polferTerritoryControlType
+        : PolferTerritoryControlType.none,
       polferScaloMode:
           _isPolfer ? _polferScaloMode : PolferScaloMode.none,
       polferScaloManualOverride:
@@ -1527,6 +1823,258 @@ ordinaryHoursOverrideNote:
     );
   }
 
+  Widget _buildQuesturaFields() {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Text(
+        'Configurazione Questura',
+        style: TextStyle(
+          fontSize: 14.5,
+          fontWeight: FontWeight.w800,
+          color: _QuickAddPalette.info,
+        ),
+      ),
+      const SizedBox(height: 12),
+
+      DropdownButtonFormField<QuesturaMode>(
+        value: _questuraMode,
+        dropdownColor: _QuickAddPalette.card,
+        decoration: const InputDecoration(
+          labelText: 'Tipo servizio',
+        ),
+        items: QuesturaMode.values
+            .map(
+              (item) => DropdownMenuItem<QuesturaMode>(
+                value: item,
+                child: Text(_questuraModeLabel(item)),
+              ),
+            )
+            .toList(),
+        onChanged: _hasAbsence
+            ? null
+            : (value) {
+                if (value == null) return;
+                setState(() {
+                  _questuraMode = value;
+
+                  if (value == QuesturaMode.volanti) {
+                    _externalService = true;
+                    _questuraOfficeProfile = QuesturaOfficeProfile.sixHours;
+                  } else {
+                    _questuraPreset = QuesturaPreset.none;
+                    _polferTerritoryControlType =
+                        PolferTerritoryControlType.none;
+                  }
+                });
+              },
+      ),
+
+      if (_questuraMode == QuesturaMode.volanti) ...[
+        const SizedBox(height: 12),
+        DropdownButtonFormField<QuesturaPreset>(
+          value: _questuraPreset,
+          dropdownColor: _QuickAddPalette.card,
+          decoration: const InputDecoration(
+            labelText: 'Preset Volanti',
+          ),
+          items: QuesturaPreset.values
+              .map(
+                (item) => DropdownMenuItem<QuesturaPreset>(
+                  value: item,
+                  child: Text(_questuraPresetLabel(item)),
+                ),
+              )
+              .toList(),
+          onChanged: _hasAbsence
+              ? null
+              : (value) {
+                  if (value == null) return;
+
+                  setState(() {
+                    _questuraPreset = value;
+                  });
+
+                  _applySpmnPreset(
+                    _spmnPresetFromQuesturaPreset(value),
+                    showFeedback: false,
+                  );
+                },
+        ),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<PolferTerritoryControlType>(
+          value: _polferTerritoryControlType,
+          dropdownColor: _QuickAddPalette.card,
+          decoration: const InputDecoration(
+            labelText: 'Controllo del territorio',
+          ),
+          items: PolferTerritoryControlType.values
+              .map(
+                (item) => DropdownMenuItem<PolferTerritoryControlType>(
+                  value: item,
+                  child: Text(_territoryControlLabel(item)),
+                ),
+              )
+              .toList(),
+          onChanged: _hasAbsence
+              ? null
+              : (value) {
+                  if (value == null) return;
+                  setState(() {
+                    _polferTerritoryControlType = value;
+                  });
+                },
+        ),
+      ],
+      const SizedBox(height: 12),
+DropdownButtonFormField<QuesturaProgrammedOvertimePreset>(
+  value: _questuraProgrammedOvertimePreset,
+  dropdownColor: _QuickAddPalette.card,
+  decoration: const InputDecoration(
+    labelText: 'Straordinario programmato',
+  ),
+  items: QuesturaProgrammedOvertimePreset.values
+      .map(
+        (item) => DropdownMenuItem<QuesturaProgrammedOvertimePreset>(
+          value: item,
+          child: Text(_questuraProgrammedOvertimeLabel(item)),
+        ),
+      )
+      .toList(),
+  onChanged: _hasAbsence
+      ? null
+      : (value) {
+          if (value == null) return;
+          setState(() {
+            _questuraProgrammedOvertimePreset = value;
+          });
+        },
+),
+const SizedBox(height: 12),
+
+
+
+if (_programmedOvertimeEnabled) ...[
+  const SizedBox(height: 12),
+  Row(
+    children: [
+      Expanded(
+        child: _pickerTile(
+          label: 'Inizio programmato',
+          value: _formatTimeOfDay(_programmedOvertimeStartTime),
+          icon: Icons.schedule_rounded,
+          onTap: () async {
+            final picked = await showTimePicker(
+              context: context,
+              initialTime: _programmedOvertimeStartTime,
+            );
+
+            if (picked == null) return;
+
+            setState(() {
+              _programmedOvertimeStartTime = picked;
+            });
+          },
+        ),
+      ),
+      const SizedBox(width: 12),
+      Expanded(
+        child: _pickerTile(
+          label: 'Fine programmato',
+          value: _formatTimeOfDay(_programmedOvertimeEndTime),
+          icon: Icons.schedule_send_rounded,
+          onTap: () async {
+            final picked = await showTimePicker(
+              context: context,
+              initialTime: _programmedOvertimeEndTime,
+            );
+
+            if (picked == null) return;
+
+            setState(() {
+              _programmedOvertimeEndTime = picked;
+            });
+          },
+        ),
+      ),
+    ],
+  ),
+],
+
+      if (_questuraMode == QuesturaMode.uffici) ...[
+        const SizedBox(height: 12),
+        DropdownButtonFormField<QuesturaOfficeProfile>(
+          value: _questuraOfficeProfile,
+          dropdownColor: _QuickAddPalette.card,
+          decoration: const InputDecoration(
+            labelText: 'Profilo ufficio',
+          ),
+          items: const [
+  QuesturaOfficeProfile.sixHours,
+  QuesturaOfficeProfile.custom,
+]
+              .map(
+                (item) => DropdownMenuItem<QuesturaOfficeProfile>(
+                  value: item,
+                  child: Text(_questuraOfficeProfileLabel(item)),
+                ),
+              )
+              .toList(),
+          onChanged: _hasAbsence
+              ? null
+              : (value) {
+                  if (value == null) return;
+                  setState(() {
+                    _questuraOfficeProfile = value;
+                  });
+                },
+        ),
+      ],
+
+      const SizedBox(height: 12),
+      DropdownButtonFormField<String>(
+        value: _selectedOrderPublic,
+        dropdownColor: _QuickAddPalette.card,
+        decoration: const InputDecoration(
+          labelText: 'Ordine pubblico',
+        ),
+        items: _orderPublicOptions
+            .map(
+              (item) => DropdownMenuItem<String>(
+                value: item,
+                child: Text(item),
+              ),
+            )
+            .toList(),
+        onChanged: _hasAbsence
+            ? null
+            : (value) {
+                if (value == null) return;
+                setState(() {
+                  _selectedOrderPublic = value;
+                });
+              },
+      ),
+
+      const SizedBox(height: 12),
+      _ModernSwitchTile(
+        value: _externalService,
+        title: 'Servizio esterno',
+        subtitle: _questuraMode == QuesturaMode.volanti
+            ? 'Attivo per i servizi Volanti.'
+            : 'Applica l’indennità servizi esterni quando prevista.',
+        onChanged: _questuraMode == QuesturaMode.volanti
+            ? (_) {}
+            : (value) {
+                setState(() {
+                  _externalService = value;
+                });
+              },
+      ),
+    ],
+  );
+}
+
   Widget _buildPolferFields(Shift previewShift) {
     final autoDay = previewShift.polferWorkedDayHours;
     final autoNight = previewShift.polferWorkedNightHours;
@@ -1777,6 +2325,8 @@ ordinaryHoursOverrideNote:
       return _buildPolferFields(previewShift);
     }
 
+  
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1976,6 +2526,14 @@ ordinaryHoursOverrideNote:
     return [];
   }
 
+  final isPolferAggiornamento =
+      widget.activeDepartment == Department.polfer &&
+      previewShift.description.trim().toLowerCase() == 'aggiornamento';
+
+  if (isPolferAggiornamento) {
+    return [];
+  }
+
   const useCase = BuildDailyShiftResultUseCase();
 
   final result = useCase.execute(
@@ -1989,6 +2547,12 @@ ordinaryHoursOverrideNote:
     return [];
   }
 
+ if (previewShift.ordinaryHoursOverrideEnabled &&
+    computation.overtimeHours > 0 &&
+    result.totalAmount > 0) {
+  return computation.breakdown;
+}
+
   if (result.compensativeHours <= 0) {
     return computation.breakdown;
   }
@@ -1996,17 +2560,6 @@ ordinaryHoursOverrideNote:
   return computation.breakdown.map((item) {
     final label = item['label'] as String? ?? '';
     final amount = (item['amount'] as num?)?.toDouble() ?? 0.0;
-    final category = item['category'] as String? ?? '';
-    
-
-if (widget.activeDepartment == Department.polfer &&
-    previewShift.ordinaryHoursOverrideEnabled &&
-    category == 'ordinary_night') {
-  return {
-    ...item,
-    'label': 'Indennità notturna ordinaria',
-  };
-}
 
     if (label.toLowerCase().contains('straordinario') &&
         result.totalAmount < amount) {
@@ -2021,13 +2574,41 @@ if (widget.activeDepartment == Department.polfer &&
   }).toList();
 }
 
+double _buildPreviewTotalFromBreakdown(
+  List<Map<String, dynamic>> breakdown,
+) {
+  final total = breakdown.fold<double>(
+    0.0,
+    (sum, item) =>
+        sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
+  );
+
+  debugPrint('PREVIEW TOTAL = $total');
+  return total;
+}
+
   List<Map<String, String>> _buildInformativePreviewItems(Shift previewShift) {
   if (previewShift.absence != 'Nessuna') {
     return [];
   }
 
+  final isPolferAggiornamento =
+    widget.activeDepartment == Department.polfer &&
+    previewShift.description.trim().toLowerCase() == 'aggiornamento';
+
+if (isPolferAggiornamento) {
+  return [];
+}
+
   final items = <Map<String, String>>[];
 
+if (previewShift.ordinaryHoursOverrideEnabled)
+  items.insert(0, {
+    'label': 'Orario ordinario impostato',
+    'value': _formatTimeOfDay(
+      _ordinaryHoursOverrideTime,
+    ),
+  });
   items.add({
     'label': 'Servizio ordinario',
     'value': 'Compreso nello stipendio',
@@ -2092,7 +2673,7 @@ if (widget.activeDepartment == Department.polfer &&
   Widget build(BuildContext context) {
     final previewShift = _buildShiftPreview();
     final breakdown = _buildEnginePreviewBreakdown(previewShift);
-final total = _buildEnginePreviewTotal(previewShift);
+final total = _buildPreviewTotalFromBreakdown(breakdown);
 final informativeItems = _buildInformativePreviewItems(previewShift);
 final workedHours = previewShift.workedHours;
 
@@ -2227,6 +2808,11 @@ final overtimeHours = previewComputation?.overtimeHours ?? 0.0;
                       ),
                       onChanged: (_) => setState(() {}),
                     ),
+                    if (_isQuestura) ...[
+  const SizedBox(height: 16),
+  _buildQuesturaFields(),
+  const SizedBox(height: 6),
+],
                     const SizedBox(height: 14),
                     _pickerTile(
                       label: 'Giorno servizio',
@@ -2275,23 +2861,45 @@ final overtimeHours = previewComputation?.overtimeHours ?? 0.0;
                     const SizedBox(height: 16),
                     _buildDepartmentSpecificFields(previewShift),
                     const SizedBox(height: 10),
-                    IgnorePointer(
-                      ignoring: _hasAbsence,
-                      child: Opacity(
-                        opacity: _hasAbsence ? 0.46 : 1,
-                        child: _ModernSwitchTile(
-                          value: _includeGenereDiConfortoCdg,
-                          title:
-                              'Genere di conforto CDG (${_formatCurrency(_genereDiConfortoCdgRate)})',
-                          subtitle: 'Attivalo solo quando spetta davvero.',
-                          onChanged: (value) {
-                            setState(() {
-                              _includeGenereDiConfortoCdg = value;
-                            });
-                          },
-                        ),
-                      ),
-                    ),
+                    if (widget.activeDepartment == Department.repartoMobile) ...[
+  IgnorePointer(
+    ignoring: _hasAbsence,
+    child: Opacity(
+      opacity: _hasAbsence ? 0.46 : 1,
+      child: _ModernSwitchTile(
+        value: _includeGenereDiConfortoCdg,
+        title:
+            'Genere di conforto CDG (${_formatCurrency(_genereDiConfortoCdgRate)})',
+        subtitle: 'Attivalo solo quando spetta davvero.',
+        onChanged: (value) {
+          setState(() {
+            _includeGenereDiConfortoCdg = value;
+          });
+        },
+      ),
+    ),
+  ),
+  const SizedBox(height: 10),
+
+  IgnorePointer(
+    ignoring: _hasAbsence,
+    child: Opacity(
+      opacity: _hasAbsence ? 0.46 : 1,
+      child: _ModernSwitchTile(
+        value: _includeGenereDiConforto,
+        title:
+            'Genere di conforto (${_formatCurrency(_genereDiConfortoRate)})',
+        subtitle: 'Attivalo solo quando spetta davvero.',
+        onChanged: (value) {
+          setState(() {
+            _includeGenereDiConforto = value;
+          });
+        },
+      ),
+    ),
+  ),
+  const SizedBox(height: 10),
+],
                     const SizedBox(height: 10),
                     IgnorePointer(
                       ignoring: _hasAbsence,
@@ -2363,26 +2971,96 @@ IgnorePointer(
           ),
           const SizedBox(height: 12),
           SegmentedButton<OvertimeDestination>(
-            segments: const [
-              ButtonSegment(
-                value: OvertimeDestination.payment,
-                label: Text('Pagato'),
-                icon: Icon(Icons.payments_outlined),
-              ),
-              ButtonSegment(
-                value: OvertimeDestination.compensative,
-                label: Text('Compensativo'),
-                icon: Icon(Icons.event_repeat_rounded),
-              ),
-            ],
-            selected: {_overtimeDestination},
-            onSelectionChanged: (values) {
-              setState(() {
-                _overtimeDestination = values.first;
-              });
-            },
-          ),
-          if (_usesCompensativeOvertime) ...[
+  segments: const [
+    ButtonSegment(
+      value: OvertimeDestination.payment,
+      label: Text('Pagato'),
+      icon: Icon(Icons.payments_outlined),
+    ),
+    ButtonSegment(
+      value: OvertimeDestination.compensative,
+      label: Text('Compensativo'),
+      icon: Icon(Icons.event_repeat_rounded),
+    ),
+  ],
+  selected: {_overtimeDestination},
+  onSelectionChanged: (values) {
+    setState(() {
+      _overtimeDestination = values.first;
+    });
+  },
+),
+
+const SizedBox(height: 14),
+
+_ModernSwitchTile(
+  value: _programmedOvertimeEnabled,
+  title: 'Straordinario programmato personalizzato',
+  subtitle:
+      'Indica un intervallo che deve essere conteggiato sempre come straordinario.',
+  onChanged: (value) {
+    setState(() {
+      _programmedOvertimeEnabled = value;
+
+      if (value) {
+        _questuraProgrammedOvertimePreset =
+            QuesturaProgrammedOvertimePreset.none;
+      }
+    });
+  },
+),
+
+if (_programmedOvertimeEnabled) ...[
+  const SizedBox(height: 12),
+
+  Row(
+    children: [
+      Expanded(
+        child: _pickerTile(
+          label: 'Inizio straordinario',
+          value: _formatTimeOfDay(_programmedOvertimeStartTime),
+          icon: Icons.schedule_rounded,
+          onTap: () async {
+            final picked = await showTimePicker(
+              context: context,
+              initialTime: _programmedOvertimeStartTime,
+            );
+
+            if (picked == null) return;
+
+            setState(() {
+              _programmedOvertimeStartTime = picked;
+            });
+          },
+        ),
+      ),
+
+      const SizedBox(width: 12),
+
+      Expanded(
+        child: _pickerTile(
+          label: 'Fine straordinario',
+          value: _formatTimeOfDay(_programmedOvertimeEndTime),
+          icon: Icons.schedule_send_rounded,
+          onTap: () async {
+            final picked = await showTimePicker(
+              context: context,
+              initialTime: _programmedOvertimeEndTime,
+            );
+
+            if (picked == null) return;
+
+            setState(() {
+              _programmedOvertimeEndTime = picked;
+            });
+          },
+        ),
+      ),
+    ],
+  ),
+],
+
+if (_usesCompensativeOvertime) ...[
             const SizedBox(height: 12),
             TextField(
               controller: _compensativeOvertimeHoursController,
@@ -2404,73 +3082,69 @@ IgnorePointer(
               ),
               onChanged: (_) => setState(() {}),
             ),
-            ],
-            const SizedBox(height: 14),
-SwitchListTile(
-  value: _ordinaryHoursOverrideEnabled,
-  onChanged: (value) {
-    setState(() {
-      _ordinaryHoursOverrideEnabled = value;
-    });
-  },
-  title: const Text(
-    'Orario in deroga',
-    style: TextStyle(
-      fontWeight: FontWeight.w700,
-    ),
-  ),
-  subtitle: const Text(
-    'Imposta manualmente quante ore sono ordinarie.',
-  ),
-  contentPadding: EdgeInsets.zero,
-),
+          ],
+          const SizedBox(height: 14),
+          SwitchListTile(
+            value: _ordinaryHoursOverrideEnabled,
+            onChanged: (value) {
+              setState(() {
+                _ordinaryHoursOverrideEnabled = value;
 
-if (_ordinaryHoursOverrideEnabled) ...[
+                if (value) {
+                  if (_ordinaryHoursOverrideController.text.trim().isEmpty) {
+                    _ordinaryHoursOverrideController.text = '6';
+                  }
+                  _ordinaryHoursOverrideNoteController.text =
+                      'Orario ordinario personalizzato';
+                } else {
+                  _ordinaryHoursOverrideController.text = '';
+                  _ordinaryHoursOverrideNoteController.text = '';
+                }
+              });
+            },
+            title: const Text(
+              'Orario ordinario personalizzato',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+            subtitle: const Text(
+              'Usalo per uffici, tribunale o servizi particolari. Lo straordinario partirà solo oltre le ore indicate.',
+            ),
+            contentPadding: EdgeInsets.zero,
+          ),
+          if (_ordinaryHoursOverrideEnabled) ...[
   const SizedBox(height: 10),
-  TextField(
-    controller: _ordinaryHoursOverrideController,
-    keyboardType: const TextInputType.numberWithOptions(
-      decimal: true,
+
+  _pickerTile(
+    label: 'Ore ordinarie da conteggiare',
+    value: _formatTimeOfDay(
+      _ordinaryHoursOverrideTime,
     ),
-    decoration: const InputDecoration(
-      labelText: 'Ore ordinarie previste',
-      hintText: 'Es. 8',
-    ),
-    onChanged: (_) => setState(() {}),
-  ),
-  const SizedBox(height: 10),
-  TextField(
-    controller: _ordinaryHoursOverrideNoteController,
-    decoration: const InputDecoration(
-      labelText: 'Nota orario in deroga',
-      hintText: 'Es. Servizio in deroga autorizzato',
-    ),
-    onChanged: (_) => setState(() {}),
+    icon: Icons.timer_outlined,
+    onTap: () async {
+      final picked = await showTimePicker(
+        context: context,
+        initialTime: _ordinaryHoursOverrideTime,
+      );
+
+      if (picked == null) return;
+
+      setState(() {
+        _ordinaryHoursOverrideTime = picked;
+
+        _ordinaryHoursOverrideController.text =
+            _timeOfDayToDecimalHours(
+              picked,
+            ).toStringAsFixed(2);
+      });
+    },
   ),
 ],
-          
         ],
       ),
     ),
   ),
 ),
-                    IgnorePointer(
-                      ignoring: _hasAbsence,
-                      child: Opacity(
-                        opacity: _hasAbsence ? 0.46 : 1,
-                        child: _ModernSwitchTile(
-                          value: _includeGenereDiConforto,
-                          title:
-                              'Genere di conforto (${_formatCurrency(_genereDiConfortoRate)})',
-                          subtitle: 'Attivalo solo quando spetta davvero.',
-                          onChanged: (value) {
-                            setState(() {
-                              _includeGenereDiConforto = value;
-                            });
-                          },
-                        ),
-                      ),
-                    ),
+                    
                     const SizedBox(height: 10),
                     IgnorePointer(
                       ignoring: _hasAbsence,
@@ -2536,31 +3210,43 @@ if (_ordinaryHoursOverrideEnabled) ...[
 },
                     ),
                     const SizedBox(height: 10),
-                    if (_hasAbsence) ...[
-                      _ModernSwitchTile(
-                        value: _multiDayAbsence,
-                        title: 'Assenza su più giorni',
-                        subtitle:
-                            'Inserisci un intervallo per ferie, malattia, riposi o permessi.',
-                        onChanged: (value) {
-                          setState(() {
-                            _multiDayAbsence = value;
-                            if (_absenceEndDate.isBefore(_serviceDate)) {
-                              _absenceEndDate = _serviceDate;
-                            }
-                          });
-                        },
-                      ),
-                      if (_multiDayAbsence) ...[
-                        const SizedBox(height: 12),
-                        _pickerTile(
-                          label: 'Data fine assenza',
-                          value: _formatDate(_absenceEndDate),
-                          onTap: _pickAbsenceEndDate,
-                          icon: Icons.event_repeat_rounded,
-                        ),
-                      ],
-                    ],
+if (_hasAbsence) ...[
+  _ModernSwitchTile(
+    value: _multiDayAbsence,
+    title: 'Assenza su più giorni',
+    subtitle:
+        'Inserisci un intervallo per ferie, malattia, riposi o permessi.',
+    onChanged: (value) {
+      setState(() {
+        _multiDayAbsence = value;
+        if (_absenceEndDate.isBefore(_serviceDate)) {
+          _absenceEndDate = _serviceDate;
+        }
+      });
+    },
+  ),
+  if (_selectedAbsence == 'Recupero compensativo') ...[
+    const SizedBox(height: 12),
+    TextField(
+      controller: _compensativeRecoveryHoursController,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      decoration: const InputDecoration(
+        labelText: 'Ore da scaricare dal basket',
+        hintText: 'Es. 6, 5.13, 7.12',
+      ),
+      onChanged: (_) => setState(() {}),
+    ),
+  ],
+  if (_multiDayAbsence) ...[
+    const SizedBox(height: 12),
+    _pickerTile(
+      label: 'Data fine assenza',
+      value: _formatDate(_absenceEndDate),
+      onTap: _pickAbsenceEndDate,
+      icon: Icons.event_repeat_rounded,
+    ),
+  ],
+],
                   ],
                 ),
               ),

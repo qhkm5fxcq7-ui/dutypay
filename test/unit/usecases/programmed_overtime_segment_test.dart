@@ -48,7 +48,7 @@ void main() {
     expect(result.totalAmount, closeTo(0.0, 0.01));
   });
 
-  test('programmato fuori range turno viene clampato', () {
+  test('programmato fuori range turno viene conteggiato integralmente', () {
     final shift = Shift(
       start: DateTime(2026, 5, 4, 7),
       end: DateTime(2026, 5, 4, 13),
@@ -63,6 +63,6 @@ void main() {
       department: Department.repartoMobile,
     );
 
-    expect(result.totalOvertimeHours, closeTo(1.0, 0.01));
+    expect(result.totalOvertimeHours, closeTo(6.0, 0.01));
   });
 }

@@ -785,3 +785,50 @@ Next possible steps:
 3. recovery wizard
 4. yearly compensative analytics
 5. documentation polish
+## 1.0.5 - Questura / Volanti Stabilization
+
+### Nuove funzionalità
+- Introduzione QuesturaMode.volanti
+- Introduzione QuesturaMode.uffici
+- Preset Volanti:
+  - Mattina
+  - Pomeriggio
+  - Sera
+  - Notte
+- Calcolo automatico straordinario su fine turno preset
+- Supporto straordinario programmato personalizzato
+- Supporto orario ordinario personalizzato
+
+### Fix
+- Corretto conteggio straordinario Volanti
+- Corretto conteggio straordinario Polfer preset
+- Corretto totale preview QuickAddShiftPage
+- Corretto totale servizio nei turni con sole indennità
+- Corretto breakdown preview con override orario ordinario
+- Eliminata discrepanza tra dettaglio turno e totale preview
+STATO ATTUALE
+
+Questura:
+✅ Uffici
+✅ Volanti
+
+Volanti validato:
+
+- servizio esterno
+- notturno ordinario
+- straordinario automatico
+- straordinario programmato
+- override orario ordinario
+- preview calcolo
+- dettaglio turno
+- totale turno
+
+BUG RISOLTI:
+
+1. Preview totale = 0 con sole indennità
+2. Straordinario override mostrato in modo errato
+3. Polfer preset conteggiati come straordinario errato
+4. Disallineamento preview/dettaglio turno
+
+Release candidate:
+RC-QUESTURA-VOLANTI-01
