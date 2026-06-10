@@ -427,3 +427,18 @@ Tutti i bug sopra riportati risultano:
 ✅ validati
 
 ✅ inclusi nella release 1.0.5
+## RC-BASKET-OVERTIME-01 – Risolto
+
+Corretto e stabilizzato il sistema basket straordinari ordinario.
+
+Interventi:
+- aggiunto modello `OvertimeBasketAdjustment`;
+- aggiunta persistenza scoped per correzioni basket straordinari;
+- collegata la correzione manuale alla projection cedolino;
+- aggiunto pulsante UI “Correzione basket” nella card basket straordinari;
+- verificato che i pagamenti basket riducano correttamente il residuo;
+- mantenuta separazione tra basket straordinari, basket compensativo e basket RFI.
+
+Test:
+- `test/regression/basket_regression_test.dart`
+- suite completa PASS: `+86 All tests passed`

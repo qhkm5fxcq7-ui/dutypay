@@ -32,8 +32,13 @@ class MonthCalendarDayData {
 
   bool get hasAmount => amount > 0;
 
-  bool get hasAbsence =>
-      absenceBadge != null && absenceBadge!.trim().isNotEmpty;
+  bool get hasAbsence {
+  final absence = (absenceBadge ?? '').trim();
+  if (absence.isNotEmpty) return true;
+
+  final predicted = (predictedSpmnLabel ?? '').trim().toUpperCase();
+  return predicted == 'RIP' || predicted == 'RIPOSO';
+}
 
   bool get hasPredictedSpmn =>
       predictedSpmnLabel != null && predictedSpmnLabel!.trim().isNotEmpty;
@@ -484,8 +489,15 @@ class MonthCalendarCard extends StatelessWidget {
           ),
           itemBuilder: (context, index) {
             final day = days[index];
-            final normalizedBadge = _normalizedAbsenceLabel(day.absenceBadge);
-            final badgeStyle = _badgeStyle(day.absenceBadge);
+            final effectiveAbsenceBadge =
+    day.absenceBadge ??
+    ((day.predictedSpmnLabel ?? '').trim().toUpperCase() == 'RIP' ||
+            (day.predictedSpmnLabel ?? '').trim().toUpperCase() == 'RIPOSO'
+        ? 'RIP'
+        : null);
+
+final normalizedBadge = _normalizedAbsenceLabel(effectiveAbsenceBadge);
+final badgeStyle = _badgeStyle(effectiveAbsenceBadge);
             final predictedLabel =
                 _normalizedPredictedLabel(day.predictedSpmnLabel);
             final predictedStyle = _predictedBadgeStyle(day.predictedSpmnLabel);

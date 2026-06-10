@@ -331,3 +331,22 @@ Assumere che:
 Obiettivo:
 
 proseguire l'evoluzione senza introdurre regressioni.
+## Handoff post RC-BASKET – 10/06/2026
+
+Stato:
+- suite completa: `+86 All tests passed`;
+- aggiunti test regressione basket ordinario e compensativo;
+- implementata correzione manuale basket straordinari;
+- confermata separazione:
+  - basket straordinari ordinario;
+  - basket compensativo;
+  - basket RFI.
+
+Fix rilevanti:
+- `OvertimeBasketAdjustment`;
+- storage scoped `dutypay_overtime_basket_adjustments_<department>`;
+- `PayslipProjectionService.projectPayslip()` riceve `overtimeBasketAdjustments`;
+- UI Cedolino: pulsante “Correzione basket” nella card basket straordinari.
+
+Regola confermata:
+RFI resta sistema separato e non viene accorpato a straordinari/accessorie standard.

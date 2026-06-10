@@ -63,6 +63,19 @@ final overtimeHours =
       dayBand: false,
     );
 
+    final programmedDayHours = _calculateProgrammedBandHours(
+  shift,
+  dayBand: true,
+);
+
+final programmedNightHours = _calculateProgrammedBandHours(
+  shift,
+  dayBand: false,
+);
+
+final scaloDayHours = dayHours + programmedDayHours;
+final scaloNightHours = nightHours + programmedNightHours;
+
     final ordinaryNightHours = overtimeHours > 0
     ? (nightHours - overtimeHours).clamp(0.0, nightHours)
     : nightHours;
@@ -72,10 +85,10 @@ final ordinaryNightAmount = ordinaryNightHours * fallbackNightAllowance;
     final territoryAmount = _calculateTerritoryAmount(shift);
 
     final scaloAmount = _calculateScaloAmount(
-      shift: shift,
-      dayHours: dayHours,
-      nightHours: nightHours,
-    );
+  shift: shift,
+  dayHours: scaloDayHours,
+  nightHours: scaloNightHours,
+);
 
     final breakdown = <Map<String, dynamic>>[];
 
@@ -217,6 +230,25 @@ final ordinaryNightAmount = ordinaryNightHours * fallbackNightAllowance;
         return 'Controllo del territorio notturno';
     }
   }
+
+  double _calculateProgrammedBandHours(
+  Shift shift, {
+  required bool dayBand,
+}) {
+  if (!shift.programmedOvertimeEnabled) return 0.0;
+
+  final start = shift.programmedOvertimeStart;
+  final end = shift.programmedOvertimeEnd;
+
+  if (start == null || end == null) return 0.0;
+  if (!end.isAfter(start)) return 0.0;
+
+  return TimeBandHelper.calculateBandHours(
+    start,
+    end,
+    dayBand: dayBand,
+  );
+}
 
   double _calculateScaloAmount({
     required Shift shift,

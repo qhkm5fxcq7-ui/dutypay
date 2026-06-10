@@ -2526,14 +2526,6 @@ if (_programmedOvertimeEnabled) ...[
     return [];
   }
 
-  final isPolferAggiornamento =
-      widget.activeDepartment == Department.polfer &&
-      previewShift.description.trim().toLowerCase() == 'aggiornamento';
-
-  if (isPolferAggiornamento) {
-    return [];
-  }
-
   const useCase = BuildDailyShiftResultUseCase();
 
   final result = useCase.execute(
@@ -2591,14 +2583,6 @@ double _buildPreviewTotalFromBreakdown(
   if (previewShift.absence != 'Nessuna') {
     return [];
   }
-
-  final isPolferAggiornamento =
-    widget.activeDepartment == Department.polfer &&
-    previewShift.description.trim().toLowerCase() == 'aggiornamento';
-
-if (isPolferAggiornamento) {
-  return [];
-}
 
   final items = <Map<String, String>>[];
 

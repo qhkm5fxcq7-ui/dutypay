@@ -2,7 +2,7 @@ import '../../domain/engine/models/shift_money_components.dart';
 import '../../presentation/models/department.dart';
 import '../../presentation/models/shift.dart';
 import '../../presentation/models/user_pay_profile.dart';
-import 'build_shift_computation_usecase.dart';
+import 'build_daily_shift_result_usecase.dart';
 
 class BuildShiftMoneyComponentsUseCase {
   const BuildShiftMoneyComponentsUseCase();
@@ -21,14 +21,25 @@ class BuildShiftMoneyComponentsUseCase {
       );
     }
 
-    final computation = const BuildShiftComputationUseCase().execute(
-      shift: shift,
-      profile: profile,
-      department: department,
-    );
+    final dailyResult = const BuildDailyShiftResultUseCase().execute(
+  shifts: [shift],
+  profile: profile,
+  department: department,
+);
 
-    final totalGross = _sanitizeMoney(computation.totalAmount);
-    final overtimeHours = _sanitizeHours(computation.overtimeHours);
+final computation = dailyResult.computations[shift];
+
+if (computation == null) {
+  return const ShiftMoneyComponents(
+    overtimeGross: 0.0,
+    overtimeHours: 0.0,
+    nonOvertimeGross: 0.0,
+    rfiBasketGross: 0.0,
+  );
+}
+
+final totalGross = _sanitizeMoney(computation.totalAmount);
+final overtimeHours = _sanitizeHours(dailyResult.totalOvertimeHours);
 
     final overtimeGross = _sanitizeMoney(
       computation.breakdown

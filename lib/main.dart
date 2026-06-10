@@ -20,6 +20,7 @@ import 'features/shifts/domain/engine/models/basket_payment.dart';
 import 'features/shifts/domain/engine/models/payslip_projection_result.dart';
 import 'features/shifts/domain/engine/models/precision_status.dart';
 import 'features/shifts/domain/engine/models/rfi_basket_payment.dart';
+import 'features/shifts/domain/engine/models/overtime_basket_adjustment.dart';
 import 'features/shifts/presentation/calibrate_payslips_page.dart';
 import 'features/shifts/presentation/department_selection_page.dart';
 import 'features/shifts/presentation/models/department.dart';
@@ -485,6 +486,8 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
       'dutypay_basket_payments_$_storageScope';
   String get rfiBasketPaymentsStorageKey =>
       'dutypay_rfi_basket_payments_$_storageScope';
+  String get overtimeBasketAdjustmentsStorageKey =>
+    'dutypay_overtime_basket_adjustments_$_storageScope';
   String get compensativeBasketMovementsStorageKey =>
     'dutypay_compensative_basket_movements_$_storageScope';
   String get monthNotesStorageKey => 'dutypay_month_notes_$_storageScope';
@@ -514,6 +517,7 @@ final BuildCompensativeBasketSummaryFromMovementsUseCase
   final List<Shift> shifts = [];
   final List<BasketPayment> basketPayments = [];
   final List<RfiBasketPayment> rfiBasketPayments = [];
+  final List<OvertimeBasketAdjustment> overtimeBasketAdjustments = [];
   final List<CompensativeBasketMovement> manualCompensativeBasketMovements = [];
 
   bool isLoading = true;
@@ -555,6 +559,7 @@ final BuildCompensativeBasketSummaryFromMovementsUseCase
   await prefs.remove(payProfileStorageKey);
   await prefs.remove(basketPaymentsStorageKey);
   await prefs.remove(rfiBasketPaymentsStorageKey);
+  await prefs.remove(overtimeBasketAdjustmentsStorageKey);
   await prefs.remove(compensativeBasketMovementsStorageKey);
   await prefs.remove(monthNotesStorageKey);
 
@@ -562,6 +567,7 @@ final BuildCompensativeBasketSummaryFromMovementsUseCase
     shifts.clear();
     basketPayments.clear();
     rfiBasketPayments.clear();
+    overtimeBasketAdjustments.clear();
     manualCompensativeBasketMovements.clear();
     payProfile = UserPayProfile.defaultProfile();
     searchQuery = '';
@@ -596,6 +602,7 @@ final BuildCompensativeBasketSummaryFromMovementsUseCase
         shifts.clear();
         basketPayments.clear();
         rfiBasketPayments.clear();
+        overtimeBasketAdjustments.clear();
         payProfile = UserPayProfile.defaultProfile();
         searchQuery = '';
 
@@ -674,6 +681,11 @@ final BuildCompensativeBasketSummaryFromMovementsUseCase
     final rawRfiBasketPayments = prefs.getString(rfiBasketPaymentsStorageKey);
     final loadedRfiBasketPayments =
         _loadRfiBasketPayments(rawRfiBasketPayments);
+    final rawOvertimeBasketAdjustments =
+    prefs.getString(overtimeBasketAdjustmentsStorageKey);
+
+final loadedOvertimeBasketAdjustments =
+    _loadOvertimeBasketAdjustments(rawOvertimeBasketAdjustments);
 
     final rawCompensativeMovements =
     prefs.getString(compensativeBasketMovementsStorageKey);
@@ -693,6 +705,9 @@ final loadedCompensativeMovements =
       rfiBasketPayments
         ..clear()
         ..addAll(loadedRfiBasketPayments);
+        overtimeBasketAdjustments
+  ..clear()
+  ..addAll(loadedOvertimeBasketAdjustments);
         manualCompensativeBasketMovements
   ..clear()
   ..addAll(loadedCompensativeMovements);
@@ -811,6 +826,27 @@ final loadedCompensativeMovements =
     return [];
   }
 
+List<OvertimeBasketAdjustment> _loadOvertimeBasketAdjustments(String? raw) {
+  if (raw == null || raw.trim().isEmpty) return [];
+
+  try {
+    final decoded = jsonDecode(raw);
+    if (decoded is List) {
+      return decoded
+          .whereType<Map>()
+          .map(
+            (item) => OvertimeBasketAdjustment.fromJson(
+              Map<String, dynamic>.from(item as Map),
+            ),
+          )
+          .toList()
+        ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    }
+  } catch (_) {}
+
+  return [];
+}
+
   List<CompensativeBasketMovement> _loadCompensativeBasketMovements(
   String? raw,
 ) {
@@ -859,6 +895,14 @@ final loadedCompensativeMovements =
     await prefs.setString(rfiBasketPaymentsStorageKey, raw);
   }
 
+  Future<void> _saveOvertimeBasketAdjustments() async {
+  final prefs = await SharedPreferences.getInstance();
+  final raw = jsonEncode(
+    overtimeBasketAdjustments.map((e) => e.toJson()).toList(),
+  );
+  await prefs.setString(overtimeBasketAdjustmentsStorageKey, raw);
+}
+
   Future<void> _saveCompensativeBasketMovements() async {
   final prefs = await SharedPreferences.getInstance();
   final raw = jsonEncode(
@@ -884,6 +928,7 @@ final loadedCompensativeMovements =
       payProfile: payProfile,
       department: widget.activeDepartment,
       basketPayments: basketPayments,
+      overtimeBasketAdjustments: overtimeBasketAdjustments,
       rfiBasketPayments: rfiBasketPayments,
     );
 
@@ -1493,6 +1538,7 @@ PayslipProjectionResult get payslipProjection {
     payProfile: payProfile,
     department: widget.activeDepartment,
     basketPayments: basketPayments,
+    overtimeBasketAdjustments: overtimeBasketAdjustments,
     rfiBasketPayments: rfiBasketPayments,
   );
 }
@@ -2119,6 +2165,105 @@ _MonthlyLiveProjection _buildMonthlyLiveProjection({
   );
 }
 
+Future<void> _openOvertimeBasketAdjustmentDialog() async {
+  final hoursController = TextEditingController();
+  final noteController = TextEditingController();
+
+  bool isPositive = false;
+
+  await showDialog(
+    context: context,
+    builder: (context) {
+      return StatefulBuilder(
+        builder: (context, setModalState) {
+          return AlertDialog(
+            title: const Text(
+              'Correzione basket straordinari',
+              style: TextStyle(fontWeight: FontWeight.w800),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: hoursController,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: const InputDecoration(
+                    labelText: 'Ore',
+                    hintText: 'Es. 34.0',
+                  ),
+                ),
+                const SizedBox(height: 14),
+                DropdownButtonFormField<bool>(
+                  value: isPositive,
+                  decoration: const InputDecoration(
+                    labelText: 'Tipo correzione',
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: true,
+                      child: Text('Aggiungi ore'),
+                    ),
+                    DropdownMenuItem(
+                      value: false,
+                      child: Text('Sottrai ore'),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setModalState(() {
+                      isPositive = value;
+                    });
+                  },
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: noteController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Motivo della correzione',
+                    hintText: 'Nota obbligatoria',
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Annulla'),
+              ),
+              FilledButton(
+                onPressed: () async {
+                  final parsedHours = double.tryParse(
+                        hoursController.text.replaceAll(',', '.'),
+                      ) ??
+                      0.0;
+
+                  final note = noteController.text.trim();
+
+                  if (parsedHours <= 0 || note.isEmpty) return;
+
+                  await _addOvertimeBasketAdjustment(
+                    hours: parsedHours,
+                    isPositive: isPositive,
+                    note: note,
+                    movementDate: DateTime.now(),
+                  );
+
+                  if (!mounted) return;
+                  Navigator.pop(context);
+                },
+                child: const Text('Salva'),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
+
   Widget _buildShiftCard(
     Shift shift, {
     DailyShiftComputation? computation,
@@ -2387,6 +2532,33 @@ final hasConfortoCdg = shift.genereDiConfortoCdg;
   });
 
   await _saveCompensativeBasketMovements();
+}
+
+Future<void> _addOvertimeBasketAdjustment({
+  required double hours,
+  required bool isPositive,
+  required String note,
+  required DateTime movementDate,
+}) async {
+  final trimmedNote = note.trim();
+  if (hours <= 0 || trimmedNote.isEmpty) return;
+
+  final signedHours = isPositive ? hours : -hours;
+
+  final adjustment = OvertimeBasketAdjustment(
+    id: 'overtime_adjustment_${movementDate.toIso8601String()}_${overtimeBasketAdjustments.length}',
+    month: DateTime(movementDate.year, movementDate.month),
+    hours: signedHours,
+    note: trimmedNote,
+    createdAt: movementDate,
+  );
+
+  setState(() {
+    overtimeBasketAdjustments.add(adjustment);
+    overtimeBasketAdjustments.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+  });
+
+  await _saveOvertimeBasketAdjustments();
 }
 
 Future<void> _deleteCompensativeBasketAdjustment(String movementId) async {
@@ -2982,6 +3154,7 @@ SizedBox(
   selectedMonth: selectedPayslipMonth,
   onOpenCalibration: openCalibratePayslips,
   onAddBasketPayment: addBasketPayment,
+  onAddOvertimeBasketAdjustment: _openOvertimeBasketAdjustmentDialog,
   onAddRfiBasketPayment:
       widget.activeDepartment == Department.polfer
           ? addRfiBasketPayment

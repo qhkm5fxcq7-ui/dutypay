@@ -23,6 +23,7 @@ class PayslipPage extends StatefulWidget {
     this.precisionStatus,
     this.onOpenCalibration,
     this.onAddBasketPayment,
+    this.onAddOvertimeBasketAdjustment,
     this.onAddRfiBasketPayment,
     this.compensativeBasketEarnedHours = 0.0,
 this.compensativeBasketRecoveredHours = 0.0,
@@ -48,6 +49,8 @@ this.onDeleteCompensativeBasketAdjustment,
     double hoursPaid,
     String note,
   )? onAddBasketPayment;
+
+  final FutureOr<void> Function()? onAddOvertimeBasketAdjustment;
 
   final FutureOr<void> Function(
   DateTime sourceMonth,
@@ -258,6 +261,7 @@ class _PayslipPageState extends State<PayslipPage> {
           residualHours: basketHours,
           month: _pageMonth,
         ),
+onAddAdjustment: widget.onAddOvertimeBasketAdjustment,
           ),
           const SizedBox(height: 16),
 
@@ -2012,6 +2016,7 @@ class _BasketCard extends StatelessWidget {
     required this.paidThisMonthHours,
     required this.paidThisMonthGross,
     required this.onAddPayment,
+    this.onAddAdjustment,
   });
 
   final String title;
@@ -2023,6 +2028,7 @@ class _BasketCard extends StatelessWidget {
   final double paidThisMonthHours;
   final double paidThisMonthGross;
   final VoidCallback? onAddPayment;
+  final VoidCallback? onAddAdjustment;
 
   @override
   Widget build(BuildContext context) {
@@ -2177,6 +2183,14 @@ class _BasketCard extends StatelessWidget {
                 : Icons.lock_outline_rounded,
             onPressed: hasResidual ? onAddPayment : null,
           ),
+          if (onAddAdjustment != null) ...[
+  const SizedBox(height: 10),
+  _GhostButton(
+    label: 'Correzione basket',
+    icon: Icons.tune_rounded,
+    onPressed: onAddAdjustment,
+  ),
+],
         ],
       ),
     );

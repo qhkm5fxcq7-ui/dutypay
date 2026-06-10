@@ -279,3 +279,28 @@ Prima di ogni release:
 * flutter test
 * smoke test multi reparto
 * verifica preview ↔ dettaglio ↔ summary
+## Regression tests aggiunti
+
+### RC-BASKET-OVERTIME-01
+File:
+`test/regression/basket_regression_test.dart`
+
+Copre:
+- pagamento basket straordinari;
+- riduzione residuo ore;
+- serializzazione/deserializzazione `BasketPayment`.
+
+### RC-BASKET-COMPENSATIVO-01
+File:
+`test/regression/compensative_basket_regression_test.dart`
+
+Copre:
+- ore compensative maturate;
+- ore recuperate;
+- correzione manuale positiva;
+- correzione manuale negativa;
+- blocco correzione senza nota;
+- eliminazione consentita solo per correzioni manuali.
+
+Stato:
+`flutter test` PASS: `+86 All tests passed`.

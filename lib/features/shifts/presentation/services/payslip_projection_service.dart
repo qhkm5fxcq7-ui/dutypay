@@ -9,6 +9,7 @@ import '../../domain/engine/models/precision_status.dart';
 import '../../domain/engine/models/payslip_projection_result.dart';
 import '../../domain/engine/models/basket_payment.dart';
 import '../../domain/engine/models/rfi_basket_payment.dart';
+import '../../domain/engine/models/overtime_basket_adjustment.dart';
 import '../../application/models/monthly_accessory_summary.dart';
 
 class _HistoricalCalibrationSnapshot {
@@ -77,7 +78,8 @@ class PayslipProjectionService {
     required UserPayProfile payProfile,
     required Department department,
     List<BasketPayment> basketPayments = const [],
-    List<RfiBasketPayment> rfiBasketPayments = const [],
+List<OvertimeBasketAdjustment> overtimeBasketAdjustments = const [],
+List<RfiBasketPayment> rfiBasketPayments = const [],
   }) {
     final normalizedPayslipMonth =
         DateTime(payslipMonth.year, payslipMonth.month);
@@ -323,6 +325,25 @@ class PayslipProjectionService {
       0.0,
       (sum, item) => sum + _sanitizeMoney(item.grossRemaining),
     );
+
+    final overtimeBasketAdjustmentHours = overtimeBasketAdjustments
+    .where((item) => !_isAfterMonth(item.month, normalizedPayslipMonth))
+    .fold<double>(
+      0.0,
+      (sum, item) => sum + item.hours,
+    );
+
+final adjustedCurrentBasketResidualHours = _sanitizeNonNegative(
+  currentBasketResidualHours + overtimeBasketAdjustmentHours,
+);
+
+final grossPerResidualHour = currentBasketResidualHours > 0
+    ? currentBasketResidualGrossEstimate / currentBasketResidualHours
+    : 0.0;
+
+final adjustedCurrentBasketResidualGrossEstimate = grossPerResidualHour > 0
+    ? _sanitizeMoney(adjustedCurrentBasketResidualHours * grossPerResidualHour)
+    : currentBasketResidualGrossEstimate;
 
         final nonOvertimeGross = _sanitizeMoney(referenceSummary.nonOvertimeGross);
 
@@ -582,9 +603,9 @@ final totalNetWithRfi = _sanitizeMoney(
       openRfiBasketEntries: openRfiBasketEntries,
       paidRfiBasketEntries: paidRfiBasketEntries,
       currentBasketResidualHours:
-          _sanitizeNonNegative(currentBasketResidualHours),
-      currentBasketResidualGrossEstimate:
-          _sanitizeMoney(currentBasketResidualGrossEstimate),
+    _sanitizeNonNegative(adjustedCurrentBasketResidualHours),
+currentBasketResidualGrossEstimate:
+    _sanitizeMoney(adjustedCurrentBasketResidualGrossEstimate),
       manualBasketPaidHoursForMonth:
           _sanitizeNonNegative(manualBasketPaidHoursForMonth),
       manualBasketPaidGrossForMonth:

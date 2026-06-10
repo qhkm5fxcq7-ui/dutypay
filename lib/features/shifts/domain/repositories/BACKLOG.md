@@ -186,3 +186,21 @@ Ogni bug scoperto deve essere classificato:
 - LOW
 
 e riportato qui prima di essere pianificato.
+## Stato attuale post fix basket
+
+Nessun task critico aperto sul motore basket.
+
+Completati:
+- fix basket straordinari ordinario;
+- correzioni manuali basket straordinari;
+- fix basket compensativo;
+- test regressione basket;
+- persistenza scoped basket;
+- UI correzione basket ordinario.
+
+Da verificare manualmente prima release:
+- RM basket pagamento/correzione;
+- Polfer RFI separato;
+- Questura Volanti;
+- Questura Uffici;
+- cedolino e proiezione.

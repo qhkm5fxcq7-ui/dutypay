@@ -802,6 +802,18 @@ if (shift.ordinaryHoursOverrideEnabled &&
   return minutes / 60.0;
 }
 
+double _calculateProgrammedNightHours(Shift shift) {
+  if (!shift.programmedOvertimeEnabled) return 0.0;
+
+  final start = shift.programmedOvertimeStart;
+  final end = shift.programmedOvertimeEnd;
+
+  if (start == null || end == null) return 0.0;
+  if (!end.isAfter(start)) return 0.0;
+
+  return TimeBandHelper.calculateNightOnlyHours(start, end);
+}
+
   void _appendTransitionalAccessoryItems({
     required List<Map<String, dynamic>> breakdown,
     required Shift shift,
@@ -971,19 +983,21 @@ DateTime? _resolvePolferScheduledEnd(Shift shift) {
   final start = shift.start;
 
   switch (preset) {
-    case 'mattina':
-      return DateTime(start.year, start.month, start.day, 13, 8);
-    case 'pomeriggio':
-      return DateTime(start.year, start.month, start.day, 19, 8);
-    case 'sera':
-      return DateTime(start.year, start.month, start.day, 0, 8)
-          .add(const Duration(days: 1));
-    case 'notte':
-      return DateTime(start.year, start.month, start.day, 7, 8)
-          .add(const Duration(days: 1));
-    default:
-      break;
-  }
+  case 'mattina':
+    return DateTime(start.year, start.month, start.day, 13, 8);
+  case 'pomeriggio':
+    return DateTime(start.year, start.month, start.day, 19, 8);
+  case 'sera':
+    return DateTime(start.year, start.month, start.day, 0, 8)
+        .add(const Duration(days: 1));
+  case 'notte':
+    return DateTime(start.year, start.month, start.day, 7, 8)
+        .add(const Duration(days: 1));
+  case 'aggiornamento':
+    return DateTime(start.year, start.month, start.day, 14, 0);
+  default:
+    break;
+}
 
   final startMinutes = start.hour * 60 + start.minute;
 
@@ -1032,12 +1046,22 @@ DateTime? _resolveQuesturaScheduledEnd(Shift shift) {
   }) {
     if (shift.polferScaloMode == PolferScaloMode.none) return 0.0;
 
-    final totalNightHours = TimeBandHelper.calculateNightOnlyHours(
-      shift.start,
-      normalizedEnd,
-    );
-    final totalDayHours =
-        (shift.workedHours - totalNightHours).clamp(0.0, shift.workedHours);
+    final workedNightHours = TimeBandHelper.calculateNightOnlyHours(
+  shift.start,
+  normalizedEnd,
+);
+
+final programmedHours = _calculateProgrammedOvertimeHours(
+  shift: shift,
+  normalizedEnd: normalizedEnd,
+);
+
+final programmedNightHours = _calculateProgrammedNightHours(shift);
+
+final totalWorkedHours = shift.workedHours + programmedHours;
+final totalNightHours = workedNightHours + programmedNightHours;
+final totalDayHours =
+    (totalWorkedHours - totalNightHours).clamp(0.0, totalWorkedHours);
 
     final reducedDayHours = shift.polferScaloManualOverride
         ? shift.polferScaloReducedDayHours
