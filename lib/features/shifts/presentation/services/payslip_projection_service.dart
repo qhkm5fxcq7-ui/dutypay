@@ -277,75 +277,109 @@ List<RfiBasketPayment> rfiBasketPayments = const [],
       ..sort((a, b) => a.paymentMonth.compareTo(b.paymentMonth));
 
     double manualBasketPaidHoursForMonth = 0.0;
-    double manualBasketPaidGrossForMonth = 0.0;
+double manualBasketPaidGrossForMonth = 0.0;
+double unappliedBasketPaymentHours = 0.0;
+double unappliedBasketPaymentHoursForMonth = 0.0;
 
-    for (final payment in sortedBasketPayments) {
-      if (_isAfterMonth(payment.paymentMonth, normalizedPayslipMonth)) {
-        continue;
-      }
+for (final payment in sortedBasketPayments) {
+  if (_isAfterMonth(payment.paymentMonth, normalizedPayslipMonth)) {
+    continue;
+  }
 
-      double remainingHoursToApply = payment.hoursPaid;
-      double grossAppliedForThisPayment = 0.0;
+  double remainingHoursToApply = payment.hoursPaid;
+  double grossAppliedForThisPayment = 0.0;
 
-      for (final entry in workingBasketEntries) {
-        if (remainingHoursToApply <= 0) break;
-        if (entry.hoursRemaining <= 0 || entry.grossRemaining <= 0) continue;
+  for (final entry in workingBasketEntries) {
+    if (remainingHoursToApply <= 0) break;
+    if (entry.hoursRemaining <= 0 || entry.grossRemaining <= 0) continue;
 
-        final grossPerHour = entry.hoursRemaining > 0
-            ? entry.grossRemaining / entry.hoursRemaining
-            : 0.0;
+    final grossPerHour = entry.hoursRemaining > 0
+        ? entry.grossRemaining / entry.hoursRemaining
+        : 0.0;
 
-        if (grossPerHour <= 0) continue;
+    if (grossPerHour <= 0) continue;
 
-        final appliedHours = remainingHoursToApply <= entry.hoursRemaining
-            ? remainingHoursToApply
-            : entry.hoursRemaining;
+    final appliedHours = remainingHoursToApply <= entry.hoursRemaining
+        ? remainingHoursToApply
+        : entry.hoursRemaining;
 
-        final appliedGross = appliedHours * grossPerHour;
+    final appliedGross = appliedHours * grossPerHour;
 
-        entry.hoursRemaining -= appliedHours;
-        entry.grossRemaining -= appliedGross;
-        remainingHoursToApply -= appliedHours;
-        grossAppliedForThisPayment += appliedGross;
-      }
+    entry.hoursRemaining -= appliedHours;
+    entry.grossRemaining -= appliedGross;
+    remainingHoursToApply -= appliedHours;
+    grossAppliedForThisPayment += appliedGross;
+  }
 
-      if (_isSameMonth(payment.paymentMonth, normalizedPayslipMonth)) {
-        manualBasketPaidHoursForMonth +=
-            payment.hoursPaid - remainingHoursToApply;
-        manualBasketPaidGrossForMonth += grossAppliedForThisPayment;
-      }
+  if (_isSameMonth(payment.paymentMonth, normalizedPayslipMonth)) {
+    manualBasketPaidHoursForMonth +=
+        payment.hoursPaid - remainingHoursToApply;
+    manualBasketPaidGrossForMonth += grossAppliedForThisPayment;
+  }
+
+  if (remainingHoursToApply > 0) {
+    unappliedBasketPaymentHours += remainingHoursToApply;
+
+    if (_isSameMonth(payment.paymentMonth, normalizedPayslipMonth)) {
+      unappliedBasketPaymentHoursForMonth += remainingHoursToApply;
     }
+  }
+}
 
-    final currentBasketResidualHours = workingBasketEntries.fold<double>(
-      0.0,
-      (sum, item) => sum + _sanitizeNonNegative(item.hoursRemaining),
-    );
+final currentBasketResidualHours = workingBasketEntries.fold<double>(
+  0.0,
+  (sum, item) => sum + _sanitizeNonNegative(item.hoursRemaining),
+);
 
-    final currentBasketResidualGrossEstimate = workingBasketEntries.fold<double>(
-      0.0,
-      (sum, item) => sum + _sanitizeMoney(item.grossRemaining),
-    );
+final currentBasketResidualGrossEstimate = workingBasketEntries.fold<double>(
+  0.0,
+  (sum, item) => sum + _sanitizeMoney(item.grossRemaining),
+);
 
-    final overtimeBasketAdjustmentHours = overtimeBasketAdjustments
+final overtimeBasketAdjustmentHours = overtimeBasketAdjustments
     .where((item) => !_isAfterMonth(item.month, normalizedPayslipMonth))
     .fold<double>(
       0.0,
       (sum, item) => sum + item.hours,
     );
 
+final positiveOvertimeBasketAdjustmentHours =
+    overtimeBasketAdjustmentHours > 0 ? overtimeBasketAdjustmentHours : 0.0;
+
+final adjustmentHoursConsumedByUnappliedPayments =
+    unappliedBasketPaymentHours <= positiveOvertimeBasketAdjustmentHours
+        ? unappliedBasketPaymentHours
+        : positiveOvertimeBasketAdjustmentHours;
+
+final adjustmentHoursConsumedThisMonth =
+    unappliedBasketPaymentHoursForMonth <= positiveOvertimeBasketAdjustmentHours
+        ? unappliedBasketPaymentHoursForMonth
+        : positiveOvertimeBasketAdjustmentHours;
+final adjustmentGrossConsumedThisMonth =
+    adjustmentHoursConsumedThisMonth * payProfile.overtimeDayRate;                    
+
 final adjustedCurrentBasketResidualHours = _sanitizeNonNegative(
-  currentBasketResidualHours + overtimeBasketAdjustmentHours,
+  currentBasketResidualHours +
+      overtimeBasketAdjustmentHours -
+      adjustmentHoursConsumedByUnappliedPayments,
 );
+
+manualBasketPaidHoursForMonth += adjustmentHoursConsumedThisMonth;
+manualBasketPaidGrossForMonth += adjustmentGrossConsumedThisMonth;
 
 final grossPerResidualHour = currentBasketResidualHours > 0
     ? currentBasketResidualGrossEstimate / currentBasketResidualHours
     : 0.0;
 
-final adjustedCurrentBasketResidualGrossEstimate = grossPerResidualHour > 0
-    ? _sanitizeMoney(adjustedCurrentBasketResidualHours * grossPerResidualHour)
-    : currentBasketResidualGrossEstimate;
+final effectiveBasketGrossPerHour = grossPerResidualHour > 0
+    ? grossPerResidualHour
+    : payProfile.overtimeDayRate;
 
-        final nonOvertimeGross = _sanitizeMoney(referenceSummary.nonOvertimeGross);
+final adjustedCurrentBasketResidualGrossEstimate = _sanitizeMoney(
+  adjustedCurrentBasketResidualHours * effectiveBasketGrossPerHour,
+);
+
+final nonOvertimeGross = _sanitizeMoney(referenceSummary.nonOvertimeGross);
 
     final currentMonthRfiSummary = rfiMonthlySummaries.firstWhere(
       (item) => _isSameMonth(item.month, normalizedPayslipMonth),
