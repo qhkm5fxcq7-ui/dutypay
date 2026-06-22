@@ -260,3 +260,75 @@ L’ipotesi Polstrada ≈ Questura Volanti + Indennità Autostradale è tecnicam
 Prima dell’implementazione definitiva serve confermare i valori economici dell’indennità autostradale e le eventuali differenze tra pattuglia, radio e ufficio.
 
 Non creare un motore separato in Fase 1.
+## Aggiornamento discovery – Validazioni Manuel
+
+Validazioni ricevute:
+
+- straordinario: uguale per tutti i reparti;
+- ore notturne: uguali;
+- ticket: mantenere toggle manuale;
+- reperibilità: uguale;
+- turni ordinari: pagati come gli altri reparti;
+- unica differenza reale attualmente identificata: indennità specifiche Polstrada.
+
+Conclusione aggiornata:
+
+Polstrada può essere implementata riutilizzando quasi integralmente Questura Volanti.
+
+La logica nuova deve essere limitata alle sole indennità Polstrada.
+
+## Stato indennità Polstrada
+
+Gli importi non sono ancora disponibili.
+
+Per evitare blocchi nello sviluppo:
+
+- predisporre architettura;
+- aggiungere campi configurabili nel profilo economico;
+- non hardcodare importi;
+- usare default `0.0`;
+- mostrare toggle/opzioni solo se utile;
+- consentire futura valorizzazione senza migrazione pesante.
+
+## Impatto tecnico aggiornato
+
+Riuso stimato da Questura Volanti:
+
+95%
+
+Nuovi elementi realmente necessari:
+
+- `Department.polstrada`
+- preset Polstrada:
+  - Notte 01:00 → 07:00
+  - Mattina 07:00 → 13:00
+  - Pomeriggio 13:00 → 19:00
+  - Sera 19:00 → 01:00
+- campi economici per indennità Polstrada nel profilo
+- eventuale toggle o selector per indennità Polstrada
+- breakdown category dedicata
+
+Elementi da NON duplicare:
+
+- straordinario
+- notturno
+- ticket
+- reperibilità
+- compensativo
+- basket
+- missione
+- OP
+- servizio esterno
+- controllo territorio
+- PayslipProjection
+- BuildDailyShiftResultUseCase
+
+## Decisione operativa
+
+Si può procedere alla Fase 2 con implementazione leggera:
+
+1. aggiungere reparto Polstrada;
+2. riusare Questura Volanti come base logica;
+3. aggiungere preset orari Polstrada;
+4. predisporre indennità Polstrada con valore 0.0 configurabile;
+5. non bloccare lo sviluppo in attesa degli importi definitivi.
