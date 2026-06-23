@@ -75,18 +75,7 @@ double compensativeGrossEstimate = 0.0;
       );
       consumedPayableOvertimeHours += payableOvertimeHoursForShift;
 
-      final overtimeGross = computation.breakdown
-    .where((item) {
-      if (item['isBasketItem'] == true) {
-        return false;
-      }
-
-      return _isOvertimeCategory(item['category']);
-    })
-    .fold<double>(
-      0.0,
-      (sum, item) => sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
-    );
+      
 
 final programmedHours = _calculateProgrammedOvertimeHours(
   shift: shift,
@@ -126,12 +115,7 @@ final compensativeOvertimeGross =
   effectiveCompensativeHours * profile.overtimeDayRate,
 );
 
-final baseNonBasketAmount = computation.breakdown
-    .where((item) => item['isBasketItem'] != true)
-    .fold<double>(
-      0.0,
-      (sum, item) => sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
-    );
+
 
 final normalAmount = isCompensative && compensativeRatio >= 0.999
     ? computation.breakdown
@@ -292,12 +276,13 @@ if (programmedOvertimeHours > 0) {
 ) {
 
     
-      final scheduledEnd = department == Department.polfer
-    ? _resolvePolferScheduledEnd(shift)
-    : _resolveQuesturaScheduledEnd(
-        shift: shift,
-        department: department,
-      );
+      final scheduledEnd =
+    department == Department.polfer
+        ? _resolvePolferScheduledEnd(shift)
+        : _resolveQuesturaScheduledEnd(
+            shift: shift,
+            department: department,
+          );
 
       if (scheduledEnd == null) {
         final remainingOrdinaryHours =
@@ -376,7 +361,7 @@ final questuraScheduledEnd =
 )
         : null;
 
-if (polferScheduledEnd != null) {
+if (department == Department.polfer && polferScheduledEnd != null) {
   overtimeStart = polferScheduledEnd;
 } else if (questuraScheduledEnd != null) {
   overtimeStart = questuraScheduledEnd;
@@ -847,6 +832,9 @@ double _calculateProgrammedNightHours(Shift shift) {
       normalizedEnd: normalizedEnd,
     );
 
+    final autostradaAmount = _calculateAutostradaAmount(shift);
+    
+
     if (orderPublicAmount > 0) {
       breakdown.add({
         'label': 'Ordine pubblico ${shift.effectiveOrderPublicLabel}',
@@ -854,6 +842,14 @@ double _calculateProgrammedNightHours(Shift shift) {
         'category': 'order_public',
       });
     }
+
+    if (autostradaAmount > 0) {
+  breakdown.add({
+    'label': 'Indennità autostradale',
+    'amount': autostradaAmount,
+    'category': 'autostrada_service',
+  });
+}
 
     if (externalServiceAmount > 0) {
       breakdown.add({
@@ -1064,6 +1060,42 @@ DateTime? _resolveQuesturaScheduledEnd({
     case QuesturaPreset.riposo:
     case QuesturaPreset.aggiornamento:
       return null;
+  }
+}
+
+double _calculateAutostradaAmount(Shift shift) {
+  if (!shift.hasAutostradaService) return 0.0;
+
+  final presetCode = shift.spmnPresetCode.trim().toLowerCase();
+
+  switch (shift.questuraPreset) {
+    case QuesturaPreset.mattina:
+      return 9.50;
+    case QuesturaPreset.pomeriggio:
+      return 9.50;
+    case QuesturaPreset.sera:
+      return 12.00;
+    case QuesturaPreset.notte:
+      return 14.50;
+    case QuesturaPreset.none:
+    case QuesturaPreset.smontante:
+    case QuesturaPreset.riposo:
+    case QuesturaPreset.aggiornamento:
+      break;
+  }
+
+
+  switch (presetCode) {
+    case 'mattina':
+      return 9.50;
+    case 'pomeriggio':
+      return 9.50;
+    case 'sera':
+      return 12.00;
+    case 'notte':
+      return 14.50;
+    default:
+      return 0.0;
   }
 }
 

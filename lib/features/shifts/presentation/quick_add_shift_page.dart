@@ -132,6 +132,7 @@ late final TextEditingController _ordinaryHoursOverrideNoteController;
   bool _includeTicketPasto = false;
   bool _includeCompensazione = false;
   bool _includeReperibilita = false;
+  bool _includeAutostradaService = false;
 
   late SpmnPreset _selectedSpmnPreset;
   QuesturaMode _questuraMode = QuesturaMode.uffici;
@@ -358,6 +359,8 @@ _questuraOfficeProfile =
     _includeTicketPasto = hadTicket;
     _includeCompensazione = initialShift?.hasCompensazione ?? false;
     _includeReperibilita = initialShift?.hasReperibilita ?? false;
+    _includeAutostradaService =
+    initialShift?.hasAutostradaService ?? false;
 
     _showAdvanced = initialShift != null &&
         (cleanedManualAmount > 0 ||
@@ -1074,6 +1077,7 @@ questuraOfficeProfile: QuesturaOfficeProfile.sixHours,
 questuraOfficeOrdinaryHours: 6.0,
         hasCompensazione: false,
         hasReperibilita: false,
+        hasAutostradaService: false,
         note: _noteController.text.trim(),
         polferTerritoryControlType: PolferTerritoryControlType.none,
         polferScaloMode: PolferScaloMode.none,
@@ -1186,6 +1190,7 @@ questuraOfficeOrdinaryHours:
 
       hasCompensazione: _includeCompensazione,
       hasReperibilita: _includeReperibilita,
+      hasAutostradaService: _includeAutostradaService,
       note: _noteController.text.trim(),
       polferTerritoryControlType:
     (_isPolfer || (_usesQuesturaPresetLogic && _questuraMode == QuesturaMode.volanti))
@@ -2083,15 +2088,38 @@ if (_programmedOvertimeEnabled) ...[
                 });
               },
       ),
+      if (_isPolstrada) ...[
+  const SizedBox(height: 12),
+  IgnorePointer(
+    ignoring: _hasAbsence,
+    child: Opacity(
+      opacity: _hasAbsence ? 0.46 : 1,
+      child: _ModernSwitchTile(
+        value: _includeAutostradaService,
+        title: 'Servizio autostradale',
+        subtitle: 'Aggiunge l’indennità autostradale quando spettante.',
+        onChanged: (value) {
+  
 
-      const SizedBox(height: 12),
+  setState(() {
+    _includeAutostradaService = value;
+  });
+},
+      ),
+    ),
+  ),
+],
+
+            const SizedBox(height: 12),
       _ModernSwitchTile(
         value: _externalService,
         title: 'Servizio esterno',
         subtitle: _questuraMode == QuesturaMode.volanti
-            ? (_isPolstrada ? 'Attivo per i servizi di pattuglia.' : 'Attivo per i servizi Volanti.')
+            ? (_isPolstrada
+                ? 'Attivo per i servizi di pattuglia.'
+                : 'Attivo per i servizi Volanti.')
             : 'Applica l’indennità servizi esterni quando prevista.',
-        onChanged: _questuraMode == QuesturaMode.volanti
+        onChanged: (_questuraMode == QuesturaMode.volanti && !_isPolstrada)
             ? (_) {}
             : (value) {
                 setState(() {
@@ -2385,24 +2413,7 @@ if (_programmedOvertimeEnabled) ...[
             ),
           ),
         ),
-        const SizedBox(height: 12),
-        IgnorePointer(
-          ignoring: _hasAbsence,
-          child: Opacity(
-            opacity: _hasAbsence ? 0.46 : 1,
-            child: _ModernSwitchTile(
-              value: _externalService,
-              title: 'Servizio esterno',
-              subtitle:
-                  'Applica l’indennità servizi esterni quando prevista.',
-              onChanged: (value) {
-                setState(() {
-                  _externalService = value;
-                });
-              },
-            ),
-          ),
-        ),
+        
       ],
     );
   }
@@ -2611,6 +2622,12 @@ double _buildPreviewTotalFromBreakdown(
   if (previewShift.absence != 'Nessuna') {
     return [];
   }
+  debugPrint(
+  'PREVIEW SHIFT -> auto=${previewShift.hasAutostradaService}, '
+  'preset=${previewShift.questuraPreset}, '
+  'spmn=${previewShift.spmnPresetCode}, '
+  'dept=${widget.activeDepartment}',
+);
 
   final items = <Map<String, String>>[];
 
@@ -3215,6 +3232,7 @@ if (_usesCompensativeOvertime) ...[
       _includeTicketPasto = false;
       _includeCompensazione = false;
       _includeReperibilita = false;
+      _includeAutostradaService = false;
       _descriptionController.text = '';
       _clearPolferFields();
     }

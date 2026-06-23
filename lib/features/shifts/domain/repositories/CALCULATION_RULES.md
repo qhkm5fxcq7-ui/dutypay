@@ -518,3 +518,66 @@ Reparti:
 Stato:
 
 VALIDATO
+# POLSTRADA
+
+## Preset
+
+Mattina
+06:55 → 13:08
+
+Pomeriggio
+12:55 → 19:08
+
+Sera
+18:55 → 01:08
+
+Notte
+00:55 → 07:08
+
+## Straordinario
+
+Mattina:
+oltre 13:08
+
+Pomeriggio:
+oltre 19:08
+
+Sera:
+oltre 01:08
+
+Notte:
+oltre 07:08
+
+## Supportato
+
+- servizio esterno
+- ticket
+- compensativo
+- programmed overtime
+- basket straordinari
+- basket compensativo
+
+## Indennità autostradale
+
+Architettura predisposta.
+
+Importi non ancora attivati.
+
+Release sospesa fino al reperimento dei valori ufficiali.
+## Indennità autostradale
+
+Mattina:
+€ 9,50
+
+Pomeriggio:
+€ 9,50
+
+Sera:
+€ 12,00
+
+Notte:
+€ 14,50
+
+Categoria breakdown:
+
+autostrada_service

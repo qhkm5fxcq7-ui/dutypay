@@ -142,3 +142,34 @@ Diventare il punto di riferimento nazionale per il calcolo stipendiale e la gest
 Obiettivo:
 
 offrire uno strumento preciso, affidabile e costruito sulle esigenze reali degli operatori.
+## Stato Giugno 2026
+
+Reparti disponibili:
+
+✅ Reparto Mobile
+✅ Polfer
+✅ Questura Uffici
+✅ Questura Pattuglia
+✅ Polstrada (staging)
+
+Framework consolidato:
+
+- overtime automatico
+- overtime programmato segmentato
+- basket straordinari
+- basket compensativo
+- compensativo parziale
+- reperibilità
+- missioni
+- servizio esterno
+- ticket
+- OP
+
+Community WhatsApp ufficiale attiva.
+Reparti disponibili
+
+✅ Reparto Mobile
+✅ Polfer
+✅ Questura Uffici
+✅ Questura Pattuglia
+✅ Polstrada

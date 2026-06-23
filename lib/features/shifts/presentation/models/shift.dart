@@ -113,6 +113,7 @@ class Shift {
   final bool polferScaloManualOverride;
   final bool hasCompensazione;
   final bool hasReperibilita;
+  final bool hasAutostradaService;
 
   final double polferScaloReducedDayHours;
   final double polferScaloReducedNightHours;
@@ -179,6 +180,7 @@ class Shift {
     double? workedHours,
     bool hasCompensazione = false,
     bool hasReperibilita = false,
+    bool hasAutostradaService = false,
     double straordinarioDiurnoHours = 0.0,
     double straordinarioNotturnoFestivoHours = 0.0,
     int notturnoCount = 0,
@@ -260,6 +262,7 @@ class Shift {
       ticketPasto: ticketPasto,
       hasCompensazione: hasCompensazione,
       hasReperibilita: hasReperibilita,
+      hasAutostradaService: hasAutostradaService,
       straordinarioDiurnoHours: straordinarioDiurnoHours,
       straordinarioNotturnoFestivoHours: straordinarioNotturnoFestivoHours,
       notturnoCount: notturnoCount,
@@ -312,6 +315,7 @@ class Shift {
     required this.ticketPasto,
     this.hasCompensazione = false,
     this.hasReperibilita = false,
+    this.hasAutostradaService = false,
     required this.straordinarioDiurnoHours,
     required this.straordinarioNotturnoFestivoHours,
     required this.notturnoCount,
@@ -363,6 +367,7 @@ class Shift {
     bool? ticketPasto,
     bool? hasCompensazione,
     bool? hasReperibilita,
+    bool? hasAutostradaService,
     double? straordinarioDiurnoHours,
     double? straordinarioNotturnoFestivoHours,
     int? notturnoCount,
@@ -416,6 +421,8 @@ class Shift {
       ticketPasto: ticketPasto ?? this.ticketPasto,
       hasCompensazione: hasCompensazione ?? this.hasCompensazione,
       hasReperibilita: hasReperibilita ?? this.hasReperibilita,
+      hasAutostradaService:
+    hasAutostradaService ?? this.hasAutostradaService,
       straordinarioDiurnoHours:
           straordinarioDiurnoHours ?? this.straordinarioDiurnoHours,
       straordinarioNotturnoFestivoHours:
@@ -1524,6 +1531,7 @@ class Shift {
       'ticketPasto': ticketPasto,
       'hasCompensazione': hasCompensazione,
       'hasReperibilita': hasReperibilita,
+      'hasAutostradaService': hasAutostradaService,
       'straordinarioDiurnoHours': straordinarioDiurnoHours,
       'straordinarioNotturnoFestivoHours': straordinarioNotturnoFestivoHours,
       'notturnoCount': notturnoCount,
@@ -1612,6 +1620,8 @@ class Shift {
       ticketPasto: json['ticketPasto'] as bool? ?? false,
       hasCompensazione: json['hasCompensazione'] as bool? ?? false,
       hasReperibilita: json['hasReperibilita'] as bool? ?? false,
+      hasAutostradaService:
+    json['hasAutostradaService'] as bool? ?? false,
       straordinarioDiurnoHours: _toDouble(json['straordinarioDiurnoHours']),
       straordinarioNotturnoFestivoHours:
           _toDouble(json['straordinarioNotturnoFestivoHours']),

@@ -442,3 +442,85 @@ Interventi:
 Test:
 - `test/regression/basket_regression_test.dart`
 - suite completa PASS: `+86 All tests passed`
+# GIUGNO 2026
+
+## Fix preset sera Polstrada
+
+Problema:
+
+La chiusura teorica utilizzava il comportamento delle Volanti.
+
+Effetto:
+
+Generazione errata dello straordinario.
+
+Fix:
+
+Chiusura teorica corretta a 01:08.
+
+Risultato:
+
+18:55 → 01:08
+
+0 ore straordinario.
+
+---
+
+## Fix preset notte Polstrada
+
+Problema:
+
+Calcolo errato delle ore notturne.
+
+Effetto:
+
+13h05 di notturno.
+
+Fix:
+
+Correzione della normalizzazione tra scheduled end e gestione giorni.
+
+Risultato:
+
+00:55 → 07:08
+
+Notturno corretto.
+Straordinario corretto.
+
+---
+
+## Basket Straordinari
+
+Corrette:
+
+- correzioni manuali
+- persistenza
+- residuo
+- scarico basket
+- controvalore economico
+
+Regression test aggiunti.
+
+flutter test
+
+86/86 PASS
+## Polstrada – Servizio esterno bloccato
+
+Problema:
+
+Il servizio esterno risultava non selezionabile.
+
+Causa:
+
+Condizione condivisa con Questura Pattuglia.
+
+Fix:
+
+Abilitata la selezione contemporanea di:
+
+- Servizio autostradale
+- Servizio esterno
+
+Risultato:
+
+Entrambe le indennità vengono correttamente sommate.

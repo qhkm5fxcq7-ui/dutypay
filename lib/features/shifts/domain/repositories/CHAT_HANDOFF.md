@@ -350,3 +350,42 @@ Fix rilevanti:
 
 Regola confermata:
 RFI resta sistema separato e non viene accorpato a straordinari/accessorie standard.
+# AGGIORNAMENTO GIUGNO 2026 – POLSTRADA
+
+## Stato attuale
+
+Framework stabile.
+
+Reparti supportati:
+
+- Reparto Mobile
+- Polfer
+- Questura Uffici
+- Questura Pattuglia
+- Polstrada (staging)
+
+## Test
+
+flutter test
+
+86/86 PASS
+
+## Community
+
+Community WhatsApp DutyPay attiva:
+
+- Bacheca
+- Domande e Suggerimenti
+- Segnalazioni Bug
+
+## Release
+
+Polstrada NON rilasciata.
+
+Motivazione:
+
+Mancano le tabelle ufficiali delle indennità autostradali.
+
+Decisione:
+
+Mantenere Polstrada in staging fino alla disponibilità dei valori ufficiali.

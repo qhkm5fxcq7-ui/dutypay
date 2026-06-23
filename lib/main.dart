@@ -1397,7 +1397,8 @@ String _resolvePredictedSpmnLabelForDate({
 
 Map<String, String> _buildPredictedSpmnCalendarMap() {
   if (widget.activeDepartment != Department.polfer &&
-    widget.activeDepartment != Department.questura) {
+    widget.activeDepartment != Department.questura &&
+    widget.activeDepartment != Department.polstrada) {
   return {};
 }
   if (shifts.isEmpty) return {};
@@ -1469,7 +1470,8 @@ String? _nextSpmnPresetCode(String currentCode, DateTime nextServiceDate) {
 
 String? _suggestedSpmnPresetCodeForDate(DateTime targetDate) {
   if (widget.activeDepartment != Department.polfer &&
-    widget.activeDepartment != Department.questura) {
+    widget.activeDepartment != Department.questura &&
+    widget.activeDepartment != Department.polstrada) {
   return null;
 }
 

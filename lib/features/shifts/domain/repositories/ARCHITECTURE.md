@@ -413,3 +413,36 @@ Reparti:
 Stato:
 
 ARCHITETTURA STABILE
+- Polstrada 
+## Polstrada
+
+Polstrada utilizza la stessa pipeline di Questura Pattuglia.
+
+Non esiste un motore dedicato.
+
+Riutilizzo stimato:
+
+95%
+
+Differenze attuali:
+
+- preset dedicati
+- futura indennità autostradale
+## Stato Polstrada
+
+Completata.
+
+Funzioni disponibili:
+
+- preset ufficiali
+- servizio autostradale
+- servizio esterno
+- straordinario automatico
+- straordinario programmato
+- compensativo
+- dashboard integrata
+- persistenza completa
+
+Test validati.
+
+Pronta per la release.
