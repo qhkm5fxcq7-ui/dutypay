@@ -78,6 +78,9 @@ ordinaryHoursOverrideNote:
 
     case presentation_department.Department.questura:
       return domain_department.Department.questura;
+
+    case presentation_department.Department.polstrada:
+  return domain_department.Department.polstrada;  
   }
 }
 

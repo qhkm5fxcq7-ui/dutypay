@@ -280,7 +280,10 @@ if (programmedOvertimeHours > 0) {
       shift.description.trim().toLowerCase() != 'aggiornamento'
     ) ||
     (
-      department == Department.questura &&
+      (
+  department == Department.questura ||
+  department == Department.polstrada
+) &&
       shift.questuraMode == QuesturaMode.volanti &&
       shift.questuraPreset != QuesturaPreset.none &&
       shift.questuraPreset != QuesturaPreset.aggiornamento &&
@@ -289,9 +292,12 @@ if (programmedOvertimeHours > 0) {
 ) {
 
     
-      final scheduledEnd =
-    _resolvePolferScheduledEnd(shift) ??
-    _resolveQuesturaScheduledEnd(shift);
+      final scheduledEnd = department == Department.polfer
+    ? _resolvePolferScheduledEnd(shift)
+    : _resolveQuesturaScheduledEnd(
+        shift: shift,
+        department: department,
+      );
 
       if (scheduledEnd == null) {
         final remainingOrdinaryHours =
@@ -360,8 +366,14 @@ final polferScheduledEnd =
         : null;
 
 final questuraScheduledEnd =
-    department == Department.questura
-        ? _resolveQuesturaScheduledEnd(shift)
+    (
+      department == Department.questura ||
+      department == Department.polstrada
+    )
+        ? _resolveQuesturaScheduledEnd(
+  shift: shift,
+  department: department,
+)
         : null;
 
 if (polferScheduledEnd != null) {
@@ -1022,16 +1034,31 @@ DateTime? _resolvePolferScheduledEnd(Shift shift) {
   return null;
 }
 
-DateTime? _resolveQuesturaScheduledEnd(Shift shift) {
+DateTime? _resolveQuesturaScheduledEnd({
+  required Shift shift,
+  required Department department,
+}) {
   switch (shift.questuraPreset) {
     case QuesturaPreset.mattina:
       return DateTime(shift.start.year, shift.start.month, shift.start.day, 13, 8);
     case QuesturaPreset.pomeriggio:
       return DateTime(shift.start.year, shift.start.month, shift.start.day, 19, 8);
     case QuesturaPreset.sera:
-      return DateTime(shift.start.year, shift.start.month, shift.start.day + 1, 0, 8);
+  return DateTime(
+    shift.start.year,
+    shift.start.month,
+    shift.start.day + 1,
+    department == Department.polstrada ? 1 : 0,
+    8,
+  );
     case QuesturaPreset.notte:
-      return DateTime(shift.start.year, shift.start.month, shift.start.day + 1, 7, 8);
+  return DateTime(
+    shift.start.year,
+    shift.start.month,
+    shift.start.day + (department == Department.polstrada ? 0 : 1),
+    7,
+    8,
+  );
     case QuesturaPreset.none:
     case QuesturaPreset.smontante:
     case QuesturaPreset.riposo:

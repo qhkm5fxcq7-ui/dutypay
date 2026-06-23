@@ -38,6 +38,7 @@ class BuildShiftComputationUseCase {
   );
 
 case Department.questura:
+case Department.polstrada:
   return _buildQuesturaViewData(
     shift: shift,
     profile: profile,

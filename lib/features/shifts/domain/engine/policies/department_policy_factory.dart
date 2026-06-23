@@ -9,10 +9,15 @@ class DepartmentPolicyFactory {
     switch (department) {
       case Department.repartoMobile:
         return RepartoMobilePolicy();
+
       case Department.polfer:
         return PolferPolicy();
+
       case Department.questura:
-  return QuesturaPolicy();
+        return QuesturaPolicy();
+
+      case Department.polstrada:
+        return QuesturaPolicy();
     }
   }
 }

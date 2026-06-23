@@ -149,7 +149,11 @@ QuesturaOfficeProfile _questuraOfficeProfile =
   bool get _isEditing => widget.initialShift != null;
   bool get _hasAbsence => _selectedAbsence != 'Nessuna';
   bool get _isPolfer => widget.activeDepartment == Department.polfer;
-  bool get _isQuestura => widget.activeDepartment == Department.questura;
+bool get _isQuestura => widget.activeDepartment == Department.questura;
+bool get _isPolstrada => widget.activeDepartment == Department.polstrada;
+
+bool get _usesQuesturaPresetLogic => _isQuestura || _isPolstrada;
+
   bool get _hasPolferScalo => _polferScaloMode != PolferScaloMode.none;
 
   bool get _absenceNeedsCustomDescription =>
@@ -571,7 +575,10 @@ _ordinaryHoursOverrideNoteController.dispose();
           _descriptionController.text = 'Turno Sera';
           _realStartDate = _serviceDate;
           _startTime = const TimeOfDay(hour: 18, minute: 55);
-          _endTime = const TimeOfDay(hour: 0, minute: 8);
+
+_endTime = _isPolstrada
+    ? const TimeOfDay(hour: 1, minute: 8)
+    : const TimeOfDay(hour: 0, minute: 8);
           break;
 
         case SpmnPreset.pomeriggio:
@@ -593,11 +600,19 @@ _ordinaryHoursOverrideNoteController.dispose();
         case SpmnPreset.notte:
   _selectedAbsence = 'Nessuna';
   _descriptionController.text = 'Turno Notte';
-  _realStartDate = _serviceDate.subtract(
-    const Duration(days: 1),
-  );
-  _startTime = const TimeOfDay(hour: 23, minute: 55);
-  _endTime = const TimeOfDay(hour: 7, minute: 8);
+
+  _realStartDate = _isPolstrada
+    ? _serviceDate
+    : _serviceDate.subtract(
+        const Duration(days: 1),
+      );
+
+_startTime = _isPolstrada
+    ? const TimeOfDay(hour: 0, minute: 55)
+    : const TimeOfDay(hour: 23, minute: 55);
+
+_endTime = const TimeOfDay(hour: 7, minute: 8);
+
   break;
 
         case SpmnPreset.smontante:
@@ -827,7 +842,7 @@ TimeOfDay _decimalHoursToTimeOfDay(double value) {
     case QuesturaMode.uffici:
       return 'Uffici';
     case QuesturaMode.volanti:
-      return 'Volanti';
+      return _isPolstrada ? 'Pattuglia' : 'Volanti';
   }
 }
 
@@ -883,7 +898,7 @@ double _questuraOfficeOrdinaryHours() {
 }
 
 DateTime? _buildQuesturaProgrammedOvertimeStart() {
-  if (!_isQuestura || _questuraMode != QuesturaMode.volanti) {
+  if (!_usesQuesturaPresetLogic|| _questuraMode != QuesturaMode.volanti) {
     return null;
   }
 
@@ -900,7 +915,7 @@ DateTime? _buildQuesturaProgrammedOvertimeStart() {
 }
 
 DateTime? _buildQuesturaProgrammedOvertimeEnd() {
-  if (!_isQuestura || _questuraMode != QuesturaMode.volanti) {
+  if (!_usesQuesturaPresetLogic || _questuraMode != QuesturaMode.volanti) {
     return null;
   }
 
@@ -1067,18 +1082,25 @@ questuraOfficeOrdinaryHours: 6.0,
         polferScaloReducedNightHours: 0,
         polferScaloFullDayHours: 0,
         polferScaloFullNightHours: 0,
-        spmnPresetCode: _isQuestura
+        spmnPresetCode: _usesQuesturaPresetLogic
     ? (_questuraPreset == QuesturaPreset.none ? '' : _questuraPreset.name)
     : (_selectedSpmnPreset == SpmnPreset.none ? '' : _selectedSpmnPreset.name),
       );
     }
 
     final start = _combine(_realStartDate, _startTime);
-    var end = _combine(_serviceDate, _endTime);
 
-    if (!end.isAfter(start)) {
-      end = end.add(const Duration(days: 1));
-    }
+final isPolstradaNightPreset =
+    _isPolstrada && _questuraPreset == QuesturaPreset.notte;
+
+var end = _combine(
+  isPolstradaNightPreset ? _realStartDate : _serviceDate,
+  _endTime,
+);
+
+if (!end.isAfter(start)) {
+  end = end.add(const Duration(days: 1));
+}
 
     return Shift(
       description: _descriptionController.text.trim(),
@@ -1122,7 +1144,7 @@ ordinaryHoursOverride:
 
 programmedOvertimeEnabled:
     _programmedOvertimeEnabled ||
-    (_isQuestura &&
+    (_usesQuesturaPresetLogic &&
         _questuraMode == QuesturaMode.volanti &&
         _questuraProgrammedOvertimePreset !=
             QuesturaProgrammedOvertimePreset.none),
@@ -1140,25 +1162,25 @@ programmedOvertimeEnd:
 programmedOvertimeNote:
     _programmedOvertimeEnabled
         ? 'Straordinario programmato personalizzato'
-        : (_isQuestura &&
+        : (_usesQuesturaPresetLogic &&
                 _questuraMode == QuesturaMode.volanti &&
                 _questuraProgrammedOvertimePreset !=
                     QuesturaProgrammedOvertimePreset.none
-            ? 'Straordinario programmato Volanti'
+            ? (_isPolstrada ? 'Straordinario programmato Pattuglia' : 'Straordinario programmato Volanti')
             : ''),
 questuraMode:
-    _isQuestura ? _questuraMode : QuesturaMode.uffici,
+    _usesQuesturaPresetLogic ? _questuraMode : QuesturaMode.uffici,
 
 questuraPreset:
-    _isQuestura ? _questuraPreset : QuesturaPreset.none,
+    _usesQuesturaPresetLogic ? _questuraPreset : QuesturaPreset.none,
 
 questuraOfficeProfile:
-    _isQuestura
+    _usesQuesturaPresetLogic
         ? _questuraOfficeProfile
         : QuesturaOfficeProfile.sixHours,
 
 questuraOfficeOrdinaryHours:
-    _isQuestura
+    _usesQuesturaPresetLogic
         ? _questuraOfficeOrdinaryHours()
         : 6.0,
 
@@ -1166,7 +1188,7 @@ questuraOfficeOrdinaryHours:
       hasReperibilita: _includeReperibilita,
       note: _noteController.text.trim(),
       polferTerritoryControlType:
-    (_isPolfer || (_isQuestura && _questuraMode == QuesturaMode.volanti))
+    (_isPolfer || (_usesQuesturaPresetLogic && _questuraMode == QuesturaMode.volanti))
         ? _polferTerritoryControlType
         : PolferTerritoryControlType.none,
       polferScaloMode:
@@ -1824,17 +1846,23 @@ questuraOfficeOrdinaryHours:
   }
 
   Widget _buildQuesturaFields() {
+  if (_isPolstrada && _questuraMode != QuesturaMode.volanti) {
+    _questuraMode = QuesturaMode.volanti;
+  }
+
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const Text(
-        'Configurazione Questura',
-        style: TextStyle(
-          fontSize: 14.5,
-          fontWeight: FontWeight.w800,
-          color: _QuickAddPalette.info,
-        ),
-      ),
+      Text(
+  _isPolstrada
+      ? 'Configurazione Polizia Stradale'
+      : 'Configurazione Questura',
+  style: const TextStyle(
+    fontSize: 14.5,
+    fontWeight: FontWeight.w800,
+    color: _QuickAddPalette.info,
+  ),
+),
       const SizedBox(height: 12),
 
       DropdownButtonFormField<QuesturaMode>(
@@ -1870,14 +1898,14 @@ questuraOfficeOrdinaryHours:
               },
       ),
 
-      if (_questuraMode == QuesturaMode.volanti) ...[
+      if (_questuraMode == QuesturaMode.volanti || _isPolstrada) ...[
         const SizedBox(height: 12),
         DropdownButtonFormField<QuesturaPreset>(
           value: _questuraPreset,
           dropdownColor: _QuickAddPalette.card,
-          decoration: const InputDecoration(
-            labelText: 'Preset Volanti',
-          ),
+          decoration: InputDecoration(
+  labelText: _isPolstrada ? 'Preset Pattuglia' : 'Preset Volanti',
+),
           items: QuesturaPreset.values
               .map(
                 (item) => DropdownMenuItem<QuesturaPreset>(
@@ -2061,7 +2089,7 @@ if (_programmedOvertimeEnabled) ...[
         value: _externalService,
         title: 'Servizio esterno',
         subtitle: _questuraMode == QuesturaMode.volanti
-            ? 'Attivo per i servizi Volanti.'
+            ? (_isPolstrada ? 'Attivo per i servizi di pattuglia.' : 'Attivo per i servizi Volanti.')
             : 'Applica l’indennità servizi esterni quando prevista.',
         onChanged: _questuraMode == QuesturaMode.volanti
             ? (_) {}
@@ -2792,7 +2820,7 @@ final overtimeHours = previewComputation?.overtimeHours ?? 0.0;
                       ),
                       onChanged: (_) => setState(() {}),
                     ),
-                    if (_isQuestura) ...[
+                    if (_usesQuesturaPresetLogic) ...[
   const SizedBox(height: 16),
   _buildQuesturaFields(),
   const SizedBox(height: 6),

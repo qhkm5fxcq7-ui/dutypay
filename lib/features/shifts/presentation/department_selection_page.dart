@@ -75,6 +75,16 @@ _DepartmentCard(
     await onSelected(Department.questura);
   },
 ),
+const SizedBox(height: 14),
+_DepartmentCard(
+  title: Department.polstrada.label,
+  subtitle:
+      'Turni Stradale, autostradale e logica simile Volanti.',
+  selected: initialDepartment == Department.polstrada,
+  onTap: () async {
+    await onSelected(Department.polstrada);
+  },
+),
                 ],
               ),
             ),
