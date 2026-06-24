@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1069881451179",
+    "project_id": "dutypay-ec498",
+    "storage_bucket": "dutypay-ec498.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1069881451179:android:42bca9f5105e812b5c4dee",
+        "android_client_info": {
+          "package_name": "com.dutypay.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBspdeGCfiVB8qgSNZ-o9SOqSQC8omd2Dk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -346,6 +346,15 @@ final overtimeBasketAdjustmentHours = overtimeBasketAdjustments
 final positiveOvertimeBasketAdjustmentHours =
     overtimeBasketAdjustmentHours > 0 ? overtimeBasketAdjustmentHours : 0.0;
 
+final adjustedBasketRecoveredHours = _sanitizeNonNegative(
+  basketRecoveredHours + positiveOvertimeBasketAdjustmentHours,
+);
+
+final adjustedBasketRecoveredGross = _sanitizeMoney(
+  basketRecoveredGross +
+      (positiveOvertimeBasketAdjustmentHours * payProfile.overtimeDayRate),
+);
+
 final adjustmentHoursConsumedByUnappliedPayments =
     unappliedBasketPaymentHours <= positiveOvertimeBasketAdjustmentHours
         ? unappliedBasketPaymentHours
@@ -597,8 +606,8 @@ final totalNetWithRfi = _sanitizeMoney(
           _sanitizeNonNegative(referenceSummary.overtimeHours),
       rfiBasketGrossFromReferenceMonth: rfiBasketGrossFromReferenceMonth,
       rfiBasketHoursFromReferenceMonth: rfiBasketHoursFromReferenceMonth,
-      basketRecoveredGross: _sanitizeMoney(basketRecoveredGross),
-      basketRecoveredHours: _sanitizeNonNegative(basketRecoveredHours),
+      basketRecoveredGross: adjustedBasketRecoveredGross,
+basketRecoveredHours: adjustedBasketRecoveredHours,
       liquidatedOvertimeGross: _sanitizeMoney(liquidatedOvertimeGross),
       liquidatedOvertimeHours: _sanitizeNonNegative(liquidatedOvertimeHours),
       overtimeInBasketGross: _sanitizeMoney(overtimeInBasketGross),

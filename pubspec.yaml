@@ -2,7 +2,7 @@ name: dutypay
 description: "DutyPay app"
 publish_to: 'none'
 
-version: 1.0.5+20
+version: 1.0.6+21
 
 environment:
   sdk: ^3.3.0
@@ -16,6 +16,9 @@ dependencies:
 
   cupertino_icons: ^1.0.8
   syncfusion_flutter_pdf: ^33.1.45
+    
+  firebase_core: ^4.2.1
+  firebase_analytics: ^12.0.4
 
   # STORAGE
   shared_preferences: ^2.2.2
