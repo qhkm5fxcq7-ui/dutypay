@@ -1,3 +1,5 @@
+import '../constants/break_constants.dart';
+
 enum BreakRoomStatus {
   waiting,
   running,
@@ -19,6 +21,7 @@ class BreakRoom {
   final DateTime createdAt;
   final BreakRoomStatus status;
   final int participantsCount;
+  final int maxParticipants;
   final String? selectedPayerId;
   final String? roundSeed;
   final String? resultId;
@@ -34,6 +37,7 @@ class BreakRoom {
     required this.createdAt,
     this.status = BreakRoomStatus.waiting,
     this.participantsCount = 0,
+    this.maxParticipants = BreakConstants.defaultMaxParticipants,
     this.selectedPayerId,
     this.roundSeed,
     this.resultId,
@@ -50,6 +54,7 @@ class BreakRoom {
     DateTime? createdAt,
     BreakRoomStatus? status,
     int? participantsCount,
+    int? maxParticipants,
     String? selectedPayerId,
     String? roundSeed,
     String? resultId,
@@ -65,6 +70,7 @@ class BreakRoom {
       createdAt: createdAt ?? this.createdAt,
       status: status ?? this.status,
       participantsCount: participantsCount ?? this.participantsCount,
+      maxParticipants: maxParticipants ?? this.maxParticipants,
       selectedPayerId: selectedPayerId ?? this.selectedPayerId,
       roundSeed: roundSeed ?? this.roundSeed,
       resultId: resultId ?? this.resultId,
@@ -83,6 +89,7 @@ class BreakRoom {
       'createdAt': createdAt.toIso8601String(),
       'status': status.name,
       'participantsCount': participantsCount,
+      'maxParticipants': maxParticipants,
       'selectedPayerId': selectedPayerId,
       'roundSeed': roundSeed,
       'resultId': resultId,
@@ -96,11 +103,13 @@ class BreakRoom {
     return BreakRoom(
       id: map['id'] as String? ?? '',
       roomCode: map['roomCode'] as String? ?? '',
-      title: map['title'] as String? ?? 'Chi paga il caffè',
+      title: map['title'] as String? ?? BreakConstants.defaultRoomTitle,
       createdBy: map['createdBy'] as String? ?? '',
       createdAt: _parseDate(map['createdAt']) ?? DateTime.now(),
       status: BreakRoomStatus.fromValue(map['status'] as String?),
       participantsCount: map['participantsCount'] as int? ?? 0,
+      maxParticipants: map['maxParticipants'] as int? ??
+          BreakConstants.defaultMaxParticipants,
       selectedPayerId: map['selectedPayerId'] as String?,
       roundSeed: map['roundSeed'] as String?,
       resultId: map['resultId'] as String?,

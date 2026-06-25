@@ -26,6 +26,8 @@ dependencies:
   # FILE SYSTEM (EXPORT/IMPORT)
   file_picker: ^8.0.0
   path_provider: ^2.1.2
+  cloud_firestore: ^6.6.0
+  uuid: ^4.5.3
 
 dev_dependencies:
   flutter_test:

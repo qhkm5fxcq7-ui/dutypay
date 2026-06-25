@@ -8,6 +8,7 @@ class BreakParticipant {
   final bool eliminated;
   final int position;
   final String avatarSeed;
+  final String deviceId;
 
   const BreakParticipant({
     required this.id,
@@ -19,6 +20,7 @@ class BreakParticipant {
     this.eliminated = false,
     this.position = 0,
     required this.avatarSeed,
+    required this.deviceId,
   });
 
   BreakParticipant copyWith({
@@ -31,6 +33,7 @@ class BreakParticipant {
     bool? eliminated,
     int? position,
     String? avatarSeed,
+    String? deviceId,
   }) {
     return BreakParticipant(
       id: id ?? this.id,
@@ -42,6 +45,7 @@ class BreakParticipant {
       eliminated: eliminated ?? this.eliminated,
       position: position ?? this.position,
       avatarSeed: avatarSeed ?? this.avatarSeed,
+      deviceId: deviceId ?? this.deviceId,
     );
   }
 
@@ -56,6 +60,7 @@ class BreakParticipant {
       'eliminated': eliminated,
       'position': position,
       'avatarSeed': avatarSeed,
+      'deviceId': deviceId,
     };
   }
 
@@ -70,6 +75,7 @@ class BreakParticipant {
       eliminated: map['eliminated'] as bool? ?? false,
       position: map['position'] as int? ?? 0,
       avatarSeed: map['avatarSeed'] as String? ?? '',
+      deviceId: map['deviceId'] as String? ?? '',
     );
   }
 
