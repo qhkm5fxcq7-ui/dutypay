@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../di/break_dependencies.dart';
 import '../domain/models/break_participant.dart';
 import '../domain/models/break_room.dart';
+import 'widgets/break_result_animation.dart';
 
 class BreakRoomPage extends StatefulWidget {
   final BreakRoom room;
@@ -446,26 +447,15 @@ class _ReadyActionCard extends StatelessWidget {
             ),
           ),
           if (room.resultText != null &&
-              room.resultText!.trim().isNotEmpty) ...[
+              room.resultText!.trim().isNotEmpty &&
+              room.selectedPayerId != null &&
+              room.roundSeed != null) ...[
             const SizedBox(height: 16),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.08),
-                ),
-              ),
-              child: Text(
-                room.resultText!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
+            BreakResultAnimation(
+              participants: participants,
+              selectedPayerId: room.selectedPayerId!,
+              roundSeed: room.roundSeed!,
+              resultText: room.resultText!,
             ),
           ],
           const SizedBox(height: 18),
