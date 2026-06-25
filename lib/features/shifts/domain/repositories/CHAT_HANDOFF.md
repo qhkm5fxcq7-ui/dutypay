@@ -389,3 +389,21 @@ Mancano le tabelle ufficiali delle indennità autostradali.
 Decisione:
 
 Mantenere Polstrada in staging fino alla disponibilità dei valori ufficiali.
+---
+
+# BREAK FEATURE — HANDOFF
+
+È iniziato lo sviluppo della nuova feature sociale **Break**.
+
+## Obiettivo
+
+Aumentare:
+
+- frequenza d'utilizzo quotidiana;
+- viralità dell'app;
+- passaparola tra colleghi.
+
+Funzione principale prevista:
+
+```text
+☕ Chi paga il caffè

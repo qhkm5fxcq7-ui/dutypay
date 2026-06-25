@@ -446,3 +446,25 @@ Funzioni disponibili:
 Test validati.
 
 Pronta per la release.
+---
+
+# Break Architecture
+
+Break è una feature sociale indipendente dal motore economico di DutyPay.
+
+Obiettivo: aumentare l'utilizzo quotidiano dell'app e favorire il passaparola tra colleghi attraverso la funzione “Chi paga il caffè”.
+
+## Pattern
+
+```text
+Presentation
+↓
+Use Cases
+↓
+Repository Interface
+↓
+Repository Implementation
+↓
+Datasource
+↓
+Firestore

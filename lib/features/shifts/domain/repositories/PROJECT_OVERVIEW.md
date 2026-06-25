@@ -173,3 +173,46 @@ Reparti disponibili
 ✅ Questura Uffici
 ✅ Questura Pattuglia
 ✅ Polstrada
+---
+
+## Nuova Feature: Break
+
+DutyPay ora include una seconda macro-area sperimentale oltre al core economico.
+
+### Macro-moduli
+
+1. **Core Economico**
+   - turni
+   - straordinari
+   - indennità
+   - cedolino
+   - basket
+   - compensativi
+
+2. **Break**
+   - feature sociale collaborativa
+   - stanze realtime
+   - scelta casuale/sincronizzata di chi paga il caffè
+
+### Scopo Break
+
+Break nasce per aumentare:
+
+- engagement quotidiano;
+- uso spontaneo dell'app;
+- viralità nei gruppi di colleghi;
+- senso di community intorno a DutyPay.
+
+### Tecnologie Break
+
+- Firebase Firestore
+- SharedPreferences
+- UUID
+- stream realtime
+- identità anonima locale
+
+### Stato Break
+
+Core/backend implementato.
+
+UI operativa ancora da collegare.

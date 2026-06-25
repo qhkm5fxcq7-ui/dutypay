@@ -524,3 +524,28 @@ Abilitata la selezione contemporanea di:
 Risultato:
 
 Entrambe le indennità vengono correttamente sommate.
+## Break Feature
+
+### Stato attuale
+
+La feature Break è in fase di sviluppo e non è ancora stata rilasciata agli utenti.
+
+### Bug funzionali
+
+Attualmente non risultano bug funzionali aperti.
+
+### Note
+
+La feature è sviluppata in modo completamente isolato rispetto al core economico di DutyPay.
+
+Non impatta:
+
+* motore turni;
+* cedolino;
+* basket straordinari;
+* basket compensativo;
+* basket RFI;
+* backup/import/export;
+* profili stipendiali.
+
+Lo sviluppo proseguirà esclusivamente all'interno di `lib/features/break/` fino al completamento della UI e dei test end-to-end.
