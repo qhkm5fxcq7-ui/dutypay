@@ -1,7 +1,133 @@
 import 'package:flutter/material.dart';
 
-class BreakPage extends StatelessWidget {
+import '../di/break_dependencies.dart';
+
+class BreakPage extends StatefulWidget {
   const BreakPage({super.key});
+
+  @override
+  State<BreakPage> createState() => _BreakPageState();
+}
+
+class _BreakPageState extends State<BreakPage> {
+  final _roomCodeController = TextEditingController();
+  String? _nickname;
+  bool _isLoadingIdentity = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadIdentity();
+  }
+
+  @override
+  void dispose() {
+    _roomCodeController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadIdentity() async {
+    final identity =
+        await BreakDependencies.instance.getLocalIdentityUseCase.execute();
+
+    if (!mounted) return;
+
+    setState(() {
+      _nickname = identity.nickname.trim().isEmpty ? null : identity.nickname;
+      _isLoadingIdentity = false;
+    });
+  }
+
+  Future<String?> _ensureNickname() async {
+    if (_nickname != null && _nickname!.trim().isNotEmpty) {
+      return _nickname;
+    }
+
+    final controller = TextEditingController();
+
+    final nickname = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Scegli un nickname'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            maxLength: 18,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(
+              labelText: 'Nickname',
+              hintText: 'Es. Marco RM',
+            ),
+            onSubmitted: (_) {
+              final value = controller.text.trim();
+              if (value.isNotEmpty) {
+                Navigator.of(context).pop(value);
+              }
+            },
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () {
+                final value = controller.text.trim();
+                if (value.isNotEmpty) {
+                  Navigator.of(context).pop(value);
+                }
+              },
+              child: const Text('Continua'),
+            ),
+          ],
+        );
+      },
+    );
+
+    controller.dispose();
+
+    if (nickname == null || nickname.trim().isEmpty) {
+      return null;
+    }
+
+    final saved = await BreakDependencies.instance.saveNicknameUseCase.execute(
+      nickname,
+    );
+
+    if (!mounted) return saved.nickname;
+
+    setState(() {
+      _nickname = saved.nickname;
+    });
+
+    return saved.nickname;
+  }
+
+  Future<void> _handleCreateRoom() async {
+    final nickname = await _ensureNickname();
+
+    if (nickname == null) return;
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Nickname salvato: $nickname'),
+      ),
+    );
+  }
+
+  Future<void> _handleJoinRoom() async {
+    final nickname = await _ensureNickname();
+
+    if (nickname == null) return;
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Nickname salvato: $nickname'),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,12 +149,23 @@ class BreakPage extends StatelessWidget {
           Text(
             'Crea una stanza con i colleghi e scopri chi offre il caffè.',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.68),
+              color: Colors.white.withValues(alpha: 0.68),
               fontSize: 14.5,
               height: 1.4,
               fontWeight: FontWeight.w500,
             ),
           ),
+          if (_nickname != null) ...[
+            const SizedBox(height: 10),
+            Text(
+              'Nickname: $_nickname',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.54),
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
           const SizedBox(height: 22),
           Container(
             padding: const EdgeInsets.all(20),
@@ -36,7 +173,7 @@ class BreakPage extends StatelessWidget {
               color: colorScheme.surface,
               borderRadius: BorderRadius.circular(26),
               border: Border.all(
-                color: Colors.white.withOpacity(0.08),
+                color: Colors.white.withValues(alpha: 0.08),
               ),
             ),
             child: Column(
@@ -54,7 +191,7 @@ class BreakPage extends StatelessWidget {
                 Text(
                   'Una pausa veloce, una stanza condivisa e un sorteggio leggero per decidere chi offre.',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.68),
+                    color: Colors.white.withValues(alpha: 0.68),
                     fontSize: 14,
                     height: 1.45,
                     fontWeight: FontWeight.w500,
@@ -64,17 +201,18 @@ class BreakPage extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(
-                    onPressed: () {},
+                    onPressed: _isLoadingIdentity ? null : _handleCreateRoom,
                     icon: const Icon(Icons.add_rounded),
                     label: const Text('Crea stanza'),
                   ),
                 ),
                 const SizedBox(height: 18),
-                const TextField(
+                TextField(
+                  controller: _roomCodeController,
                   textCapitalization: TextCapitalization.characters,
-                  decoration: InputDecoration(
+                  decoration: const InputDecoration(
                     labelText: 'Inserisci codice stanza',
-                    hintText: 'Es. BRK739',
+                    hintText: 'Es. BRK-X7K4M',
                     prefixIcon: Icon(Icons.tag_rounded),
                   ),
                 ),
@@ -82,7 +220,7 @@ class BreakPage extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
-                    onPressed: () {},
+                    onPressed: _isLoadingIdentity ? null : _handleJoinRoom,
                     icon: const Icon(Icons.login_rounded),
                     label: const Text('Entra'),
                   ),
