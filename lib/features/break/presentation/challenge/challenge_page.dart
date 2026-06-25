@@ -8,6 +8,8 @@ import '../challenge/models/challenge_runner.dart';
 import '../challenge/widgets/challenge_countdown.dart';
 import '../challenge/widgets/challenge_result.dart';
 import '../challenge/widgets/challenge_track.dart';
+import '../challenge/engine/challenge_engine.dart';
+import '../challenge/engine/challenge_frame.dart';
 
 class ChallengePage extends StatefulWidget {
   final List<BreakParticipant> participants;
@@ -31,11 +33,18 @@ class _ChallengePageState extends State<ChallengePage> {
   ChallengeState _state = ChallengeState.countdown;
   int _countdownValue = 3;
   late List<ChallengeRunner> _runners;
+  final ChallengeEngine _engine = const ChallengeEngine();
+  late final List<ChallengeFrame> _frames;
 
   @override
   void initState() {
     super.initState();
     _runners = _buildRunners();
+    _frames = _engine.buildRace(
+      runners: _runners,
+      selectedPayerId: widget.selectedPayerId,
+      roundSeed: widget.roundSeed,
+    );
     _startSequence();
   }
 
@@ -57,21 +66,14 @@ class _ChallengePageState extends State<ChallengePage> {
       _state = ChallengeState.running;
     });
 
-    for (var step = 0; step <= 20; step++) {
+    for (final frame in _frames) {
       if (!mounted) return;
 
-      final progress = step / 20;
-
       setState(() {
-        _runners = _runners.map((runner) {
-          final targetProgress =
-              runner.isWinner ? progress : (progress * 0.86).clamp(0.0, 0.92);
-
-          return runner.copyWith(position: targetProgress);
-        }).toList();
+        _runners = _applyFrame(frame);
       });
 
-      await Future<void>.delayed(const Duration(milliseconds: 110));
+      await Future<void>.delayed(const Duration(milliseconds: 120));
     }
 
     if (!mounted) return;
@@ -95,6 +97,22 @@ class _ChallengePageState extends State<ChallengePage> {
         participant: entry.value,
         lane: entry.key,
         selectedPayerId: widget.selectedPayerId,
+      );
+    }).toList();
+  }
+
+  List<ChallengeRunner> _applyFrame(ChallengeFrame frame) {
+    return _runners.map((runner) {
+      final runnerFrame = frame.runners.where(
+        (item) => item.runnerId == runner.id,
+      );
+
+      if (runnerFrame.isEmpty) {
+        return runner;
+      }
+
+      return runner.copyWith(
+        position: runnerFrame.first.position,
       );
     }).toList();
   }
