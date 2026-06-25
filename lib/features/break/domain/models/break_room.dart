@@ -1,75 +1,112 @@
-class BreakParticipant {
-  final String id;
-  final String roomId;
-  final String displayName;
-  final DateTime joinedAt;
-  final bool isReady;
-  final int lives;
-  final bool eliminated;
-  final int position;
-  final String avatarSeed;
+enum BreakRoomStatus {
+  waiting,
+  running,
+  completed;
 
-  const BreakParticipant({
+  static BreakRoomStatus fromValue(String? value) {
+    return BreakRoomStatus.values.firstWhere(
+      (status) => status.name == value,
+      orElse: () => BreakRoomStatus.waiting,
+    );
+  }
+}
+
+class BreakRoom {
+  final String id;
+  final String roomCode;
+  final String title;
+  final String createdBy;
+  final DateTime createdAt;
+  final BreakRoomStatus status;
+  final int participantsCount;
+  final String? selectedPayerId;
+  final String? roundSeed;
+  final String? resultId;
+  final String? resultText;
+  final DateTime? startedAt;
+  final DateTime? completedAt;
+
+  const BreakRoom({
     required this.id,
-    required this.roomId,
-    required this.displayName,
-    required this.joinedAt,
-    this.isReady = false,
-    this.lives = 1,
-    this.eliminated = false,
-    this.position = 0,
-    required this.avatarSeed,
+    required this.roomCode,
+    required this.title,
+    required this.createdBy,
+    required this.createdAt,
+    this.status = BreakRoomStatus.waiting,
+    this.participantsCount = 0,
+    this.selectedPayerId,
+    this.roundSeed,
+    this.resultId,
+    this.resultText,
+    this.startedAt,
+    this.completedAt,
   });
 
-  BreakParticipant copyWith({
+  BreakRoom copyWith({
     String? id,
-    String? roomId,
-    String? displayName,
-    DateTime? joinedAt,
-    bool? isReady,
-    int? lives,
-    bool? eliminated,
-    int? position,
-    String? avatarSeed,
+    String? roomCode,
+    String? title,
+    String? createdBy,
+    DateTime? createdAt,
+    BreakRoomStatus? status,
+    int? participantsCount,
+    String? selectedPayerId,
+    String? roundSeed,
+    String? resultId,
+    String? resultText,
+    DateTime? startedAt,
+    DateTime? completedAt,
   }) {
-    return BreakParticipant(
+    return BreakRoom(
       id: id ?? this.id,
-      roomId: roomId ?? this.roomId,
-      displayName: displayName ?? this.displayName,
-      joinedAt: joinedAt ?? this.joinedAt,
-      isReady: isReady ?? this.isReady,
-      lives: lives ?? this.lives,
-      eliminated: eliminated ?? this.eliminated,
-      position: position ?? this.position,
-      avatarSeed: avatarSeed ?? this.avatarSeed,
+      roomCode: roomCode ?? this.roomCode,
+      title: title ?? this.title,
+      createdBy: createdBy ?? this.createdBy,
+      createdAt: createdAt ?? this.createdAt,
+      status: status ?? this.status,
+      participantsCount: participantsCount ?? this.participantsCount,
+      selectedPayerId: selectedPayerId ?? this.selectedPayerId,
+      roundSeed: roundSeed ?? this.roundSeed,
+      resultId: resultId ?? this.resultId,
+      resultText: resultText ?? this.resultText,
+      startedAt: startedAt ?? this.startedAt,
+      completedAt: completedAt ?? this.completedAt,
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'roomId': roomId,
-      'displayName': displayName,
-      'joinedAt': joinedAt.toIso8601String(),
-      'isReady': isReady,
-      'lives': lives,
-      'eliminated': eliminated,
-      'position': position,
-      'avatarSeed': avatarSeed,
+      'roomCode': roomCode,
+      'title': title,
+      'createdBy': createdBy,
+      'createdAt': createdAt.toIso8601String(),
+      'status': status.name,
+      'participantsCount': participantsCount,
+      'selectedPayerId': selectedPayerId,
+      'roundSeed': roundSeed,
+      'resultId': resultId,
+      'resultText': resultText,
+      'startedAt': startedAt?.toIso8601String(),
+      'completedAt': completedAt?.toIso8601String(),
     };
   }
 
-  factory BreakParticipant.fromMap(Map<String, dynamic> map) {
-    return BreakParticipant(
+  factory BreakRoom.fromMap(Map<String, dynamic> map) {
+    return BreakRoom(
       id: map['id'] as String? ?? '',
-      roomId: map['roomId'] as String? ?? '',
-      displayName: map['displayName'] as String? ?? '',
-      joinedAt: _parseDate(map['joinedAt']) ?? DateTime.now(),
-      isReady: map['isReady'] as bool? ?? false,
-      lives: map['lives'] as int? ?? 1,
-      eliminated: map['eliminated'] as bool? ?? false,
-      position: map['position'] as int? ?? 0,
-      avatarSeed: map['avatarSeed'] as String? ?? '',
+      roomCode: map['roomCode'] as String? ?? '',
+      title: map['title'] as String? ?? 'Chi paga il caffè',
+      createdBy: map['createdBy'] as String? ?? '',
+      createdAt: _parseDate(map['createdAt']) ?? DateTime.now(),
+      status: BreakRoomStatus.fromValue(map['status'] as String?),
+      participantsCount: map['participantsCount'] as int? ?? 0,
+      selectedPayerId: map['selectedPayerId'] as String?,
+      roundSeed: map['roundSeed'] as String?,
+      resultId: map['resultId'] as String?,
+      resultText: map['resultText'] as String?,
+      startedAt: _parseDate(map['startedAt']),
+      completedAt: _parseDate(map['completedAt']),
     );
   }
 
