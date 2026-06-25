@@ -41,7 +41,15 @@ class ChallengeEngine {
         runnerFrames.add(
           ChallengeRunnerFrame(
             runnerId: runner.id,
+            lane: runner.lane,
             position: frameIndex == frameCount && isWinner ? 1.0 : position,
+            speed: _speedFor(progress, isWinner: isWinner),
+            animation: _animationFor(
+              progress: progress,
+              isWinner: isWinner,
+              frameIndex: frameIndex,
+              frameCount: frameCount,
+            ),
           ),
         );
       }
@@ -69,6 +77,42 @@ class ChallengeEngine {
 
   double _competitorProgress(double progress, int lane) {
     final lanePenalty = (lane % 3) * 0.025;
+
+    double _speedFor(
+      double progress, {
+      required bool isWinner,
+    }) {
+      if (progress > 0.86 && isWinner) {
+        return 1.35;
+      }
+
+      if (progress > 0.86) {
+        return 0.82;
+      }
+
+      return 1.0;
+    }
+
+    RunnerAnimation _animationFor({
+      required double progress,
+      required bool isWinner,
+      required int frameIndex,
+      required int frameCount,
+    }) {
+      if (frameIndex == frameCount && isWinner) {
+        return RunnerAnimation.celebrate;
+      }
+
+      if (frameIndex == frameCount && !isWinner) {
+        return RunnerAnimation.lose;
+      }
+
+      if (progress > 0.86 && isWinner) {
+        return RunnerAnimation.sprint;
+      }
+
+      return RunnerAnimation.run;
+    }
 
     if (progress < 0.75) {
       return (progress * 0.82) - lanePenalty;
