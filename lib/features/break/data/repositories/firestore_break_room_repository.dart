@@ -165,13 +165,20 @@ class FirestoreBreakRoomRepository implements BreakRoomRepository {
     final payerIndex = seed.hashCode.abs() % participants.length;
     final selectedPayer = participants[payerIndex];
 
+    final now = DateTime.now();
+
     await datasource.markRoundRunning(
       roomId: roomId,
       roundSeed: seed,
       resultId: resultId,
       selectedPayerId: selectedPayer.id,
       resultText: '☕ Oggi paga il caffè: ${selectedPayer.displayName}',
-      startedAt: DateTime.now(),
+      startedAt: now,
+    );
+
+    await datasource.markRoundCompleted(
+      roomId: roomId,
+      completedAt: now,
     );
   }
 

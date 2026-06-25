@@ -64,6 +64,22 @@ class _BreakRoomPageState extends State<BreakRoomPage> {
     }
   }
 
+  Future<void> _resetRound() async {
+    try {
+      await BreakDependencies.instance.resetRoundUseCase.execute(
+        widget.room.id,
+      );
+    } catch (_) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Non sono riuscito ad avviare un nuovo sorteggio.'),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final dependencies = BreakDependencies.instance;
@@ -133,6 +149,7 @@ class _BreakRoomPageState extends State<BreakRoomPage> {
                           currentParticipant: currentParticipant,
                           onToggleReady: _toggleReady,
                           onStartRound: _startRound,
+                          onResetRound: _resetRound,
                         ),
                       ],
                     );
@@ -378,6 +395,7 @@ class _ReadyActionCard extends StatelessWidget {
     required bool currentValue,
   }) onToggleReady;
   final Future<void> Function() onStartRound;
+  final Future<void> Function() onResetRound;
 
   const _ReadyActionCard({
     required this.room,
@@ -386,6 +404,7 @@ class _ReadyActionCard extends StatelessWidget {
     required this.currentParticipant,
     required this.onToggleReady,
     required this.onStartRound,
+    required this.onResetRound,
   });
 
   @override
@@ -480,6 +499,17 @@ class _ReadyActionCard extends StatelessWidget {
                 label: const Text('Avvia sorteggio'),
               ),
             ),
+            if (isHost && room.status == BreakRoomStatus.completed) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: onResetRound,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Nuovo sorteggio'),
+                ),
+              ),
+            ],
           ],
         ],
       ),
