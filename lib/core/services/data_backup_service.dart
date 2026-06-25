@@ -5,20 +5,34 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../features/shifts/application/models/compensative_basket_movement.dart';
+import '../../features/shifts/domain/engine/models/basket_payment.dart';
+import '../../features/shifts/domain/engine/models/overtime_basket_adjustment.dart';
+import '../../features/shifts/domain/engine/models/rfi_basket_payment.dart';
+import '../../features/shifts/presentation/models/shift.dart';
+import '../../features/shifts/presentation/models/user_pay_profile.dart';
+
 class DataBackupService {
-  static const String shiftsKey = 'dutypay_shifts';
-  static const String profileKey = 'dutypay_pay_profile';
-
-  static Future<void> exportData() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    final shiftsJson = await _readShiftsJsonForExport(prefs);
-    final profileJson = prefs.getString(profileKey);
-
+  static Future<void> exportData({
+    required String departmentId,
+    required List<Shift> shifts,
+    required UserPayProfile profile,
+    required List<BasketPayment> basketPayments,
+    required List<RfiBasketPayment> rfiBasketPayments,
+    required List<OvertimeBasketAdjustment> overtimeBasketAdjustments,
+    required List<CompensativeBasketMovement> compensativeBasketMovements,
+  }) async {
     final data = <String, dynamic>{
-      'version': 2,
-      'shifts': _safeDecodeShifts(shiftsJson),
-      'profile': _safeDecodeProfile(profileJson),
+      'version': 3,
+      'departmentId': departmentId,
+      'shifts': shifts.map((e) => e.toJson()).toList(),
+      'profile': profile.toJson(),
+      'basketPayments': basketPayments.map((e) => e.toJson()).toList(),
+      'rfiBasketPayments': rfiBasketPayments.map((e) => e.toJson()).toList(),
+      'overtimeBasketAdjustments':
+          overtimeBasketAdjustments.map((e) => e.toJson()).toList(),
+      'compensativeBasketMovements':
+          compensativeBasketMovements.map((e) => e.toJson()).toList(),
       'exportedAt': DateTime.now().toIso8601String(),
     };
 
@@ -30,12 +44,10 @@ class DataBackupService {
       fileName: 'dutypay_backup.json',
       type: FileType.custom,
       allowedExtensions: ['json'],
-      bytes: bytes,
+      bytes: Platform.isIOS || Platform.isAndroid ? bytes : null,
     );
 
-    if (outputPath == null || outputPath.isEmpty) {
-      return;
-    }
+    if (outputPath == null || outputPath.isEmpty) return;
 
     if (!Platform.isIOS && !Platform.isAndroid) {
       final file = File(outputPath);
@@ -48,7 +60,14 @@ class DataBackupService {
     }
   }
 
-  static Future<void> importData() async {
+  static Future<void> importData({
+    required String shiftsStorageKey,
+    required String payProfileStorageKey,
+    required String basketPaymentsStorageKey,
+    required String rfiBasketPaymentsStorageKey,
+    required String overtimeBasketAdjustmentsStorageKey,
+    required String compensativeBasketMovementsStorageKey,
+  }) async {
     final result = await FilePicker.platform.pickFiles(
       dialogTitle: 'Seleziona backup DutyPay',
       type: FileType.custom,
@@ -57,145 +76,94 @@ class DataBackupService {
       withData: true,
     );
 
-    if (result == null || result.files.isEmpty) {
-      return;
-    }
+    if (result == null || result.files.isEmpty) return;
 
     final picked = result.files.single;
-
-    String content;
-
-    if (picked.bytes != null) {
-      content = utf8.decode(picked.bytes!);
-    } else {
-      final path = picked.path;
-      if (path == null || path.isEmpty) {
-        throw Exception('File selezionato non valido.');
-      }
-
-      final file = File(path);
-
-      if (!await file.exists()) {
-        throw Exception('Il file selezionato non esiste.');
-      }
-
-      content = await file.readAsString();
-    }
+    final content = await _readPickedFileContent(picked);
 
     final decoded = jsonDecode(content);
-
     if (decoded is! Map) {
       throw Exception('Formato backup non valido.');
     }
 
-    final map = Map<String, dynamic>.from(decoded as Map);
+    final map = Map<String, dynamic>.from(decoded);
     final prefs = await SharedPreferences.getInstance();
 
-    await _importShifts(prefs, map['shifts']);
-    await _importProfile(prefs, map['profile']);
+    await _importShifts(prefs, shiftsStorageKey, map['shifts']);
+    await _importProfile(prefs, payProfileStorageKey, map['profile']);
+
+    await _importJsonList(
+      prefs,
+      basketPaymentsStorageKey,
+      map['basketPayments'],
+    );
+
+    await _importJsonList(
+      prefs,
+      rfiBasketPaymentsStorageKey,
+      map['rfiBasketPayments'],
+    );
+
+    await _importJsonList(
+      prefs,
+      overtimeBasketAdjustmentsStorageKey,
+      map['overtimeBasketAdjustments'],
+    );
+
+    await _importJsonList(
+      prefs,
+      compensativeBasketMovementsStorageKey,
+      map['compensativeBasketMovements'],
+    );
   }
 
-  static Future<String> _readShiftsJsonForExport(SharedPreferences prefs) async {
-    final newFormat = prefs.getString(shiftsKey);
-    if (newFormat != null && newFormat.trim().isNotEmpty) {
-      return newFormat;
+  static Future<String> _readPickedFileContent(PlatformFile picked) async {
+    if (picked.bytes != null) {
+      return utf8.decode(picked.bytes!);
     }
 
-    final legacyList = prefs.getStringList(shiftsKey);
-    if (legacyList == null || legacyList.isEmpty) {
-      return '[]';
+    final path = picked.path;
+    if (path == null || path.isEmpty) {
+      throw Exception('File selezionato non valido.');
     }
 
-    final parsed = <dynamic>[];
-    for (final item in legacyList) {
-      try {
-        parsed.add(jsonDecode(item));
-      } catch (_) {}
+    final file = File(path);
+
+    if (!await file.exists()) {
+      throw Exception('Il file selezionato non esiste.');
     }
 
-    return jsonEncode(parsed);
-  }
-
-  static List<dynamic> _safeDecodeShifts(String? rawJson) {
-    if (rawJson == null || rawJson.trim().isEmpty) {
-      return <dynamic>[];
-    }
-
-    try {
-      final decoded = jsonDecode(rawJson);
-      if (decoded is List) {
-        return decoded;
-      }
-    } catch (_) {}
-
-    return <dynamic>[];
-  }
-
-  static Map<String, dynamic>? _safeDecodeProfile(String? rawJson) {
-    if (rawJson == null || rawJson.trim().isEmpty) {
-      return null;
-    }
-
-    try {
-      final decoded = jsonDecode(rawJson);
-      if (decoded is Map) {
-        return Map<String, dynamic>.from(decoded as Map);
-      }
-    } catch (_) {}
-
-    return null;
+    return file.readAsString();
   }
 
   static Future<void> _importShifts(
     SharedPreferences prefs,
+    String storageKey,
     dynamic rawShifts,
   ) async {
     if (rawShifts == null) {
-      await prefs.setString(shiftsKey, '[]');
+      await prefs.setString(storageKey, '[]');
       return;
     }
 
-    if (rawShifts is List) {
-      final normalized = rawShifts
-          .where((item) => item is Map)
-          .map((item) => Map<String, dynamic>.from(item as Map))
-          .toList();
-
-      await prefs.setString(shiftsKey, jsonEncode(normalized));
-      return;
-    }
-
-    if (rawShifts is String) {
-      try {
-        final decoded = jsonDecode(rawShifts);
-        if (decoded is List) {
-          final normalized = decoded
-              .where((item) => item is Map)
-              .map((item) => Map<String, dynamic>.from(item as Map))
-              .toList();
-
-          await prefs.setString(shiftsKey, jsonEncode(normalized));
-          return;
-        }
-      } catch (_) {}
-    }
-
-    throw Exception('Formato turni nel backup non valido.');
+    final normalized = _normalizeJsonList(rawShifts);
+    await prefs.setString(storageKey, jsonEncode(normalized));
   }
 
   static Future<void> _importProfile(
     SharedPreferences prefs,
+    String storageKey,
     dynamic rawProfile,
   ) async {
     if (rawProfile == null) {
-      await prefs.remove(profileKey);
+      await prefs.remove(storageKey);
       return;
     }
 
     if (rawProfile is Map) {
       await prefs.setString(
-        profileKey,
-        jsonEncode(Map<String, dynamic>.from(rawProfile as Map)),
+        storageKey,
+        jsonEncode(Map<String, dynamic>.from(rawProfile)),
       );
       return;
     }
@@ -205,8 +173,8 @@ class DataBackupService {
         final decoded = jsonDecode(rawProfile);
         if (decoded is Map) {
           await prefs.setString(
-            profileKey,
-            jsonEncode(Map<String, dynamic>.from(decoded as Map)),
+            storageKey,
+            jsonEncode(Map<String, dynamic>.from(decoded)),
           );
           return;
         }
@@ -214,5 +182,42 @@ class DataBackupService {
     }
 
     throw Exception('Formato profilo nel backup non valido.');
+  }
+
+  static Future<void> _importJsonList(
+    SharedPreferences prefs,
+    String storageKey,
+    dynamic rawItems,
+  ) async {
+    if (rawItems == null) {
+      await prefs.setString(storageKey, '[]');
+      return;
+    }
+
+    final normalized = _normalizeJsonList(rawItems);
+    await prefs.setString(storageKey, jsonEncode(normalized));
+  }
+
+  static List<Map<String, dynamic>> _normalizeJsonList(dynamic rawItems) {
+    if (rawItems is List) {
+      return rawItems
+          .where((item) => item is Map)
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList();
+    }
+
+    if (rawItems is String) {
+      try {
+        final decoded = jsonDecode(rawItems);
+        if (decoded is List) {
+          return decoded
+              .where((item) => item is Map)
+              .map((item) => Map<String, dynamic>.from(item as Map))
+              .toList();
+        }
+      } catch (_) {}
+    }
+
+    throw Exception('Formato lista backup non valido.');
   }
 }

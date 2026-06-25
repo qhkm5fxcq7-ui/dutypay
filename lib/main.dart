@@ -2747,7 +2747,15 @@ Future<void> _deleteCompensativeBasketAdjustment(String movementId) async {
               child: OutlinedButton.icon(
                 onPressed: () async {
                   try {
-                    await DataBackupService.exportData();
+                    await DataBackupService.exportData(
+  departmentId: _storageScope,
+  shifts: shifts,
+  profile: payProfile,
+  basketPayments: basketPayments,
+  rfiBasketPayments: rfiBasketPayments,
+  overtimeBasketAdjustments: overtimeBasketAdjustments,
+  compensativeBasketMovements: manualCompensativeBasketMovements,
+);
 
                     if (!mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -2771,7 +2779,16 @@ Future<void> _deleteCompensativeBasketAdjustment(String movementId) async {
               child: OutlinedButton.icon(
                 onPressed: () async {
                   try {
-                    await DataBackupService.importData();
+                    await DataBackupService.importData(
+  shiftsStorageKey: shiftsStorageKey,
+  payProfileStorageKey: payProfileStorageKey,
+  basketPaymentsStorageKey: basketPaymentsStorageKey,
+  rfiBasketPaymentsStorageKey: rfiBasketPaymentsStorageKey,
+  overtimeBasketAdjustmentsStorageKey:
+      overtimeBasketAdjustmentsStorageKey,
+  compensativeBasketMovementsStorageKey:
+      compensativeBasketMovementsStorageKey,
+);
                     await loadData();
 
                     if (!mounted) return;
