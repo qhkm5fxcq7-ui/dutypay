@@ -5,6 +5,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/services/data_backup_service.dart';
+import 'features/break/presentation/break_page.dart';
 import 'features/home/widgets/month_calendar_card.dart';
 import 'features/payslip/presentation/payslip_page.dart';
 import 'features/shifts/application/models/daily_shift_computation.dart';
@@ -3212,6 +3213,7 @@ SizedBox(
     final pages = [
       _buildTurnsPage(),
       _buildPayslipPage(),
+      const BreakPage(),
     ];
 
     return Scaffold(
@@ -3277,6 +3279,10 @@ SizedBox(
               NavigationDestination(
                 icon: Icon(Icons.receipt_long_rounded),
                 label: 'Cedolino',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.coffee_rounded),
+                label: 'Break',
               ),
             ],
           ),
