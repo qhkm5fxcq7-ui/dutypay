@@ -1,0 +1,14 @@
+import '../models/break_room.dart';
+import '../repositories/break_room_repository.dart';
+
+class CreateBreakRoomUseCase {
+  final BreakRoomRepository repository;
+
+  const CreateBreakRoomUseCase(this.repository);
+
+  Future<BreakRoom> execute({
+    String? title,
+  }) {
+    return repository.createRoom(title: title);
+  }
+}
