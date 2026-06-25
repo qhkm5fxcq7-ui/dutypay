@@ -46,6 +46,24 @@ class _BreakRoomPageState extends State<BreakRoomPage> {
     }
   }
 
+  Future<void> _startRound() async {
+    try {
+      await BreakDependencies.instance.startRoundUseCase.execute(
+        widget.room.id,
+      );
+    } catch (_) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Non posso avviare: servono almeno due partecipanti pronti.',
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final dependencies = BreakDependencies.instance;
@@ -110,8 +128,11 @@ class _BreakRoomPageState extends State<BreakRoomPage> {
                         const SizedBox(height: 20),
                         _ReadyActionCard(
                           room: currentRoom,
+                          participants: participants,
+                          currentDeviceId: currentDeviceId,
                           currentParticipant: currentParticipant,
                           onToggleReady: _toggleReady,
+                          onStartRound: _startRound,
                         ),
                       ],
                     );
@@ -350,21 +371,29 @@ class _ParticipantTile extends StatelessWidget {
 
 class _ReadyActionCard extends StatelessWidget {
   final BreakRoom room;
+  final List<BreakParticipant> participants;
+  final String? currentDeviceId;
   final BreakParticipant? currentParticipant;
   final Future<void> Function({
     required bool currentValue,
   }) onToggleReady;
+  final Future<void> Function() onStartRound;
 
   const _ReadyActionCard({
     required this.room,
+    required this.participants,
+    required this.currentDeviceId,
     required this.currentParticipant,
     required this.onToggleReady,
+    required this.onStartRound,
   });
 
   @override
   Widget build(BuildContext context) {
     final participant = currentParticipant;
     final isWaiting = room.status == BreakRoomStatus.waiting;
+    final isHost = currentDeviceId != null && currentDeviceId == room.createdBy;
+    final canStart = isHost && isWaiting && _canStartRound(participants);
 
     return Container(
       width: double.infinity,
@@ -389,7 +418,7 @@ class _ReadyActionCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            _statusLabel(room.status),
+            _statusLabel(room, participants),
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.66),
               fontSize: 14,
@@ -397,6 +426,29 @@ class _ReadyActionCard extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
+          if (room.resultText != null &&
+              room.resultText!.trim().isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.08),
+                ),
+              ),
+              child: Text(
+                room.resultText!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 18),
           SizedBox(
             width: double.infinity,
@@ -418,17 +470,47 @@ class _ReadyActionCard extends StatelessWidget {
               ),
             ),
           ),
+          if (isHost) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: canStart ? onStartRound : null,
+                icon: const Icon(Icons.local_cafe_rounded),
+                label: const Text('Avvia sorteggio'),
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 
-  String _statusLabel(BreakRoomStatus status) {
-    switch (status) {
+  bool _canStartRound(List<BreakParticipant> participants) {
+    if (participants.length < 2) {
+      return false;
+    }
+
+    return participants.every((participant) => participant.isReady);
+  }
+
+  String _statusLabel(
+    BreakRoom room,
+    List<BreakParticipant> participants,
+  ) {
+    switch (room.status) {
       case BreakRoomStatus.waiting:
-        return 'La stanza è in attesa. Quando siete pronti, confermate la partecipazione.';
+        if (participants.length < 2) {
+          return 'Servono almeno due partecipanti per avviare il sorteggio.';
+        }
+
+        if (!_canStartRound(participants)) {
+          return 'La stanza è in attesa. Tutti devono confermare “Sono pronto”.';
+        }
+
+        return 'Tutti pronti. L’host può avviare il sorteggio.';
       case BreakRoomStatus.running:
-        return 'La sfida è in corso.';
+        return 'La sfida è in corso. Il risultato è sincronizzato per tutti.';
       case BreakRoomStatus.completed:
         return 'La sfida è terminata.';
     }
