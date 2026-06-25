@@ -5,6 +5,7 @@ import '../domain/models/break_participant.dart';
 import '../domain/models/break_room.dart';
 import 'widgets/break_result_animation.dart';
 import 'package:flutter/services.dart';
+import 'challenge/challenge_page.dart';
 
 class BreakRoomPage extends StatefulWidget {
   final BreakRoom room;
@@ -64,6 +65,28 @@ class _BreakRoomPageState extends State<BreakRoomPage> {
         ),
       );
     }
+  }
+
+  Future<void> _openChallenge({
+    required BreakRoom room,
+    required List<BreakParticipant> participants,
+  }) async {
+    if (room.selectedPayerId == null ||
+        room.roundSeed == null ||
+        room.resultText == null) {
+      return;
+    }
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => ChallengePage(
+          participants: participants,
+          selectedPayerId: room.selectedPayerId!,
+          roundSeed: room.roundSeed!,
+          resultText: room.resultText!,
+        ),
+      ),
+    );
   }
 
   Future<void> _resetRound() async {
@@ -169,6 +192,10 @@ class _BreakRoomPageState extends State<BreakRoomPage> {
                           onToggleReady: _toggleReady,
                           onStartRound: _startRound,
                           onResetRound: _resetRound,
+                          onOpenChallenge: () => _openChallenge(
+                            room: currentRoom,
+                            participants: participants,
+                          ),
                         ),
                       ],
                     );
@@ -423,6 +450,7 @@ class _ReadyActionCard extends StatelessWidget {
   }) onToggleReady;
   final Future<void> Function() onStartRound;
   final Future<void> Function() onResetRound;
+  final Future<void> Function() onOpenChallenge;
 
   const _ReadyActionCard({
     required this.room,
@@ -432,6 +460,7 @@ class _ReadyActionCard extends StatelessWidget {
     required this.onToggleReady,
     required this.onStartRound,
     required this.onResetRound,
+    required this.onOpenChallenge,
   });
 
   @override
@@ -482,6 +511,20 @@ class _ReadyActionCard extends StatelessWidget {
               selectedPayerId: room.selectedPayerId!,
               roundSeed: room.roundSeed!,
               resultText: room.resultText!,
+            ),
+          ],
+          if (room.status == BreakRoomStatus.completed &&
+              room.selectedPayerId != null &&
+              room.roundSeed != null &&
+              room.resultText != null) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: onOpenChallenge,
+                icon: const Icon(Icons.sports_score_rounded),
+                label: const Text('Guarda la gara'),
+              ),
             ),
           ],
           const SizedBox(height: 18),
