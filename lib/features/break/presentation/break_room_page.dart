@@ -4,6 +4,7 @@ import '../di/break_dependencies.dart';
 import '../domain/models/break_participant.dart';
 import '../domain/models/break_room.dart';
 import 'widgets/break_result_animation.dart';
+import 'package:flutter/services.dart';
 
 class BreakRoomPage extends StatefulWidget {
   final BreakRoom room;
@@ -81,6 +82,20 @@ class _BreakRoomPageState extends State<BreakRoomPage> {
     }
   }
 
+  Future<void> _copyRoomCode(String roomCode) async {
+    await Clipboard.setData(
+      ClipboardData(text: roomCode),
+    );
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Codice stanza copiato.'),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final dependencies = BreakDependencies.instance;
@@ -136,7 +151,10 @@ class _BreakRoomPageState extends State<BreakRoomPage> {
                           ),
                         ),
                         const SizedBox(height: 24),
-                        _RoomCodeCard(room: currentRoom),
+                        _RoomCodeCard(
+                          room: currentRoom,
+                          onCopyCode: () => _copyRoomCode(currentRoom.roomCode),
+                        ),
                         const SizedBox(height: 20),
                         _ParticipantsCard(
                           participants: participants,
@@ -180,9 +198,11 @@ class _BreakRoomPageState extends State<BreakRoomPage> {
 
 class _RoomCodeCard extends StatelessWidget {
   final BreakRoom room;
+  final VoidCallback onCopyCode;
 
   const _RoomCodeCard({
     required this.room,
+    required this.onCopyCode,
   });
 
   @override
@@ -215,6 +235,12 @@ class _RoomCodeCard extends StatelessWidget {
               fontWeight: FontWeight.w900,
               letterSpacing: 1.2,
             ),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: onCopyCode,
+            icon: const Icon(Icons.copy_rounded),
+            label: const Text('Copia codice'),
           ),
           const SizedBox(height: 18),
           Text(
