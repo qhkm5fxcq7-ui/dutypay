@@ -129,17 +129,43 @@ class _BreakPageState extends State<BreakPage> {
   }
 
   Future<void> _handleJoinRoom() async {
+    final roomCode = _roomCodeController.text.trim().toUpperCase();
+
+    if (roomCode.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Inserisci un codice stanza.'),
+        ),
+      );
+      return;
+    }
+
     final nickname = await _ensureNickname();
 
     if (nickname == null) return;
 
-    if (!mounted) return;
+    try {
+      final room = await BreakDependencies.instance.joinRoomUseCase.execute(
+        roomCode: roomCode,
+        nickname: nickname,
+      );
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Nickname salvato: $nickname'),
-      ),
-    );
+      if (!mounted) return;
+
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => BreakRoomPage(room: room),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Stanza non trovata o non più disponibile.'),
+        ),
+      );
+    }
   }
 
   @override
