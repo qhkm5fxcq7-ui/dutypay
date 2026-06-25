@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../di/break_dependencies.dart';
+import 'break_room_page.dart';
 
 class BreakPage extends StatefulWidget {
   const BreakPage({super.key});
@@ -106,13 +107,25 @@ class _BreakPageState extends State<BreakPage> {
 
     if (nickname == null) return;
 
-    if (!mounted) return;
+    try {
+      final room = await BreakDependencies.instance.createRoomUseCase.execute();
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Nickname salvato: $nickname'),
-      ),
-    );
+      if (!mounted) return;
+
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => BreakRoomPage(room: room),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Non sono riuscito a creare la stanza. Riprova.'),
+        ),
+      );
+    }
   }
 
   Future<void> _handleJoinRoom() async {
