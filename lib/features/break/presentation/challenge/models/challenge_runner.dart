@@ -30,13 +30,14 @@ class ChallengeRunner {
 
   ChallengeRunner copyWith({
     double? position,
+    bool? isWinner,
   }) {
     return ChallengeRunner(
       id: id,
       displayName: displayName,
       lane: lane,
       position: position ?? this.position,
-      isWinner: isWinner,
+      isWinner: isWinner ?? this.isWinner,
     );
   }
 }

@@ -7,6 +7,7 @@ import '../challenge/engine/challenge_state.dart';
 import '../challenge/models/challenge_runner.dart';
 import '../challenge/widgets/challenge_countdown.dart';
 import '../challenge/widgets/challenge_result.dart';
+import '../challenge/widgets/challenge_track.dart';
 
 class ChallengePage extends StatefulWidget {
   final List<BreakParticipant> participants;
@@ -29,7 +30,7 @@ class ChallengePage extends StatefulWidget {
 class _ChallengePageState extends State<ChallengePage> {
   ChallengeState _state = ChallengeState.countdown;
   int _countdownValue = 3;
-  late final List<ChallengeRunner> _runners;
+  late List<ChallengeRunner> _runners;
 
   @override
   void initState() {
@@ -56,7 +57,22 @@ class _ChallengePageState extends State<ChallengePage> {
       _state = ChallengeState.running;
     });
 
-    await Future<void>.delayed(const Duration(milliseconds: 1800));
+    for (var step = 0; step <= 20; step++) {
+      if (!mounted) return;
+
+      final progress = step / 20;
+
+      setState(() {
+        _runners = _runners.map((runner) {
+          final targetProgress =
+              runner.isWinner ? progress : (progress * 0.86).clamp(0.0, 0.92);
+
+          return runner.copyWith(position: targetProgress);
+        }).toList();
+      });
+
+      await Future<void>.delayed(const Duration(milliseconds: 110));
+    }
 
     if (!mounted) return;
 
@@ -107,10 +123,9 @@ class _ChallengePageState extends State<ChallengePage> {
           value: _countdownValue,
         );
       case ChallengeState.running:
-        return _ChallengePlaceholder(
+        return ChallengeTrack(
           key: const ValueKey('running'),
-          title: 'Gara in corso...',
-          subtitle: '${_runners.length} colleghi in pista',
+          runners: _runners,
         );
       case ChallengeState.finished:
         return _ChallengePlaceholder(
