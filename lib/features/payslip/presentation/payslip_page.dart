@@ -177,8 +177,8 @@ class _PayslipPageState extends State<PayslipPage> {
 
     final basketHours = _readBasketResidualHours(projection);
     final basketGross = _readBasketResidualGross(projection);
-    final basketRecoveredHours = _readBasketRecoveredHours(projection);
-    final basketRecoveredGross = _readBasketRecoveredGross(projection);
+    final basketRecoveredHours = _readBasketMaturedHours(projection);
+    final basketRecoveredGross = _readBasketMaturedGross(projection);
     final basketPaidThisMonthHours =
         _readManualBasketPaidHoursForMonth(projection);
     final basketPaidThisMonthGross =
@@ -1286,6 +1286,26 @@ _MinimalActionRow(
     );
   }
 
+  double _readBasketMaturedHours(PayslipProjectionResult projection) {
+  final dynamic p = projection;
+  return _readFirstDouble(
+    [
+      () => p.overtimeInBasketHours,
+    ],
+    fallback: 0,
+  );
+}
+
+double _readBasketMaturedGross(PayslipProjectionResult projection) {
+  final dynamic p = projection;
+  return _readFirstDouble(
+    [
+      () => p.overtimeInBasketGross,
+    ],
+    fallback: 0,
+  );
+}
+
   double _readManualBasketPaidHoursForMonth(PayslipProjectionResult projection) {
     final dynamic p = projection;
     return _readFirstDouble(
@@ -2140,7 +2160,7 @@ class _BasketCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _MetricBlock(
-                  label: 'Ore maturate',
+                  label: 'Ore a basket',
                   value: _PayslipPageState._formatHours(recoveredHours),
                   tone: _MetricTone.positive,
                 ),
@@ -2148,7 +2168,7 @@ class _BasketCard extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: _MetricBlock(
-                  label: 'Lordo maturato',
+                  label: 'Lordo a basket',
                   value: _PayslipPageState._currency(recoveredGross),
                   tone: _MetricTone.positive,
                 ),
