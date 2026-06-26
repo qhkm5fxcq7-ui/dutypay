@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -32,24 +34,36 @@ import 'features/shifts/presentation/services/payslip_projection_service.dart';
 import 'features/shifts/application/usecases/manage_compensative_basket_adjustments_usecase.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  runZonedGuarded<Future<void>>(() async {
+    WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: const FirebaseOptions(
-      apiKey: 'AIzaSyAes2ptObzGaej5sNI5WoOkwTqSI0iZx_U',
-      appId: '1:1069881451179:ios:85c0f7fb753eaf195c4dee',
-      messagingSenderId: '1069881451179',
-      projectId: 'dutypay-ec498',
-      storageBucket: 'dutypay-ec498.firebasestorage.app',
-      iosBundleId: 'com.dutypay.app',
-    ),
-  );
+    await Firebase.initializeApp(
+      options: const FirebaseOptions(
+        apiKey: 'AIzaSyAes2ptObzGaej5sNI5WoOkwTqSI0iZx_U',
+        appId: '1:1069881451179:ios:85c0f7fb753eaf195c4dee',
+        messagingSenderId: '1069881451179',
+        projectId: 'dutypay-ec498',
+        storageBucket: 'dutypay-ec498.firebasestorage.app',
+        iosBundleId: 'com.dutypay.app',
+      ),
+    );
 
-  await FirebaseAnalytics.instance.logAppOpen();
+    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
 
-  runApp(const DutyPayApp());
+    PlatformDispatcher.instance.onError = (error, stack) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      return true;
+    };
+
+    await FirebaseAnalytics.instance.logAppOpen();
+
+    runApp(const DutyPayApp());
+  }, (error, stack) {
+    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+  });
 }
 
 class DutyPayApp extends StatefulWidget {
