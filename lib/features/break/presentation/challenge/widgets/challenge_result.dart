@@ -26,8 +26,8 @@ class ChallengeResult extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              '☕',
-              style: TextStyle(fontSize: 52),
+              '😂',
+              style: TextStyle(fontSize: 58),
             ),
             const SizedBox(height: 14),
             Text(

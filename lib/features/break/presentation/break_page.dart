@@ -228,7 +228,7 @@ class _BreakPageState extends State<BreakPage> {
         padding: const EdgeInsets.fromLTRB(20, 18, 20, 110),
         children: [
           const Text(
-            'Break',
+            'Chi offre?',
             style: TextStyle(
               fontSize: 30,
               fontWeight: FontWeight.w900,
@@ -237,7 +237,7 @@ class _BreakPageState extends State<BreakPage> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Crea una stanza con i colleghi e scopri chi offre il caffè.',
+            'Crea una stanza con i colleghi e scopri chi offre.',
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.68),
               fontSize: 14.5,
@@ -270,7 +270,7 @@ class _BreakPageState extends State<BreakPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  '☕ Chi paga il caffè',
+                  '☕ Chi offre?',
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w900,

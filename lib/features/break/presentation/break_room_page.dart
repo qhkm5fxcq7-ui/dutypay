@@ -137,7 +137,7 @@ class _BreakRoomPageState extends State<BreakRoomPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Break'),
+        title: const Text('Chi offre?'),
       ),
       body: SafeArea(
         child: FutureBuilder<String>(
@@ -190,7 +190,7 @@ class _BreakRoomPageState extends State<BreakRoomPage> {
                       padding: const EdgeInsets.fromLTRB(20, 18, 20, 110),
                       children: [
                         const Text(
-                          'Stanza Break',
+                          'Operazione Caffè',
                           style: TextStyle(
                             fontSize: 30,
                             fontWeight: FontWeight.w900,
@@ -574,7 +574,7 @@ class _ReadyActionCard extends StatelessWidget {
               child: OutlinedButton.icon(
                 onPressed: canStart ? onStartRound : null,
                 icon: const Icon(Icons.rocket_launch_rounded),
-                label: const Text('Avvia gara'),
+                label: const Text('☕ Inizia Operazione Caffè'),
               ),
             ),
             if (isHost && room.status == BreakRoomStatus.completed) ...[

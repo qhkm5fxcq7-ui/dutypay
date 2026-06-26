@@ -127,7 +127,7 @@ class _ChallengePageState extends State<ChallengePage> {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('Break Challenge'),
+        title: const Text('Operazione Caffè'),
       ),
       body: SafeArea(
         child: AnimatedSwitcher(
@@ -153,8 +153,8 @@ class _ChallengePageState extends State<ChallengePage> {
       case ChallengeState.finished:
         return _ChallengePlaceholder(
           key: const ValueKey('finished'),
-          title: 'Traguardo raggiunto',
-          subtitle: 'Calcolo risultato...',
+          title: 'Operazione completata',
+          subtitle: 'Calcolo chi offre il caffè...',
         );
       case ChallengeState.completed:
         return ChallengeResult(
