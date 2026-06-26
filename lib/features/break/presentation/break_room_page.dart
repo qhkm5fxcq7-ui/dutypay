@@ -21,6 +21,8 @@ class BreakRoomPage extends StatefulWidget {
 
 class _BreakRoomPageState extends State<BreakRoomPage> {
   late final Future<String> _deviceIdFuture;
+  String? _challengeOpenedForResultId;
+  String? _completedChallengeResultId;
 
   @override
   void initState() {
@@ -71,9 +73,13 @@ class _BreakRoomPageState extends State<BreakRoomPage> {
     required BreakRoom room,
     required List<BreakParticipant> participants,
   }) async {
+    final resultId = room.resultId;
+
     if (room.selectedPayerId == null ||
         room.roundSeed == null ||
-        room.resultText == null) {
+        room.resultText == null ||
+        resultId == null ||
+        participants.isEmpty) {
       return;
     }
 
@@ -87,6 +93,12 @@ class _BreakRoomPageState extends State<BreakRoomPage> {
         ),
       ),
     );
+
+    if (!mounted) return;
+
+    setState(() {
+      _completedChallengeResultId = resultId;
+    });
   }
 
   Future<void> _resetRound() async {
@@ -145,6 +157,28 @@ class _BreakRoomPageState extends State<BreakRoomPage> {
                   ),
                   builder: (context, participantsSnapshot) {
                     final participants = participantsSnapshot.data ?? [];
+
+                    if (currentRoom.status == BreakRoomStatus.completed &&
+                        currentRoom.resultId != null &&
+                        _challengeOpenedForResultId != currentRoom.resultId &&
+                        participantsSnapshot.hasData) {
+                      _challengeOpenedForResultId = currentRoom.resultId;
+
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (!mounted) return;
+
+                        _openChallenge(
+                          room: currentRoom,
+                          participants: participants,
+                        );
+                      });
+                    }
+
+                    if (currentRoom.status == BreakRoomStatus.waiting) {
+                      _challengeOpenedForResultId = null;
+                      _completedChallengeResultId = null;
+                    }
+
                     final currentParticipant = currentDeviceId == null
                         ? null
                         : _findCurrentParticipant(
@@ -192,10 +226,8 @@ class _BreakRoomPageState extends State<BreakRoomPage> {
                           onToggleReady: _toggleReady,
                           onStartRound: _startRound,
                           onResetRound: _resetRound,
-                          onOpenChallenge: () => _openChallenge(
-                            room: currentRoom,
-                            participants: participants,
-                          ),
+                          showResult: _completedChallengeResultId ==
+                              currentRoom.resultId,
                         ),
                       ],
                     );
@@ -450,7 +482,7 @@ class _ReadyActionCard extends StatelessWidget {
   }) onToggleReady;
   final Future<void> Function() onStartRound;
   final Future<void> Function() onResetRound;
-  final Future<void> Function() onOpenChallenge;
+  final bool showResult;
 
   const _ReadyActionCard({
     required this.room,
@@ -460,7 +492,7 @@ class _ReadyActionCard extends StatelessWidget {
     required this.onToggleReady,
     required this.onStartRound,
     required this.onResetRound,
-    required this.onOpenChallenge,
+    required this.showResult,
   });
 
   @override
@@ -501,7 +533,8 @@ class _ReadyActionCard extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
-          if (room.resultText != null &&
+          if (showResult &&
+              room.resultText != null &&
               room.resultText!.trim().isNotEmpty &&
               room.selectedPayerId != null &&
               room.roundSeed != null) ...[
@@ -511,20 +544,6 @@ class _ReadyActionCard extends StatelessWidget {
               selectedPayerId: room.selectedPayerId!,
               roundSeed: room.roundSeed!,
               resultText: room.resultText!,
-            ),
-          ],
-          if (room.status == BreakRoomStatus.completed &&
-              room.selectedPayerId != null &&
-              room.roundSeed != null &&
-              room.resultText != null) ...[
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: onOpenChallenge,
-                icon: const Icon(Icons.sports_score_rounded),
-                label: const Text('Guarda la gara'),
-              ),
             ),
           ],
           const SizedBox(height: 18),
@@ -554,8 +573,8 @@ class _ReadyActionCard extends StatelessWidget {
               width: double.infinity,
               child: OutlinedButton.icon(
                 onPressed: canStart ? onStartRound : null,
-                icon: const Icon(Icons.local_cafe_rounded),
-                label: const Text('Avvia sorteggio'),
+                icon: const Icon(Icons.rocket_launch_rounded),
+                label: const Text('Avvia gara'),
               ),
             ),
             if (isHost && room.status == BreakRoomStatus.completed) ...[
