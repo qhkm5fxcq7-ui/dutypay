@@ -1102,17 +1102,6 @@ double _totalPayableFromDailyResult(DailyShiftResult result) {
   );
 }
 
-Iterable<DailyShiftResult> _buildDailyResultsForRange(
-  Iterable<Shift> input,
-) sync* {
-  final grouped = _groupShiftsByServiceDay(input);
-
-  for (final dayShifts in grouped.values) {
-    if (dayShifts.isEmpty) continue;
-    yield _buildDailyShiftResult(dayShifts);
-  }
-}
-
 Map<String, List<Shift>> _groupShiftsByServiceDay(Iterable<Shift> input) {
   final grouped = <String, List<Shift>>{};
 
