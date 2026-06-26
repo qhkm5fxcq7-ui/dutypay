@@ -1,10 +1,14 @@
 import '../../../domain/models/break_participant.dart';
+import '../engine/challenge_frame.dart';
 
 class ChallengeRunner {
   final String id;
   final String displayName;
   final int lane;
   final double position;
+  final double jumpHeight;
+  final double rotation;
+  final RunnerAnimation animation;
   final bool isWinner;
 
   const ChallengeRunner({
@@ -12,6 +16,9 @@ class ChallengeRunner {
     required this.displayName,
     required this.lane,
     this.position = 0,
+    this.jumpHeight = 0,
+    this.rotation = 0,
+    this.animation = RunnerAnimation.idle,
     this.isWinner = false,
   });
 
@@ -30,6 +37,9 @@ class ChallengeRunner {
 
   ChallengeRunner copyWith({
     double? position,
+    double? jumpHeight,
+    double? rotation,
+    RunnerAnimation? animation,
     bool? isWinner,
   }) {
     return ChallengeRunner(
@@ -37,6 +47,9 @@ class ChallengeRunner {
       displayName: displayName,
       lane: lane,
       position: position ?? this.position,
+      jumpHeight: jumpHeight ?? this.jumpHeight,
+      rotation: rotation ?? this.rotation,
+      animation: animation ?? this.animation,
       isWinner: isWinner ?? this.isWinner,
     );
   }

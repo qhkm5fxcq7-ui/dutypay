@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../engine/challenge_frame.dart';
 import '../models/challenge_runner.dart';
 
 class ChallengeTrack extends StatelessWidget {
@@ -18,14 +19,24 @@ class ChallengeTrack extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Text(
-            '🏁 Gara a ostacoli',
+            '☕ Operazione Caffè',
             style: TextStyle(
               fontSize: 26,
               fontWeight: FontWeight.w900,
               letterSpacing: -0.6,
             ),
           ),
-          const SizedBox(height: 26),
+          const SizedBox(height: 6),
+          Text(
+            'Gli agenti corrono verso il traguardo...',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.62),
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 28),
           ...runners.map(_RunnerLane.new),
         ],
       ),
@@ -57,15 +68,29 @@ class _RunnerLane extends StatelessWidget {
           const SizedBox(height: 8),
           Stack(
             alignment: Alignment.centerLeft,
+            clipBehavior: Clip.none,
             children: [
               Container(
-                height: 44,
+                height: 48,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.06),
-                  borderRadius: BorderRadius.circular(22),
+                  color: Colors.white.withValues(alpha: 0.055),
+                  borderRadius: BorderRadius.circular(24),
                   border: Border.all(
                     color: Colors.white.withValues(alpha: 0.08),
                   ),
+                ),
+              ),
+              Positioned.fill(
+                child: Row(
+                  children: [
+                    const SizedBox(width: 92),
+                    _Obstacle(label: '🚧', visible: runner.lane.isEven),
+                    const Spacer(),
+                    _Obstacle(label: '🟧', visible: runner.lane.isOdd),
+                    const Spacer(),
+                    _Obstacle(label: '☕', visible: true),
+                    const SizedBox(width: 48),
+                  ],
                 ),
               ),
               Positioned.fill(
@@ -76,8 +101,8 @@ class _RunnerLane extends StatelessWidget {
                     child: Text(
                       '🏁',
                       style: TextStyle(
-                        fontSize: 20,
-                        color: Colors.white.withValues(alpha: 0.78),
+                        fontSize: 21,
+                        color: Colors.white.withValues(alpha: 0.82),
                       ),
                     ),
                   ),
@@ -86,31 +111,98 @@ class _RunnerLane extends StatelessWidget {
               FractionallySizedBox(
                 widthFactor: progress,
                 child: Container(
-                  height: 44,
+                  height: 48,
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(22),
+                    borderRadius: BorderRadius.circular(24),
                   ),
                 ),
               ),
               AnimatedAlign(
-                duration: const Duration(milliseconds: 220),
+                duration: const Duration(milliseconds: 115),
                 curve: Curves.easeOutCubic,
                 alignment: Alignment(
                   -1 + (progress * 1.82),
                   0,
                 ),
-                child: const Padding(
-                  padding: EdgeInsets.only(left: 8),
-                  child: Text(
-                    '👮‍♂️',
-                    style: TextStyle(fontSize: 28),
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: Transform.translate(
+                    offset: Offset(0, -runner.jumpHeight),
+                    child: Transform.rotate(
+                      angle: runner.rotation,
+                      child: AnimatedScale(
+                        duration: const Duration(milliseconds: 115),
+                        scale: _scaleFor(runner.animation),
+                        child: Text(
+                          _runnerIcon(runner.animation),
+                          style: const TextStyle(fontSize: 29),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  double _scaleFor(RunnerAnimation animation) {
+    switch (animation) {
+      case RunnerAnimation.sprint:
+        return 1.12;
+      case RunnerAnimation.jump:
+        return 1.08;
+      case RunnerAnimation.stumble:
+        return 0.94;
+      case RunnerAnimation.celebrate:
+        return 1.18;
+      case RunnerAnimation.lose:
+        return 0.92;
+      case RunnerAnimation.idle:
+      case RunnerAnimation.run:
+        return 1;
+    }
+  }
+
+  String _runnerIcon(RunnerAnimation animation) {
+    switch (animation) {
+      case RunnerAnimation.sprint:
+        return '👮‍♂️💨';
+      case RunnerAnimation.jump:
+        return '👮‍♂️';
+      case RunnerAnimation.stumble:
+        return '🫨';
+      case RunnerAnimation.celebrate:
+        return '👮‍♂️🎉';
+      case RunnerAnimation.lose:
+        return '😵‍💫';
+      case RunnerAnimation.idle:
+      case RunnerAnimation.run:
+        return '👮‍♂️';
+    }
+  }
+}
+
+class _Obstacle extends StatelessWidget {
+  final String label;
+  final bool visible;
+
+  const _Obstacle({
+    required this.label,
+    required this.visible,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Opacity(
+      opacity: visible ? 0.78 : 0,
+      child: Text(
+        label,
+        style: const TextStyle(fontSize: 18),
       ),
     );
   }

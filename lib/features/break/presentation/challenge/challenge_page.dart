@@ -111,8 +111,13 @@ class _ChallengePageState extends State<ChallengePage> {
         return runner;
       }
 
+      final frameData = runnerFrame.first;
+
       return runner.copyWith(
-        position: runnerFrame.first.position,
+        position: frameData.position,
+        jumpHeight: frameData.jumpHeight,
+        rotation: frameData.rotation,
+        animation: frameData.animation,
       );
     }).toList();
   }
