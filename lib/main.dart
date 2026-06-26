@@ -756,7 +756,7 @@ final loadedCompensativeMovements =
               .whereType<Map>()
               .map(
                 (item) => Shift.fromJson(
-                  Map<String, dynamic>.from(item as Map),
+                  Map<String, dynamic>.from(item),
                 ),
               )
               .toList();
@@ -781,7 +781,7 @@ final loadedCompensativeMovements =
         final decoded = jsonDecode(item);
         if (decoded is Map) {
           migrated.add(
-            Shift.fromJson(Map<String, dynamic>.from(decoded as Map)),
+            Shift.fromJson(Map<String, dynamic>.from(decoded)),
           );
         }
       } catch (_) {}
@@ -800,7 +800,7 @@ final loadedCompensativeMovements =
       final decoded = jsonDecode(rawProfile);
       if (decoded is Map) {
         return UserPayProfile.fromJson(
-          Map<String, dynamic>.from(decoded as Map),
+          Map<String, dynamic>.from(decoded),
         );
       }
     } catch (_) {}
@@ -818,7 +818,7 @@ final loadedCompensativeMovements =
             .whereType<Map>()
             .map(
               (item) => BasketPayment.fromJson(
-                Map<String, dynamic>.from(item as Map),
+                Map<String, dynamic>.from(item),
               ),
             )
             .toList()
@@ -839,7 +839,7 @@ final loadedCompensativeMovements =
             .whereType<Map>()
             .map(
               (item) => RfiBasketPayment.fromJson(
-                Map<String, dynamic>.from(item as Map),
+                Map<String, dynamic>.from(item),
               ),
             )
             .toList()
@@ -860,7 +860,7 @@ List<OvertimeBasketAdjustment> _loadOvertimeBasketAdjustments(String? raw) {
           .whereType<Map>()
           .map(
             (item) => OvertimeBasketAdjustment.fromJson(
-              Map<String, dynamic>.from(item as Map),
+              Map<String, dynamic>.from(item),
             ),
           )
           .toList()
