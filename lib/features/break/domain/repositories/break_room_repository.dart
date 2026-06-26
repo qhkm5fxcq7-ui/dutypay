@@ -4,6 +4,7 @@ import '../models/break_room.dart';
 abstract interface class BreakRoomRepository {
   Future<BreakRoom> createRoom({
     String? title,
+    String? customRoomCode,
   });
 
   Future<BreakRoom> joinRoom({

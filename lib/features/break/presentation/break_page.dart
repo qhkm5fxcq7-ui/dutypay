@@ -12,6 +12,8 @@ class BreakPage extends StatefulWidget {
 
 class _BreakPageState extends State<BreakPage> {
   final _roomCodeController = TextEditingController();
+  final _nicknameController = TextEditingController();
+  final _customRoomCodeController = TextEditingController();
   String? _nickname;
   bool _isLoadingIdentity = true;
 
@@ -24,6 +26,8 @@ class _BreakPageState extends State<BreakPage> {
   @override
   void dispose() {
     _roomCodeController.dispose();
+    _nicknameController.dispose();
+    _customRoomCodeController.dispose();
     super.dispose();
   }
 
@@ -44,7 +48,7 @@ class _BreakPageState extends State<BreakPage> {
       return _nickname;
     }
 
-    final controller = TextEditingController();
+    _nicknameController.clear();
 
     final nickname = await showDialog<String>(
       context: context,
@@ -53,7 +57,7 @@ class _BreakPageState extends State<BreakPage> {
         return AlertDialog(
           title: const Text('Scegli un nickname'),
           content: TextField(
-            controller: controller,
+            controller: _nicknameController,
             autofocus: true,
             maxLength: 18,
             textCapitalization: TextCapitalization.words,
@@ -62,7 +66,7 @@ class _BreakPageState extends State<BreakPage> {
               hintText: 'Es. Marco RM',
             ),
             onSubmitted: (_) {
-              final value = controller.text.trim();
+              final value = _nicknameController.text.trim();
               if (value.isNotEmpty) {
                 Navigator.of(context).pop(value);
               }
@@ -71,7 +75,7 @@ class _BreakPageState extends State<BreakPage> {
           actions: [
             FilledButton(
               onPressed: () {
-                final value = controller.text.trim();
+                final value = _nicknameController.text.trim();
                 if (value.isNotEmpty) {
                   Navigator.of(context).pop(value);
                 }
@@ -82,8 +86,6 @@ class _BreakPageState extends State<BreakPage> {
         );
       },
     );
-
-    controller.dispose();
 
     if (nickname == null || nickname.trim().isEmpty) {
       return null;
@@ -102,13 +104,60 @@ class _BreakPageState extends State<BreakPage> {
     return saved.nickname;
   }
 
+  Future<String?> _askCustomRoomCode() async {
+    _customRoomCodeController.clear();
+
+    return showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Codice stanza'),
+          content: TextField(
+            controller: _customRoomCodeController,
+            autofocus: true,
+            maxLength: 12,
+            textCapitalization: TextCapitalization.characters,
+            decoration: const InputDecoration(
+              labelText: 'Codice personalizzato',
+              hintText: 'Es. CAFFE, VOLANTE, NOTTE',
+              helperText: 'Lascia vuoto per generarlo automaticamente.',
+            ),
+            onSubmitted: (_) {
+              Navigator.of(context).pop(
+                _customRoomCodeController.text.trim().toUpperCase(),
+              );
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(null),
+              child: const Text('Automatico'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.of(context).pop(
+                  _customRoomCodeController.text.trim().toUpperCase(),
+                );
+              },
+              child: const Text('Crea'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _handleCreateRoom() async {
     final nickname = await _ensureNickname();
 
     if (nickname == null) return;
 
+    final customRoomCode = await _askCustomRoomCode();
+
     try {
-      final room = await BreakDependencies.instance.createRoomUseCase.execute();
+      final room = await BreakDependencies.instance.createRoomUseCase.execute(
+        customRoomCode: customRoomCode,
+      );
 
       if (!mounted) return;
 
@@ -122,7 +171,9 @@ class _BreakPageState extends State<BreakPage> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Non sono riuscito a creare la stanza. Riprova.'),
+          content: Text(
+            'Codice non valido, già usato o errore nella creazione stanza.',
+          ),
         ),
       );
     }

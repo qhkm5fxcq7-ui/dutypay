@@ -24,11 +24,18 @@ class FirestoreBreakRoomRepository implements BreakRoomRepository {
   @override
   Future<BreakRoom> createRoom({
     String? title,
+    String? customRoomCode,
   }) async {
     final identity = await identityRepository.getOrCreateIdentity();
     final now = DateTime.now();
     final roomId = uuid.v4();
-    final roomCode = codeGenerator.generateRoomCode();
+    final roomCode = _resolveRoomCode(customRoomCode);
+
+    final existingRoomId = await datasource.resolveRoomIdByCode(roomCode);
+
+    if (existingRoomId != null) {
+      throw StateError('Codice stanza già utilizzato');
+    }
 
     final room = BreakRoom(
       id: roomId,
@@ -192,6 +199,24 @@ class FirestoreBreakRoomRepository implements BreakRoomRepository {
 
     if (cleaned.isEmpty) {
       return 'Collega';
+    }
+
+    return cleaned;
+  }
+
+  String _resolveRoomCode(String? customRoomCode) {
+    final cleaned = customRoomCode?.trim().toUpperCase() ?? '';
+
+    if (cleaned.isEmpty) {
+      return codeGenerator.generateRoomCode();
+    }
+
+    final validCode = RegExp(r'^[A-Z0-9]{3,12}$').hasMatch(cleaned);
+
+    if (!validCode) {
+      throw ArgumentError(
+        'Il codice stanza deve avere 3-12 caratteri e contenere solo lettere o numeri',
+      );
     }
 
     return cleaned;

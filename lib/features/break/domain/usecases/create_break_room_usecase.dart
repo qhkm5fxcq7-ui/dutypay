@@ -8,7 +8,11 @@ class CreateBreakRoomUseCase {
 
   Future<BreakRoom> execute({
     String? title,
+    String? customRoomCode,
   }) {
-    return repository.createRoom(title: title);
+    return repository.createRoom(
+      title: title,
+      customRoomCode: customRoomCode,
+    );
   }
 }
