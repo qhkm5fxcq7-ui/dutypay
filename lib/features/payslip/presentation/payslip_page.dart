@@ -180,11 +180,7 @@ class _PayslipPageState extends State<PayslipPage> {
         _readManualBasketPaidGrossForMonth(projection);
 
     final rfiBasketGross = _readRfiBasketGross(projection);
-    final rfiBasketHours = _readRfiBasketHours(projection);
-    final rfiResidualHours = _readRfiBasketResidualHours(projection);
     final rfiResidualGross = _readRfiBasketResidualGross(projection);
-    final rfiPaidThisMonthHours =
-        _readManualRfiBasketPaidHoursForMonth(projection);
     final rfiPaidThisMonthGross =
         _readManualRfiBasketPaidGrossForMonth(projection);
 
