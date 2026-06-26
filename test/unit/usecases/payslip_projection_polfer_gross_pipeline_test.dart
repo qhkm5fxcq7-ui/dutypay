@@ -4,10 +4,6 @@ import 'package:dutypay/features/shifts/presentation/services/payslip_parser_ser
 import 'package:dutypay/features/shifts/presentation/models/department.dart';
 import 'package:dutypay/features/shifts/presentation/models/shift.dart';
 import 'package:dutypay/features/shifts/presentation/models/user_pay_profile.dart';
-import 'package:dutypay/features/shifts/presentation/models/shift.dart'
-    show PolferTerritoryControlType, PolferScaloMode;
-import 'package:dutypay/features/shifts/presentation/services/payslip_projection_service.dart'
-    show RfiBasketPayment;
 
 void main() {
   const service = PayslipProjectionService();
