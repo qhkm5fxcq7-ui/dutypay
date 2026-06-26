@@ -134,8 +134,8 @@ class _RunnerLane extends StatelessWidget {
                 ),
               ),
               AnimatedAlign(
-                duration: const Duration(milliseconds: 115),
-                curve: Curves.easeOutCubic,
+                duration: const Duration(milliseconds: 150),
+                curve: _curveFor(runner.animation),
                 alignment: Alignment(
                   -1 + (progress * 1.82),
                   0,
@@ -180,6 +180,22 @@ class _RunnerLane extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Curve _curveFor(RunnerAnimation animation) {
+    switch (animation) {
+      case RunnerAnimation.sprint:
+      case RunnerAnimation.celebrate:
+        return Curves.easeOutBack;
+      case RunnerAnimation.stumble:
+      case RunnerAnimation.lose:
+        return Curves.easeInOutCubic;
+      case RunnerAnimation.jump:
+        return Curves.easeOutQuad;
+      case RunnerAnimation.idle:
+      case RunnerAnimation.run:
+        return Curves.easeOutCubic;
+    }
   }
 
   double _scaleFor(RunnerAnimation animation) {
