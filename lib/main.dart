@@ -40,15 +40,17 @@ Future<void> main() async {
   runZonedGuarded<Future<void>>(() async {
     WidgetsFlutterBinding.ensureInitialized();
 
-    await Firebase.initializeApp(
-      options: const FirebaseOptions(
-        apiKey: 'AIzaSyAes2ptObzGaej5sNI5WoOkwTqSI0iZx_U',
-        appId: '1:1069881451179:android:42bca9f5105e812b5c4dee',
-        messagingSenderId: '1069881451179',
-        projectId: 'dutypay-ec498',
-        storageBucket: 'dutypay-ec498.firebasestorage.app',
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: const FirebaseOptions(
+          apiKey: 'AIzaSyAes2ptObzGaej5sNI5WoOkwTqSI0iZx_U',
+          appId: '1:1069881451179:android:42bca9f5105e812b5c4dee',
+          messagingSenderId: '1069881451179',
+          projectId: 'dutypay-ec498',
+          storageBucket: 'dutypay-ec498.firebasestorage.app',
         ),
-    );
+      );
+    }
 
     FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
 
