@@ -502,7 +502,6 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
   static const String _legacyPayProfileStorageKey = 'dutypay_pay_profile';
   static const String _legacyBasketPaymentsStorageKey =
       'dutypay_basket_payments';
-  static const String _legacyMonthNotesStorageKey = 'dutypay_month_notes';
 
   String get _storageScope => widget.activeDepartment.id;
   String get shiftsStorageKey => 'dutypay_shifts_$_storageScope';
