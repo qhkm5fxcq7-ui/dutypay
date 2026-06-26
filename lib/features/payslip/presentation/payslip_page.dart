@@ -2,14 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../shifts/presentation/services/payslip_projection_service.dart';
 import '../../shifts/domain/engine/models/rfi_basket_open_entry.dart';
-import '../../shifts/domain/engine/models/rfi_basket_paid_entry.dart';
-import '../../shifts/domain/engine/models/basket_carry_entry.dart';
 import '../../shifts/domain/engine/models/precision_status.dart';
 import '../../shifts/domain/engine/models/payslip_projection_result.dart';
-import '../../shifts/domain/engine/models/basket_payment.dart';
-import '../../shifts/domain/engine/models/rfi_basket_payment.dart';
 import '../../shifts/application/models/compensative_basket_movement.dart';
 
 class PayslipPage extends StatefulWidget {

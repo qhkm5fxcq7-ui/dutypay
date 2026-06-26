@@ -1,4 +1,3 @@
-import '../models/payslip_extract_result.dart';
 import '../models/user_pay_profile.dart';
 
 class DutyPayEngine {
@@ -9,8 +8,7 @@ class DutyPayEngine {
     final averageOperationalAccessoriesGross = profile.averageAccessoryPay;
     final recurringRealDeductions = profile.recurringDeductionsTotal;
 
-    final grossTotal =
-        baseGrossMonthly + averageOperationalAccessoriesGross;
+    final grossTotal = baseGrossMonthly + averageOperationalAccessoriesGross;
 
     final estimatedTaxAmount = grossTotal * profile.effectiveTaxRate;
     final estimatedNetBeforeRealDeductions = grossTotal - estimatedTaxAmount;
@@ -173,10 +171,7 @@ class DutyPayEngine {
   }
 
   String _cleanDescription(String value) {
-    return value
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .replaceAll("'", '')
-        .trim();
+    return value.replaceAll(RegExp(r'\s+'), ' ').replaceAll("'", '').trim();
   }
 }
 
