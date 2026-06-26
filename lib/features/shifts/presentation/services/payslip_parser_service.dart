@@ -329,14 +329,6 @@ overtimeNightAndHolidayRate:
     );
   }
 
-  void _printLongText(String text) {
-    const chunkSize = 800;
-    for (int i = 0; i < text.length; i += chunkSize) {
-      final end = (i + chunkSize < text.length) ? i + chunkSize : text.length;
-      print(text.substring(i, end));
-    }
-  }
-
     List<PayslipEntry> _extractFixedEntries(String flatText) {
     final results = <PayslipEntry>[];
 
