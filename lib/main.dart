@@ -37,12 +37,16 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 
 Future<void> main() async {
-  runZonedGuarded<Future<void>>(() async {
-    WidgetsFlutterBinding.ensureInitialized();
+  WidgetsFlutterBinding.ensureInitialized();
 
+  var firebaseReady = false;
+
+  try {
     if (Firebase.apps.isEmpty) {
       await Firebase.initializeApp();
     }
+
+    firebaseReady = true;
 
     FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
 
@@ -52,10 +56,16 @@ Future<void> main() async {
     };
 
     await FirebaseAnalytics.instance.logAppOpen();
+  } catch (_) {
+    firebaseReady = false;
+  }
 
+  runZonedGuarded<Future<void>>(() async {
     runApp(const DutyPayApp());
   }, (error, stack) {
-    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    if (firebaseReady) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    }
   });
 }
 
