@@ -2308,9 +2308,6 @@ Future<void> _openOvertimeBasketAdjustmentDialog() async {
     final isExternal = shift.externalService;
     final hasOrderPublic =
         shift.effectiveOrderPublicLabel.trim().toLowerCase() != 'nessuno';
-    final hasTicket = shift.ticketPasto;
-final hasConforto = shift.genereDiConforto;
-final hasConfortoCdg = shift.genereDiConfortoCdg;
     Future<void> confirmDelete() async {
       final shouldDelete = await showDialog<bool>(
             context: context,
