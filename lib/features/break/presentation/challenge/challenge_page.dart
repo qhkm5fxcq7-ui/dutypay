@@ -82,7 +82,15 @@ class _ChallengePageState extends State<ChallengePage> {
       _state = ChallengeState.finished;
     });
 
-    await Future<void>.delayed(const Duration(milliseconds: 700));
+    await Future<void>.delayed(const Duration(milliseconds: 850));
+
+    if (!mounted) return;
+
+    setState(() {
+      _state = ChallengeState.suspense;
+    });
+
+    await Future<void>.delayed(const Duration(milliseconds: 1100));
 
     if (!mounted) return;
 
@@ -154,7 +162,14 @@ class _ChallengePageState extends State<ChallengePage> {
         return _ChallengePlaceholder(
           key: const ValueKey('finished'),
           title: 'Operazione completata',
-          subtitle: 'Calcolo chi offre il caffè...',
+          subtitle: 'Tutti gli agenti sono al traguardo.',
+        );
+      case ChallengeState.suspense:
+        return const _ChallengePlaceholder(
+          key: ValueKey('suspense'),
+          title: 'Chi offrirà?',
+          subtitle: 'La centrale sta confermando il risultato...',
+          icon: '☕',
         );
       case ChallengeState.completed:
         return ChallengeResult(
@@ -168,11 +183,13 @@ class _ChallengePageState extends State<ChallengePage> {
 class _ChallengePlaceholder extends StatelessWidget {
   final String title;
   final String subtitle;
+  final String icon;
 
   const _ChallengePlaceholder({
     super.key,
     required this.title,
     required this.subtitle,
+    this.icon = '🏁',
   });
 
   @override
@@ -192,9 +209,9 @@ class _ChallengePlaceholder extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              '🏁',
-              style: TextStyle(fontSize: 48),
+            Text(
+              icon,
+              style: const TextStyle(fontSize: 48),
             ),
             const SizedBox(height: 14),
             Text(
