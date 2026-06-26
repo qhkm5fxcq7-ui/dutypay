@@ -71,12 +71,27 @@ class _RunnerLane extends StatelessWidget {
             clipBehavior: Clip.none,
             children: [
               Container(
-                height: 48,
+                height: 50,
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.055),
-                  borderRadius: BorderRadius.circular(24),
+                  borderRadius: BorderRadius.circular(25),
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.08),
+                    color: Colors.white.withValues(alpha: 0.10),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.22),
+                      blurRadius: 14,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+              ),
+              Positioned.fill(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: CustomPaint(
+                    painter: _LaneMarksPainter(),
                   ),
                 ),
               ),
@@ -101,8 +116,8 @@ class _RunnerLane extends StatelessWidget {
                     child: Text(
                       '🏁',
                       style: TextStyle(
-                        fontSize: 21,
-                        color: Colors.white.withValues(alpha: 0.82),
+                        fontSize: 24,
+                        color: Colors.white.withValues(alpha: 0.88),
                       ),
                     ),
                   ),
@@ -111,7 +126,7 @@ class _RunnerLane extends StatelessWidget {
               FractionallySizedBox(
                 widthFactor: progress,
                 child: Container(
-                  height: 48,
+                  height: 50,
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(24),
@@ -127,19 +142,36 @@ class _RunnerLane extends StatelessWidget {
                 ),
                 child: Padding(
                   padding: const EdgeInsets.only(left: 8),
-                  child: Transform.translate(
-                    offset: Offset(0, -runner.jumpHeight),
-                    child: Transform.rotate(
-                      angle: runner.rotation,
-                      child: AnimatedScale(
-                        duration: const Duration(milliseconds: 115),
-                        scale: _scaleFor(runner.animation),
-                        child: Text(
-                          _runnerIcon(runner.animation),
-                          style: const TextStyle(fontSize: 29),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    clipBehavior: Clip.none,
+                    children: [
+                      Positioned(
+                        bottom: -7,
+                        child: Container(
+                          width: 24,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.30),
+                            borderRadius: BorderRadius.circular(99),
+                          ),
                         ),
                       ),
-                    ),
+                      Transform.translate(
+                        offset: Offset(0, -runner.jumpHeight),
+                        child: Transform.rotate(
+                          angle: runner.rotation,
+                          child: AnimatedScale(
+                            duration: const Duration(milliseconds: 115),
+                            scale: _scaleFor(runner.animation),
+                            child: Text(
+                              _runnerIcon(runner.animation),
+                              style: const TextStyle(fontSize: 29),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -206,4 +238,31 @@ class _Obstacle extends StatelessWidget {
       ),
     );
   }
+}
+
+class _LaneMarksPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.10)
+      ..strokeWidth = 1.2
+      ..strokeCap = StrokeCap.round;
+
+    const dashWidth = 8.0;
+    const dashSpace = 8.0;
+    final y = size.height / 2;
+
+    var x = 0.0;
+    while (x < size.width) {
+      canvas.drawLine(
+        Offset(x, y),
+        Offset((x + dashWidth).clamp(0.0, size.width), y),
+        paint,
+      );
+      x += dashWidth + dashSpace;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
