@@ -343,8 +343,27 @@ final overtimeBasketAdjustmentHours = overtimeBasketAdjustments
       (sum, item) => sum + item.hours,
     );
 
-final positiveOvertimeBasketAdjustmentHours =
-    overtimeBasketAdjustmentHours > 0 ? overtimeBasketAdjustmentHours : 0.0;
+final positiveOvertimeBasketAdjustmentHours = overtimeBasketAdjustments
+    .where(
+      (item) =>
+          !_isAfterMonth(item.month, normalizedPayslipMonth) &&
+          item.hours > 0,
+    )
+    .fold<double>(
+      0.0,
+      (sum, item) => sum + item.hours,
+    );
+
+final negativeOvertimeBasketAdjustmentHoursForMonth = overtimeBasketAdjustments
+    .where(
+      (item) =>
+          _isSameMonth(item.month, normalizedPayslipMonth) &&
+          item.hours < 0,
+    )
+    .fold<double>(
+      0.0,
+      (sum, item) => sum + item.hours.abs(),
+    );
 
 final adjustedBasketRecoveredHours = _sanitizeNonNegative(
   basketRecoveredHours + positiveOvertimeBasketAdjustmentHours,
@@ -373,8 +392,11 @@ final adjustedCurrentBasketResidualHours = _sanitizeNonNegative(
       adjustmentHoursConsumedByUnappliedPayments,
 );
 
-manualBasketPaidHoursForMonth += adjustmentHoursConsumedThisMonth;
-manualBasketPaidGrossForMonth += adjustmentGrossConsumedThisMonth;
+manualBasketPaidHoursForMonth +=
+    adjustmentHoursConsumedThisMonth + negativeOvertimeBasketAdjustmentHoursForMonth;
+manualBasketPaidGrossForMonth +=
+    adjustmentGrossConsumedThisMonth +
+    (negativeOvertimeBasketAdjustmentHoursForMonth * payProfile.overtimeDayRate);
 
 final grossPerResidualHour = currentBasketResidualHours > 0
     ? currentBasketResidualGrossEstimate / currentBasketResidualHours
