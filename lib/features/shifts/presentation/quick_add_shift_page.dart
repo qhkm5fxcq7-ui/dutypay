@@ -1512,7 +1512,7 @@ questuraOfficeOrdinaryHours:
         border: Border.all(color: _QuickAddPalette.cardBorder),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.16),
+            color: Colors.black.withValues(alpha: 0.16),
             blurRadius: 18,
             offset: const Offset(0, 10),
           ),
@@ -1761,10 +1761,10 @@ questuraOfficeOrdinaryHours:
                       vertical: 10,
                     ),
                     decoration: BoxDecoration(
-                      color: _QuickAddPalette.info.withOpacity(0.10),
+                      color: _QuickAddPalette.info.withValues(alpha: 0.10),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: _QuickAddPalette.info.withOpacity(0.24),
+                        color: _QuickAddPalette.info.withValues(alpha: 0.24),
                       ),
                     ),
                     child: const Text(
@@ -1785,10 +1785,10 @@ questuraOfficeOrdinaryHours:
                       vertical: 10,
                     ),
                     decoration: BoxDecoration(
-                      color: _QuickAddPalette.primary.withOpacity(0.10),
+                      color: _QuickAddPalette.primary.withValues(alpha: 0.10),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: _QuickAddPalette.primary.withOpacity(0.24),
+                        color: _QuickAddPalette.primary.withValues(alpha: 0.24),
                       ),
                     ),
                     child: const Text(
@@ -1819,10 +1819,10 @@ questuraOfficeOrdinaryHours:
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: _QuickAddPalette.info.withOpacity(0.10),
+        color: _QuickAddPalette.info.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: _QuickAddPalette.info.withOpacity(0.24),
+          color: _QuickAddPalette.info.withValues(alpha: 0.24),
         ),
       ),
       child: const Row(
