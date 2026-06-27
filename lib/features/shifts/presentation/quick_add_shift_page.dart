@@ -2631,13 +2631,14 @@ double _buildPreviewTotalFromBreakdown(
 
   final items = <Map<String, String>>[];
 
-if (previewShift.ordinaryHoursOverrideEnabled)
+if (previewShift.ordinaryHoursOverrideEnabled) {
   items.insert(0, {
     'label': 'Orario ordinario impostato',
     'value': _formatTimeOfDay(
       _ordinaryHoursOverrideTime,
     ),
   });
+}
   items.add({
     'label': 'Servizio ordinario',
     'value': 'Compreso nello stipendio',
