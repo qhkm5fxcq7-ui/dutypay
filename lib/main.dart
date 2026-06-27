@@ -2079,7 +2079,7 @@ _MonthlyLiveProjection _buildMonthlyLiveProjection({
 
   await showDialog(
     context: context,
-    builder: (context) {
+    builder: (dialogContext) {
       return StatefulBuilder(
         builder: (context, setModalState) {
           return AlertDialog(
@@ -2141,7 +2141,7 @@ _MonthlyLiveProjection _buildMonthlyLiveProjection({
             actions: [
               TextButton(
                 onPressed: () {
-                  Navigator.pop(context);
+                  Navigator.pop(dialogContext);
                 },
                 child: const Text('Annulla'),
               ),
@@ -2166,9 +2166,9 @@ _MonthlyLiveProjection _buildMonthlyLiveProjection({
                     movementDate: DateTime.now(),
                   );
 
-                  if (!mounted) return;
+                  if (!dialogContext.mounted) return;
 
-                  Navigator.pop(context);
+                  Navigator.pop(dialogContext);
                 },
                 child: const Text('Salva'),
               ),
@@ -2188,7 +2188,7 @@ Future<void> _openOvertimeBasketAdjustmentDialog() async {
 
   await showDialog(
     context: context,
-    builder: (context) {
+    builder: (dialogContext) {
       return StatefulBuilder(
         builder: (context, setModalState) {
           return AlertDialog(
@@ -2266,8 +2266,8 @@ Future<void> _openOvertimeBasketAdjustmentDialog() async {
                     movementDate: DateTime.now(),
                   );
 
-                  if (!mounted) return;
-                  Navigator.pop(context);
+                  if (!dialogContext.mounted) return;
+                  Navigator.pop(dialogContext);
                 },
                 child: const Text('Salva'),
               ),
