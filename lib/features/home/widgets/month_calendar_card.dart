@@ -518,7 +518,7 @@ final badgeStyle = _badgeStyle(effectiveAbsenceBadge);
                   boxShadow: day.isSelected
                       ? [
                           BoxShadow(
-                            color: const Color(0xFF5CE1A8).withOpacity(0.18),
+                            color: const Color(0xFF5CE1A8).withValues(alpha: 0.18),
                             blurRadius: 14,
                             offset: const Offset(0, 5),
                           ),
@@ -639,7 +639,7 @@ final badgeStyle = _badgeStyle(effectiveAbsenceBadge);
         borderRadius: BorderRadius.circular(999),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF5CE1A8).withOpacity(0.28),
+            color: const Color(0xFF5CE1A8).withValues(alpha: 0.28),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
