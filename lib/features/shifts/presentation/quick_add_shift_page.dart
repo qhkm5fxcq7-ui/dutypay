@@ -1871,7 +1871,7 @@ questuraOfficeOrdinaryHours:
       const SizedBox(height: 12),
 
       DropdownButtonFormField<QuesturaMode>(
-        value: _questuraMode,
+        initialValue: _questuraMode,
         dropdownColor: _QuickAddPalette.card,
         decoration: const InputDecoration(
           labelText: 'Tipo servizio',
@@ -1906,7 +1906,7 @@ questuraOfficeOrdinaryHours:
       if (_questuraMode == QuesturaMode.volanti || _isPolstrada) ...[
         const SizedBox(height: 12),
         DropdownButtonFormField<QuesturaPreset>(
-          value: _questuraPreset,
+          initialValue: _questuraPreset,
           dropdownColor: _QuickAddPalette.card,
           decoration: InputDecoration(
   labelText: _isPolstrada ? 'Preset Pattuglia' : 'Preset Volanti',
@@ -1936,7 +1936,7 @@ questuraOfficeOrdinaryHours:
         ),
         const SizedBox(height: 12),
         DropdownButtonFormField<PolferTerritoryControlType>(
-          value: _polferTerritoryControlType,
+          initialValue: _polferTerritoryControlType,
           dropdownColor: _QuickAddPalette.card,
           decoration: const InputDecoration(
             labelText: 'Controllo del territorio',
