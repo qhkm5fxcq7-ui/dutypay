@@ -50,20 +50,7 @@ class PayslipParserService {
       rawText: text,
     );
 
-  
-    for (final e in parsed.accessoryEntries) {
-      print(
-        '[ACC] code=${e.code} | desc=${e.description} | qty=${e.quantity} | unit=${e.unitAmount} | amount=${e.amount} | ref=${e.reference}',
-      );
-    }
-    
 
-    for (final e in parsed.operationalAccessoryEntries) {
-      print(
-        '[OP] code=${e.code} | desc=${e.description} | qty=${e.quantity} | unit=${e.unitAmount} | amount=${e.amount} | ref=${e.reference}',
-      );
-    }
-    
 
     return parsed;
   }
