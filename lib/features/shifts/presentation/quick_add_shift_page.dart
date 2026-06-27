@@ -2682,22 +2682,6 @@ if (previewShift.ordinaryHoursOverrideEnabled)
   return items;
 }
 
-  double _buildEnginePreviewTotal(Shift previewShift) {
-  if (previewShift.absence != 'Nessuna') {
-    return 0.0;
-  }
-
-  const useCase = BuildDailyShiftResultUseCase();
-
-  final result = useCase.execute(
-    shifts: [previewShift],
-    profile: widget.rates,
-    department: widget.activeDepartment,
-  );
-
-  return result.totalAmount;
-}
-
   @override
   Widget build(BuildContext context) {
     final previewShift = _buildShiftPreview();
