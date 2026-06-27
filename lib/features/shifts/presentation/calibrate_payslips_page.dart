@@ -565,15 +565,15 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
         );
       }
     } finally {
-      if (!mounted) return;
-
-      setState(() {
-        isExtracting[index] = false;
-        extraIncome = ShiftValueCalculator.calculateTotal(
-          shifts,
-          rates: derivedRates,
-        );
-      });
+      if (mounted) {
+        setState(() {
+          isExtracting[index] = false;
+          extraIncome = ShiftValueCalculator.calculateTotal(
+            shifts,
+            rates: derivedRates,
+          );
+        });
+      }
     }
   }
 
