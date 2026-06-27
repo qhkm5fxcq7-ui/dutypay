@@ -1961,7 +1961,7 @@ questuraOfficeOrdinaryHours:
       ],
       const SizedBox(height: 12),
 DropdownButtonFormField<QuesturaProgrammedOvertimePreset>(
-  value: _questuraProgrammedOvertimePreset,
+  initialValue: _questuraProgrammedOvertimePreset,
   dropdownColor: _QuickAddPalette.card,
   decoration: const InputDecoration(
     labelText: 'Straordinario programmato',
@@ -2037,7 +2037,7 @@ if (_programmedOvertimeEnabled) ...[
       if (_questuraMode == QuesturaMode.uffici) ...[
         const SizedBox(height: 12),
         DropdownButtonFormField<QuesturaOfficeProfile>(
-          value: _questuraOfficeProfile,
+          initialValue: _questuraOfficeProfile,
           dropdownColor: _QuickAddPalette.card,
           decoration: const InputDecoration(
             labelText: 'Profilo ufficio',
@@ -2066,7 +2066,7 @@ if (_programmedOvertimeEnabled) ...[
 
       const SizedBox(height: 12),
       DropdownButtonFormField<String>(
-        value: _selectedOrderPublic,
+        initialValue: _selectedOrderPublic,
         dropdownColor: _QuickAddPalette.card,
         decoration: const InputDecoration(
           labelText: 'Ordine pubblico',
