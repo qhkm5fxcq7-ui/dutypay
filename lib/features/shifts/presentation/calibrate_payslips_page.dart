@@ -1917,8 +1917,12 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
     final loadedCount = selectedPdfNames.where((e) => e != null).length;
     final parsedCount = parsedPayslips.where((e) => e != null).length;
 
-    return WillPopScope(
-      onWillPop: _handleBackNavigation,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        await _handleBackNavigation();
+      },
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Calibrazione cedolini'),
