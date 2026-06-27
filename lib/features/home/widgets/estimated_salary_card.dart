@@ -44,7 +44,7 @@ class EstimatedSalaryCard extends StatelessWidget {
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: Colors.greenAccent.withOpacity(0.25),
+          color: Colors.greenAccent.withValues(alpha: 0.25),
         ),
       ),
       child: Column(
@@ -58,7 +58,7 @@ class EstimatedSalaryCard extends StatelessWidget {
                     Text(
                       'Proiezione mese',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.75),
+                        color: Colors.white.withValues(alpha: 0.75),
                         fontSize: 15,
                         fontWeight: FontWeight.w500,
                       ),
@@ -67,7 +67,7 @@ class EstimatedSalaryCard extends StatelessWidget {
                     _buildBadge(
                       label: 'ORA',
                       textColor: const Color(0xFF4ADE80),
-                      backgroundColor: const Color(0xFF22C55E).withOpacity(0.12),
+                      backgroundColor: const Color(0xFF22C55E).withValues(alpha: 0.12),
                     ),
                   ],
                 ),
@@ -75,7 +75,7 @@ class EstimatedSalaryCard extends StatelessWidget {
               Text(
                 monthLabel,
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.60),
+                  color: Colors.white.withValues(alpha: 0.60),
                   fontSize: 13,
                 ),
               ),
@@ -85,7 +85,7 @@ class EstimatedSalaryCard extends StatelessWidget {
           Text(
             'Soldi che stai accumulando con i turni di questo mese',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.65),
+              color: Colors.white.withValues(alpha: 0.65),
               fontSize: 13,
             ),
           ),
@@ -114,7 +114,7 @@ class EstimatedSalaryCard extends StatelessWidget {
               '$workedDays giorno${workedDays == 1 ? '' : 'i'} lavorato${workedDays == 1 ? '' : 'i'} su $totalDays',
               style: TextStyle(
                 fontSize: 13,
-                color: Colors.white.withOpacity(0.70),
+                color: Colors.white.withValues(alpha: 0.70),
               ),
             ),
             const SizedBox(height: 6),
@@ -122,7 +122,7 @@ class EstimatedSalaryCard extends StatelessWidget {
               'Media giornaliera: € ${avgPerDay.toStringAsFixed(2)}',
               style: TextStyle(
                 fontSize: 13,
-                color: Colors.white.withOpacity(0.70),
+                color: Colors.white.withValues(alpha: 0.70),
               ),
             ),
             const SizedBox(height: 6),
@@ -139,7 +139,7 @@ class EstimatedSalaryCard extends StatelessWidget {
               'Nessun turno inserito per questo mese',
               style: TextStyle(
                 fontSize: 13,
-                color: Colors.white.withOpacity(0.70),
+                color: Colors.white.withValues(alpha: 0.70),
               ),
             ),
           ],
@@ -147,7 +147,7 @@ class EstimatedSalaryCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
             decoration: BoxDecoration(
-              color: const Color(0xFF22C55E).withOpacity(0.12),
+              color: const Color(0xFF22C55E).withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Text(
@@ -197,7 +197,7 @@ class EstimatedSalaryCard extends StatelessWidget {
             child: Text(
               label,
               style: TextStyle(
-                color: Colors.white.withOpacity(0.78),
+                color: Colors.white.withValues(alpha: 0.78),
                 fontSize: 14,
               ),
             ),
