@@ -1108,9 +1108,9 @@ class _CalibratePayslipsPageState extends State<CalibratePayslipsPage> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.10),
+                color: Colors.red.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.red.withOpacity(0.35)),
+                border: Border.all(color: Colors.red.withValues(alpha: 0.35)),
               ),
               child: Text(
                 error,
