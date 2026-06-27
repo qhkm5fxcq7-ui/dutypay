@@ -2171,7 +2171,7 @@ if (_programmedOvertimeEnabled) ...[
           child: Opacity(
             opacity: fieldsLocked ? 0.46 : 1,
             child: DropdownButtonFormField<PolferTerritoryControlType>(
-              value: _polferTerritoryControlType,
+              initialValue: _polferTerritoryControlType,
               dropdownColor: _QuickAddPalette.card,
               decoration: const InputDecoration(
                 labelText: 'Controllo del territorio',
@@ -2199,7 +2199,7 @@ if (_programmedOvertimeEnabled) ...[
           child: Opacity(
             opacity: fieldsLocked ? 0.46 : 1,
             child: DropdownButtonFormField<String>(
-              value: _selectedOrderPublic,
+              initialValue: _selectedOrderPublic,
               dropdownColor: _QuickAddPalette.card,
               decoration: const InputDecoration(
                 labelText: 'Ordine pubblico',
@@ -2238,7 +2238,7 @@ if (_programmedOvertimeEnabled) ...[
           child: Opacity(
             opacity: fieldsLocked ? 0.46 : 1,
             child: DropdownButtonFormField<PolferScaloMode>(
-              value: _polferScaloMode,
+              initialValue: _polferScaloMode,
               dropdownColor: _QuickAddPalette.card,
               decoration: const InputDecoration(
                 labelText: 'Vigilanza scalo',
@@ -2391,7 +2391,7 @@ if (_programmedOvertimeEnabled) ...[
           child: Opacity(
             opacity: _hasAbsence ? 0.46 : 1,
             child: DropdownButtonFormField<String>(
-              value: _selectedOrderPublic,
+              initialValue: _selectedOrderPublic,
               dropdownColor: _QuickAddPalette.card,
               decoration: const InputDecoration(
                 labelText: 'Ordine pubblico',
@@ -3179,7 +3179,7 @@ if (_usesCompensativeOvertime) ...[
                     ),
                     const SizedBox(height: 14),
                     DropdownButtonFormField<String>(
-                      value: _selectedAbsence,
+                      initialValue: _selectedAbsence,
                       dropdownColor: _QuickAddPalette.card,
                       decoration: const InputDecoration(
                         labelText: 'Assenza',
