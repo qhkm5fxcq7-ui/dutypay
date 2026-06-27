@@ -1257,26 +1257,6 @@ _MinimalActionRow(
     );
   }
 
-  double _readBasketRecoveredHours(PayslipProjectionResult projection) {
-    final dynamic p = projection;
-    return _readFirstDouble(
-      [
-        () => p.basketRecoveredHours,
-      ],
-      fallback: 0,
-    );
-  }
-
-  double _readBasketRecoveredGross(PayslipProjectionResult projection) {
-    final dynamic p = projection;
-    return _readFirstDouble(
-      [
-        () => p.basketRecoveredGross,
-      ],
-      fallback: 0,
-    );
-  }
-
   double _readBasketMaturedHours(PayslipProjectionResult projection) {
   final dynamic p = projection;
   return _readFirstDouble(
@@ -1328,44 +1308,11 @@ double _readBasketMaturedGross(PayslipProjectionResult projection) {
   );
 }
 
-  double _readRfiBasketHours(PayslipProjectionResult projection) {
-  final dynamic p = projection;
-  return _readFirstDouble(
-    [
-      () => p.rfiMaturedHoursForMonth,
-      () => p.rfiBasketHoursFromReferenceMonth,
-    ],
-    fallback: 0,
-  );
-}
-
-  double _readRfiBasketResidualHours(PayslipProjectionResult projection) {
-    final dynamic p = projection;
-    return _readFirstDouble(
-      [
-        () => p.currentRfiBasketResidualHours,
-      ],
-      fallback: 0,
-    );
-  }
-
   double _readRfiBasketResidualGross(PayslipProjectionResult projection) {
     final dynamic p = projection;
     return _readFirstDouble(
       [
         () => p.currentRfiBasketResidualGrossEstimate,
-      ],
-      fallback: 0,
-    );
-  }
-
-  double _readManualRfiBasketPaidHoursForMonth(
-    PayslipProjectionResult projection,
-  ) {
-    final dynamic p = projection;
-    return _readFirstDouble(
-      [
-        () => p.manualRfiBasketPaidHoursForMonth,
       ],
       fallback: 0,
     );
