@@ -201,8 +201,8 @@ class DataBackupService {
   static List<Map<String, dynamic>> _normalizeJsonList(dynamic rawItems) {
     if (rawItems is List) {
       return rawItems
-          .where((item) => item is Map)
-          .map((item) => Map<String, dynamic>.from(item as Map))
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
           .toList();
     }
 
@@ -211,8 +211,8 @@ class DataBackupService {
         final decoded = jsonDecode(rawItems);
         if (decoded is List) {
           return decoded
-              .where((item) => item is Map)
-              .map((item) => Map<String, dynamic>.from(item as Map))
+              .whereType<Map>()
+              .map((item) => Map<String, dynamic>.from(item))
               .toList();
         }
       } catch (_) {}
