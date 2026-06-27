@@ -796,20 +796,6 @@ class Shift {
     return _sanitizeRate(p.externalServiceRate, fallbackExternalServiceRate);
   }
 
-  double _resolvedTerritorySeraleRate(UserPayProfile p) {
-    return _sanitizeRate(
-      p.controlloTerritorioSerale,
-      fallbackPolferTerritorySeraleRate,
-    );
-  }
-
-  double _resolvedTerritoryNotturnoRate(UserPayProfile p) {
-    return _sanitizeRate(
-      p.controlloTerritorioNotturno,
-      fallbackPolferTerritoryNotturnoRate,
-    );
-  }
-
   double _resolvedGenereDiConfortoCdgRate() {
     return fallbackGenereDiConfortoCdgRate;
   }
