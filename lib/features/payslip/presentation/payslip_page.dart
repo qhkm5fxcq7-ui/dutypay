@@ -996,12 +996,14 @@ _MinimalActionRow(
                   noteController.text.trim(),
                 );
 
-                if (mounted) {
-                  Navigator.of(dialogContext).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(successMessage)),
-                  );
+                if (!mounted || !context.mounted || !dialogContext.mounted) {
+                  return;
                 }
+
+                Navigator.of(dialogContext).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(successMessage)),
+                );
               } catch (_) {
                 setDialogState(() {
                   saving = false;
