@@ -10,7 +10,7 @@ void main() {
   const engineUseCase = CalculateShiftUseCase();
   final profile = CanonicalShiftScenarios.defaultProfile();
 
-  double _hoursByCategory(
+  double hoursByCategory(
     List<Map<String, dynamic>> breakdown,
     String category,
   ) {
@@ -138,11 +138,11 @@ void main() {
       expect(engineResult.overtimeNightHours, closeTo(0.0, 0.01));
 
       expect(
-        _hoursByCategory(viewResult.breakdown, 'ordinary_night'),
+        hoursByCategory(viewResult.breakdown, 'ordinary_night'),
         closeTo(1.0, 0.01),
       );
       expect(
-        _hoursByCategory(viewResult.breakdown, 'overtime_night'),
+        hoursByCategory(viewResult.breakdown, 'overtime_night'),
         closeTo(0.0, 0.01),
       );
     });
@@ -174,23 +174,23 @@ void main() {
       expect(engineResult.overtimeNightHolidayHours, closeTo(0.0, 0.01));
 
       expect(
-        _hoursByCategory(viewResult.breakdown, 'ordinary_night'),
+        hoursByCategory(viewResult.breakdown, 'ordinary_night'),
         closeTo(1.0, 0.01),
       );
       expect(
-        _hoursByCategory(viewResult.breakdown, 'overtime_night'),
+        hoursByCategory(viewResult.breakdown, 'overtime_night'),
         closeTo(2.0, 0.01),
       );
       expect(
-        _hoursByCategory(viewResult.breakdown, 'overtime_day'),
+        hoursByCategory(viewResult.breakdown, 'overtime_day'),
         closeTo(0.0, 0.01),
       );
       expect(
-        _hoursByCategory(viewResult.breakdown, 'overtime_holiday_day'),
+        hoursByCategory(viewResult.breakdown, 'overtime_holiday_day'),
         closeTo(0.0, 0.01),
       );
       expect(
-        _hoursByCategory(viewResult.breakdown, 'overtime_night_holiday'),
+        hoursByCategory(viewResult.breakdown, 'overtime_night_holiday'),
         closeTo(0.0, 0.01),
       );
     });

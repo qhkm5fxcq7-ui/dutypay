@@ -14,7 +14,7 @@ void main() {
 
   final profile = CanonicalShiftScenarios.defaultProfile();
 
-  Shift _buildScenarioShift() {
+  Shift buildScenarioShift() {
     return Shift(
       description: 'RM benefit alignment',
       start: DateTime(2026, 4, 10, 17, 0),
@@ -28,11 +28,11 @@ void main() {
     );
   }
 
-  int _countCategory(List<Map<String, dynamic>> breakdown, String category) {
+  int countCategory(List<Map<String, dynamic>> breakdown, String category) {
     return breakdown.where((item) => item['category'] == category).length;
   }
 
-  Map<String, dynamic> _singleByCategory(
+  Map<String, dynamic> singleByCategory(
     List<Map<String, dynamic>> breakdown,
     String category,
   ) {
@@ -41,25 +41,25 @@ void main() {
     return matches.first;
   }
 
-  bool _hasCategory(List<Map<String, dynamic>> breakdown, String category) {
+  bool hasCategory(List<Map<String, dynamic>> breakdown, String category) {
     return breakdown.any((item) => item['category'] == category);
   }
 
-  double _sumAmounts(List<Map<String, dynamic>> breakdown) {
+  double sumAmounts(List<Map<String, dynamic>> breakdown) {
     return breakdown.fold<double>(
       0.0,
       (sum, item) => sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
     );
   }
 
-  double _sumBenefitAmounts(List<Map<String, dynamic>> breakdown) {
+  double sumBenefitAmounts(List<Map<String, dynamic>> breakdown) {
     return breakdown.fold<double>(
       0.0,
       (sum, item) => sum + ((item['benefitAmount'] as num?)?.toDouble() ?? 0.0),
     );
   }
 
-  double _sumNonBenefitAmounts(List<Map<String, dynamic>> breakdown) {
+  double sumNonBenefitAmounts(List<Map<String, dynamic>> breakdown) {
     return breakdown
         .where((item) => item['isBenefit'] != true)
         .fold<double>(
@@ -68,19 +68,19 @@ void main() {
         );
   }
 
-  bool _isOvertimeCategory(String? category) {
+  bool isOvertimeCategory(String? category) {
     return category == 'overtime_day' ||
         category == 'overtime_night' ||
         category == 'overtime_holiday_day' ||
         category == 'overtime_night_holiday';
   }
 
-  double _sumNonOvertimeNonBasketAmounts(List<Map<String, dynamic>> breakdown) {
+  double sumNonOvertimeNonBasketAmounts(List<Map<String, dynamic>> breakdown) {
     return breakdown
         .where((item) {
           final category = item['category'] as String?;
           final isBasket = item['isBasketItem'] == true;
-          return !_isOvertimeCategory(category) && !isBasket;
+          return !isOvertimeCategory(category) && !isBasket;
         })
         .fold<double>(
           0.0,
@@ -90,7 +90,7 @@ void main() {
 
   group('Benefit alignment', () {
     test('RM preview and saved detail keep benefits visible but non-economic', () {
-      final shift = _buildScenarioShift();
+      final shift = buildScenarioShift();
 
       final preview = previewUseCase.execute(
         shift: shift,
@@ -110,25 +110,25 @@ void main() {
       final savedBreakdown = saved!.breakdown;
 
       // A. Preview breakdown: presence + no duplications
-      expect(_hasCategory(preview.breakdown, 'ticket_meal'), isTrue);
-      expect(_hasCategory(preview.breakdown, 'comfort'), isTrue);
-      expect(_countCategory(preview.breakdown, 'ticket_meal'), 1);
-      expect(_countCategory(preview.breakdown, 'comfort'), 1);
-      expect(_countCategory(preview.breakdown, 'comfort_cdg'), 0);
+      expect(hasCategory(preview.breakdown, 'ticket_meal'), isTrue);
+      expect(hasCategory(preview.breakdown, 'comfort'), isTrue);
+      expect(countCategory(preview.breakdown, 'ticket_meal'), 1);
+      expect(countCategory(preview.breakdown, 'comfort'), 1);
+      expect(countCategory(preview.breakdown, 'comfort_cdg'), 0);
 
       // B. Saved breakdown: same elements + no duplications
-      expect(_hasCategory(savedBreakdown, 'ticket_meal'), isTrue);
-      expect(_hasCategory(savedBreakdown, 'comfort'), isTrue);
-      expect(_countCategory(savedBreakdown, 'ticket_meal'), 1);
-      expect(_countCategory(savedBreakdown, 'comfort'), 1);
-      expect(_countCategory(savedBreakdown, 'comfort_cdg'), 0);
+      expect(hasCategory(savedBreakdown, 'ticket_meal'), isTrue);
+      expect(hasCategory(savedBreakdown, 'comfort'), isTrue);
+      expect(countCategory(savedBreakdown, 'ticket_meal'), 1);
+      expect(countCategory(savedBreakdown, 'comfort'), 1);
+      expect(countCategory(savedBreakdown, 'comfort_cdg'), 0);
 
       // C. Benefit structure
-      final previewTicket = _singleByCategory(preview.breakdown, 'ticket_meal');
-      final previewComfort = _singleByCategory(preview.breakdown, 'comfort');
+      final previewTicket = singleByCategory(preview.breakdown, 'ticket_meal');
+      final previewComfort = singleByCategory(preview.breakdown, 'comfort');
 
-      final savedTicket = _singleByCategory(savedBreakdown, 'ticket_meal');
-      final savedComfort = _singleByCategory(savedBreakdown, 'comfort');
+      final savedTicket = singleByCategory(savedBreakdown, 'ticket_meal');
+      final savedComfort = singleByCategory(savedBreakdown, 'comfort');
 
       expect((previewTicket['amount'] as num?)?.toDouble() ?? -1, 0.0);
       expect((previewComfort['amount'] as num?)?.toDouble() ?? -1, 0.0);
@@ -158,37 +158,37 @@ void main() {
       expect(savedComfort['isBenefit'], isTrue);
 
       // D. Totals: benefits excluded
-      final previewBenefitTotal = _sumBenefitAmounts(preview.breakdown);
-      final savedBenefitTotal = _sumBenefitAmounts(savedBreakdown);
+      final previewBenefitTotal = sumBenefitAmounts(preview.breakdown);
+      final savedBenefitTotal = sumBenefitAmounts(savedBreakdown);
 
       expect(previewBenefitTotal, greaterThan(0.0));
       expect(savedBenefitTotal, greaterThan(0.0));
 
       expect(
         preview.totalAmount,
-        closeTo(_sumAmounts(preview.breakdown), 0.01),
+        closeTo(sumAmounts(preview.breakdown), 0.01),
       );
       expect(
         saved.totalAmount,
-        closeTo(_sumAmounts(savedBreakdown), 0.01),
+        closeTo(sumAmounts(savedBreakdown), 0.01),
       );
 
       expect(
         preview.totalAmount,
-        closeTo(_sumNonBenefitAmounts(preview.breakdown), 0.01),
+        closeTo(sumNonBenefitAmounts(preview.breakdown), 0.01),
       );
       expect(
         saved.totalAmount,
-        closeTo(_sumNonBenefitAmounts(savedBreakdown), 0.01),
+        closeTo(sumNonBenefitAmounts(savedBreakdown), 0.01),
       );
 
       final previewOrderPublicAmount =
-          ((_singleByCategory(preview.breakdown, 'order_public')['amount'] as num?)
+          ((singleByCategory(preview.breakdown, 'order_public')['amount'] as num?)
                   ?.toDouble() ??
               0.0);
 
       final savedOrderPublicAmount =
-          ((_singleByCategory(savedBreakdown, 'order_public')['amount'] as num?)
+          ((singleByCategory(savedBreakdown, 'order_public')['amount'] as num?)
                   ?.toDouble() ??
               0.0);
 
@@ -207,12 +207,12 @@ void main() {
       expect(saved.overtimeHours, closeTo(preview.overtimeHours, 0.01));
 
       expect(
-        _countCategory(savedBreakdown, 'overtime_night'),
-        _countCategory(preview.breakdown, 'overtime_night'),
+        countCategory(savedBreakdown, 'overtime_night'),
+        countCategory(preview.breakdown, 'overtime_night'),
       );
       expect(
-        _countCategory(savedBreakdown, 'ordinary_night'),
-        _countCategory(preview.breakdown, 'ordinary_night'),
+        countCategory(savedBreakdown, 'ordinary_night'),
+        countCategory(preview.breakdown, 'ordinary_night'),
       );
 
       // ShiftMoneyComponents must also exclude benefits economically
@@ -229,7 +229,7 @@ void main() {
 
       expect(
         money.nonOvertimeGross,
-        closeTo(_sumNonOvertimeNonBasketAmounts(preview.breakdown), 0.01),
+        closeTo(sumNonOvertimeNonBasketAmounts(preview.breakdown), 0.01),
       );
     });
   });
