@@ -145,6 +145,82 @@ void main() {
       expect(withAdjustment.manualBasketPaidHoursForMonth, closeTo(2, 0.01));
     });
 
+
+    test('empty month produces zero projection', () {
+      final profile = CanonicalShiftScenarios.defaultProfile();
+
+      final result = service.projectPayslip(
+        payslipMonth: DateTime(2026, 6),
+        allShifts: const [],
+        payProfile: profile,
+        department: Department.repartoMobile,
+      );
+
+      expect(result.currentBasketResidualHours, closeTo(0, 0.01));
+      expect(result.overtimeHoursFromReferenceMonth, closeTo(0, 0.01));
+      expect(result.accessoriesGrossLiquidated, closeTo(0, 0.01));
+      expect(result.accessoriesNetEstimated, closeTo(0, 0.01));
+    });
+
+    test('large basket payment scales without negative residual', () {
+      final profile = CanonicalShiftScenarios.defaultProfile().copyWith(
+        monthlyOvertimePayableHoursLimit: 0,
+      );
+
+      final shifts = List.generate(
+        20,
+        (i) => CanonicalShiftScenarios.rmLongMorningNightEdge(
+          serviceDate: DateTime(2026, 1, i + 1),
+        ),
+      );
+
+      final result = service.projectPayslip(
+        payslipMonth: DateTime(2026, 7),
+        allShifts: shifts,
+        payProfile: profile,
+        department: Department.repartoMobile,
+        basketPayments: [
+          BasketPayment(
+            paymentMonth: DateTime(2026, 6),
+            hoursPaid: 50,
+            note: 'Stress test',
+          ),
+        ],
+      );
+
+      expect(result.currentBasketResidualHours, greaterThanOrEqualTo(0));
+      expect(result.manualBasketPaidHoursForMonth, greaterThanOrEqualTo(0));
+    });
+
+    test('basket residual never becomes negative after overpayment', () {
+      final profile = CanonicalShiftScenarios.defaultProfile().copyWith(
+        monthlyOvertimePayableHoursLimit: 0,
+      );
+
+      final shifts = [
+        CanonicalShiftScenarios.rmMorningWithHalfHourOvertime(
+          serviceDate: DateTime(2026, 5, 10),
+        ),
+      ];
+
+      final result = service.projectPayslip(
+        payslipMonth: DateTime(2026, 7),
+        allShifts: shifts,
+        payProfile: profile,
+        department: Department.repartoMobile,
+        basketPayments: [
+          BasketPayment(
+            paymentMonth: DateTime(2026, 6),
+            hoursPaid: 100,
+            note: 'Over payment',
+          ),
+        ],
+      );
+
+      expect(result.currentBasketResidualHours, greaterThanOrEqualTo(0));
+      expect(result.manualBasketPaidHoursForMonth, greaterThanOrEqualTo(0));
+    });
+
     test('basket payment serialization preserves hours and month', () {
       final payment = BasketPayment(
         paymentMonth: DateTime(2026, 5),
