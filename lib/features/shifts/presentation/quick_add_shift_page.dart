@@ -3589,7 +3589,7 @@ class _ModernSwitchTile extends StatelessWidget {
           Switch.adaptive(
             value: value,
             onChanged: onChanged,
-            activeColor: _QuickAddPalette.primary,
+            activeThumbColor: _QuickAddPalette.primary,
           ),
         ],
       ),
