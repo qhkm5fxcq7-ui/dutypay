@@ -215,7 +215,7 @@ class _DutyPayAppState extends State<DutyPayApp> {
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: DutyPayPalette.card,
-        indicatorColor: DutyPayPalette.primary.withOpacity(0.14),
+        indicatorColor: DutyPayPalette.primary.withValues(alpha: 0.14),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return TextStyle(
@@ -243,7 +243,7 @@ class _DutyPayAppState extends State<DutyPayApp> {
         style: OutlinedButton.styleFrom(
           foregroundColor: Colors.white,
           side: const BorderSide(color: DutyPayPalette.cardBorder),
-          backgroundColor: DutyPayPalette.surface.withOpacity(0.35),
+          backgroundColor: DutyPayPalette.surface.withValues(alpha: 0.35),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
           ),
@@ -405,7 +405,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                     border: Border.all(color: DutyPayPalette.cardBorder),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.25),
+                        color: Colors.black.withValues(alpha: 0.25),
                         blurRadius: 28,
                         offset: const Offset(0, 18),
                       ),
@@ -419,7 +419,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                         width: 62,
                         height: 62,
                         decoration: BoxDecoration(
-                          color: DutyPayPalette.primary.withOpacity(0.12),
+                          color: DutyPayPalette.primary.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: const Icon(
@@ -1762,7 +1762,7 @@ _MonthlyLiveProjection _buildMonthlyLiveProjection({
                             borderRadius: BorderRadius.circular(16),
                           ),
                           tileColor: isSelected
-                              ? DutyPayPalette.primary.withOpacity(0.10)
+                              ? DutyPayPalette.primary.withValues(alpha: 0.10)
                               : Colors.transparent,
                           title: Text(
                             _formatMonthYear(month),
@@ -1978,9 +1978,9 @@ _MonthlyLiveProjection _buildMonthlyLiveProjection({
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withOpacity(0.24)),
+        border: Border.all(color: color.withValues(alpha: 0.24)),
       ),
       child: Text(
         label,
@@ -2343,7 +2343,7 @@ Future<void> _openOvertimeBasketAdjustmentDialog() async {
           border: Border.all(color: DutyPayPalette.cardBorder),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.16),
+              color: Colors.black.withValues(alpha: 0.16),
               blurRadius: 18,
               offset: const Offset(0, 10),
             ),
@@ -2373,9 +2373,9 @@ Future<void> _openOvertimeBasketAdjustmentDialog() async {
                   onPressed: confirmDelete,
                   tooltip: 'Elimina turno',
                   style: IconButton.styleFrom(
-                    backgroundColor: DutyPayPalette.danger.withOpacity(0.10),
+                    backgroundColor: DutyPayPalette.danger.withValues(alpha: 0.10),
                     side: BorderSide(
-                      color: DutyPayPalette.danger.withOpacity(0.28),
+                      color: DutyPayPalette.danger.withValues(alpha: 0.28),
                     ),
                   ),
                   icon: const Icon(
@@ -2606,7 +2606,7 @@ Future<void> _deleteCompensativeBasketAdjustment(String movementId) async {
       ),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.24),
+          color: Colors.black.withValues(alpha: 0.24),
           blurRadius: 24,
           offset: const Offset(0, 12),
         ),
@@ -2689,10 +2689,10 @@ Future<void> _deleteCompensativeBasketAdjustment(String movementId) async {
         Container(
   padding: const EdgeInsets.all(14),
   decoration: BoxDecoration(
-    color: DutyPayPalette.primary.withOpacity(0.09),
+    color: DutyPayPalette.primary.withValues(alpha: 0.09),
     borderRadius: BorderRadius.circular(18),
     border: Border.all(
-      color: DutyPayPalette.primary.withOpacity(0.22),
+      color: DutyPayPalette.primary.withValues(alpha: 0.22),
     ),
   ),
   child: Column(
@@ -2882,7 +2882,7 @@ SizedBox(
         border: Border.all(color: DutyPayPalette.cardBorder),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.16),
+            color: Colors.black.withValues(alpha: 0.16),
             blurRadius: 18,
             offset: const Offset(0, 10),
           ),
@@ -3120,7 +3120,7 @@ SizedBox(
                   border: Border.all(color: DutyPayPalette.cardBorder),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.16),
+                      color: Colors.black.withValues(alpha: 0.16),
                       blurRadius: 18,
                       offset: const Offset(0, 10),
                     ),
