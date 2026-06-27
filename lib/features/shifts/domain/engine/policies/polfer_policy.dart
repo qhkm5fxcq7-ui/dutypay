@@ -165,21 +165,6 @@ final ordinaryNightAmount = ordinaryNightHours * fallbackNightAllowance;
     return minutes > 0 ? minutes / 60.0 : 0.0;
   }
 
-  double _calculateOvertimeHours({
-    required DateTime end,
-    required DateTime? scheduledEnd,
-    required double workedHours,
-  }) {
-    if (scheduledEnd == null) {
-      return workedHours > standardHours ? workedHours - standardHours : 0.0;
-    }
-
-    if (!end.isAfter(scheduledEnd)) return 0.0;
-
-    final minutes = end.difference(scheduledEnd).inMinutes;
-    return minutes > 0 ? minutes / 60.0 : 0.0;
-  }
-
   DateTime? _resolvePolferScheduledEnd(Shift shift) {
     final start = shift.start;
     final startMinutes = start.hour * 60 + start.minute;
