@@ -1112,18 +1112,6 @@ double _totalPayableFromDailyResult(DailyShiftResult result) {
   );
 }
 
-Map<String, List<Shift>> _groupShiftsByServiceDay(Iterable<Shift> input) {
-  final grouped = <String, List<Shift>>{};
-
-  for (final shift in input) {
-    final day = _normalizeDate(shift.serviceDate);
-    final key = _calendarKey(day);
-    grouped.putIfAbsent(key, () => []).add(shift);
-  }
-
-  return grouped;
-}
-
 double _salaryOnlyAmount(Shift shift) {
   final computation = _buildSingleShiftComputation(shift);
   return computation.extraAmount;
