@@ -31,12 +31,6 @@ class FirestoreBreakRoomRepository implements BreakRoomRepository {
     final roomId = uuid.v4();
     final roomCode = _resolveRoomCode(customRoomCode);
 
-    final existingRoomId = await datasource.resolveRoomIdByCode(roomCode);
-
-    if (existingRoomId != null) {
-      throw StateError('Codice stanza già utilizzato');
-    }
-
     final room = BreakRoom(
       id: roomId,
       roomCode: roomCode,

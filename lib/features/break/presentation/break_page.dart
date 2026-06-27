@@ -104,6 +104,64 @@ class _BreakPageState extends State<BreakPage> {
     return saved.nickname;
   }
 
+  Future<void> _editNickname() async {
+    _nicknameController.text = _nickname ?? '';
+
+    final nickname = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Modifica nickname'),
+          content: TextField(
+            controller: _nicknameController,
+            autofocus: true,
+            maxLength: 18,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(
+              labelText: 'Nickname',
+              hintText: 'Es. Marco RM',
+            ),
+            onSubmitted: (_) {
+              final value = _nicknameController.text.trim();
+              if (value.isNotEmpty) {
+                Navigator.of(context).pop(value);
+              }
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(null),
+              child: const Text('Annulla'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final value = _nicknameController.text.trim();
+                if (value.isNotEmpty) {
+                  Navigator.of(context).pop(value);
+                }
+              },
+              child: const Text('Salva'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (nickname == null || nickname.trim().isEmpty) {
+      return;
+    }
+
+    final saved = await BreakDependencies.instance.saveNicknameUseCase.execute(
+      nickname,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _nickname = saved.nickname;
+    });
+  }
+
   Future<String?> _askCustomRoomCode() async {
     _customRoomCodeController.clear();
 
@@ -172,7 +230,7 @@ class _BreakPageState extends State<BreakPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Codice non valido, già usato o errore nella creazione stanza.',
+            'Errore durante la creazione della stanza. Riprova tra poco.',
           ),
         ),
       );
@@ -247,13 +305,24 @@ class _BreakPageState extends State<BreakPage> {
           ),
           if (_nickname != null) ...[
             const SizedBox(height: 10),
-            Text(
-              'Nickname: $_nickname',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.54),
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Nickname: $_nickname',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.54),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: _editNickname,
+                  icon: const Icon(Icons.edit_rounded, size: 16),
+                  label: const Text('Modifica'),
+                ),
+              ],
             ),
           ],
           const SizedBox(height: 22),
