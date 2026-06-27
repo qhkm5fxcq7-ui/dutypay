@@ -1888,6 +1888,8 @@ _MonthlyLiveProjection _buildMonthlyLiveProjection({
 
   Future<void> _openMonthNotes() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+
     final raw = prefs.getString(monthNotesStorageKey);
 
     Map<String, dynamic> notesMap = {};
