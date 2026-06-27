@@ -1704,7 +1704,7 @@ questuraOfficeOrdinaryHours:
             child: Opacity(
               opacity: _hasAbsence ? 0.46 : 1,
               child: DropdownButtonFormField<SpmnPreset>(
-                value: _selectedSpmnPreset,
+                initialValue: _selectedSpmnPreset,
                 dropdownColor: _QuickAddPalette.card,
                 decoration: const InputDecoration(
                   labelText: 'Preset turno',
