@@ -2103,7 +2103,7 @@ _MonthlyLiveProjection _buildMonthlyLiveProjection({
                 ),
                 const SizedBox(height: 14),
                 DropdownButtonFormField<bool>(
-                  value: isPositive,
+                  initialValue: isPositive,
                   decoration: const InputDecoration(
                     labelText: 'Tipo correzione',
                   ),
@@ -2209,7 +2209,7 @@ Future<void> _openOvertimeBasketAdjustmentDialog() async {
                 ),
                 const SizedBox(height: 14),
                 DropdownButtonFormField<bool>(
-                  value: isPositive,
+                  initialValue: isPositive,
                   decoration: const InputDecoration(
                     labelText: 'Tipo correzione',
                   ),
