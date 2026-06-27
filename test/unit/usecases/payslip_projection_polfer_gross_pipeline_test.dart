@@ -9,7 +9,7 @@ void main() {
   const service = PayslipProjectionService();
   const parser = PayslipParserService();
 
-  UserPayProfile _buildProfile() {
+  UserPayProfile buildProfile() {
     const rawText = '''
 RATA: Febbraio 2026
 ID CEDOLINO: ABC12345
@@ -81,7 +81,7 @@ Totale 0,00
     );
   }
 
-  List<Shift> _buildShifts() {
+  List<Shift> buildShifts() {
     return [
       Shift(
         description: 'Polfer territory + ext service + scalo + benefits',
@@ -100,8 +100,8 @@ Totale 0,00
 
   group('Payslip Polfer gross pipeline', () {
     test('ordinary accessories stay gross, benefits stay out, RFI stays separate', () {
-      final profile = _buildProfile();
-      final shifts = _buildShifts();
+      final profile = buildProfile();
+      final shifts = buildShifts();
 
             final result = service.projectPayslip(
         payslipMonth: DateTime(2026, 5, 1),
