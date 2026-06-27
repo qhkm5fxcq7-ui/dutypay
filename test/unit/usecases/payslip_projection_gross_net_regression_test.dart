@@ -9,7 +9,7 @@ void main() {
   const service = PayslipProjectionService();
   const parser = PayslipParserService();
 
-  UserPayProfile _buildProfile() {
+  UserPayProfile buildProfile() {
     const rawText = '''
 RATA: Febbraio 2026
 ID CEDOLINO: ABC12345
@@ -50,7 +50,7 @@ Totale 0,00
     return parser.buildDynamicProfile([parsed]);
   }
 
-  List<Shift> _buildRmShifts() {
+  List<Shift> buildRmShifts() {
     return [
       Shift(
         description: 'RM 17-01 with benefits',
@@ -65,7 +65,7 @@ Totale 0,00
     ];
   }
 
-  List<Shift> _buildPolferShifts() {
+  List<Shift> buildPolferShifts() {
     return [
       Shift(
         description: 'Polfer evening standard',
@@ -79,11 +79,11 @@ Totale 0,00
 
   group('Payslip gross/net regression', () {
     test('RM pipeline never taxes benefits and never nets inputs prematurely', () {
-      final profile = _buildProfile();
+      final profile = buildProfile();
 
       final result = service.projectPayslip(
         payslipMonth: DateTime(2026, 5, 1),
-        allShifts: _buildRmShifts(),
+        allShifts: buildRmShifts(),
         payProfile: profile,
         department: Department.repartoMobile,
       );
@@ -102,11 +102,11 @@ Totale 0,00
     });
 
     test('Polfer pipeline keeps RFI separate and nets only at final stage', () {
-      final profile = _buildProfile();
+      final profile = buildProfile();
 
       final result = service.projectPayslip(
         payslipMonth: DateTime(2026, 5, 1),
-        allShifts: _buildPolferShifts(),
+        allShifts: buildPolferShifts(),
         payProfile: profile,
         department: Department.polfer,
       );

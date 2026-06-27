@@ -7,7 +7,7 @@ import '../../scenarios/canonical_shift_scenarios.dart';
 void main() {
   const usecase = BuildShiftComputationUseCase();
 
-  Map<String, dynamic> _findItemByCategory(
+  Map<String, dynamic> findItemByCategory(
     List<Map<String, dynamic>> breakdown,
     String category,
   ) {
@@ -28,7 +28,7 @@ void main() {
         department: Department.repartoMobile,
       );
 
-      final compensazioneItem = _findItemByCategory(
+      final compensazioneItem = findItemByCategory(
         result.breakdown,
         'compensazione',
       );
@@ -53,7 +53,7 @@ void main() {
         department: Department.repartoMobile,
       );
 
-      final reperibilitaItem = _findItemByCategory(
+      final reperibilitaItem = findItemByCategory(
         result.breakdown,
         'reperibilita',
       );
@@ -78,11 +78,11 @@ void main() {
         department: Department.repartoMobile,
       );
 
-      final compensazioneItem = _findItemByCategory(
+      final compensazioneItem = findItemByCategory(
         result.breakdown,
         'compensazione',
       );
-      final reperibilitaItem = _findItemByCategory(
+      final reperibilitaItem = findItemByCategory(
         result.breakdown,
         'reperibilita',
       );
@@ -150,7 +150,7 @@ void main() {
         department: Department.polfer,
       );
 
-      final compensazioneItem = _findItemByCategory(
+      final compensazioneItem = findItemByCategory(
         result.breakdown,
         'compensazione',
       );
@@ -172,7 +172,7 @@ void main() {
         department: Department.polfer,
       );
 
-      final reperibilitaItem = _findItemByCategory(
+      final reperibilitaItem = findItemByCategory(
         result.breakdown,
         'reperibilita',
       );
