@@ -574,7 +574,7 @@ _MinimalActionRow(
 ) async {
   await showDialog<void>(
     context: context,
-    barrierColor: Colors.black.withOpacity(0.72),
+    barrierColor: Colors.black.withValues(alpha: 0.72),
     builder: (dialogContext) {
       return Dialog(
         backgroundColor: Colors.transparent,
@@ -592,7 +592,7 @@ _MinimalActionRow(
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.28),
+                color: Colors.black.withValues(alpha: 0.28),
                 blurRadius: 30,
                 offset: const Offset(0, 16),
               ),
@@ -720,7 +720,7 @@ _MinimalActionRow(
 
   await showDialog<void>(
     context: context,
-    barrierColor: Colors.black.withOpacity(0.72),
+    barrierColor: Colors.black.withValues(alpha: 0.72),
     builder: (dialogContext) {
       return StatefulBuilder(
         builder: (dialogContext, setDialogState) {
@@ -806,7 +806,7 @@ _MinimalActionRow(
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.28),
+                    color: Colors.black.withValues(alpha: 0.28),
                     blurRadius: 30,
                     offset: const Offset(0, 16),
                   ),
@@ -890,10 +890,10 @@ _MinimalActionRow(
                         vertical: 10,
                       ),
                       decoration: BoxDecoration(
-                        color: _DutyPayColors.danger.withOpacity(0.12),
+                        color: _DutyPayColors.danger.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                          color: _DutyPayColors.danger.withOpacity(0.28),
+                          color: _DutyPayColors.danger.withValues(alpha: 0.28),
                         ),
                       ),
                       child: Text(
@@ -957,7 +957,7 @@ _MinimalActionRow(
 
     await showDialog<void>(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.72),
+      barrierColor: Colors.black.withValues(alpha: 0.72),
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (dialogContext, setDialogState) {
@@ -1024,7 +1024,7 @@ _MinimalActionRow(
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.28),
+                      color: Colors.black.withValues(alpha: 0.28),
                       blurRadius: 30,
                       offset: const Offset(0, 16),
                     ),
@@ -1078,10 +1078,10 @@ _MinimalActionRow(
                           vertical: 10,
                         ),
                         decoration: BoxDecoration(
-                          color: _DutyPayColors.danger.withOpacity(0.12),
+                          color: _DutyPayColors.danger.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
-                            color: _DutyPayColors.danger.withOpacity(0.28),
+                            color: _DutyPayColors.danger.withValues(alpha: 0.28),
                           ),
                         ),
                         child: Text(
@@ -1541,7 +1541,7 @@ class _HeroNetCard extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.28),
+            color: Colors.black.withValues(alpha: 0.28),
             blurRadius: 24,
             offset: const Offset(0, 12),
           ),
@@ -1621,10 +1621,10 @@ class _HeroNetCard extends StatelessWidget {
               vertical: 10,
             ),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.04),
+              color: Colors.white.withValues(alpha: 0.04),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: Colors.white.withOpacity(0.06),
+                color: Colors.white.withValues(alpha: 0.06),
               ),
             ),
             child: const Row(
@@ -2016,7 +2016,7 @@ class _BasketCard extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.22),
+            color: Colors.black.withValues(alpha: 0.22),
             blurRadius: 22,
             offset: const Offset(0, 12),
           ),
@@ -2199,7 +2199,7 @@ class _RfiBasketCard extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.22),
+            color: Colors.black.withValues(alpha: 0.22),
             blurRadius: 22,
             offset: const Offset(0, 12),
           ),
@@ -2322,21 +2322,21 @@ class _PrecisionCard extends StatelessWidget {
     switch (precision.level) {
       case PrecisionLevel.high:
         accent = _DutyPayColors.positive;
-        soft = _DutyPayColors.positive.withOpacity(0.12);
+        soft = _DutyPayColors.positive.withValues(alpha: 0.12);
         label = 'Precisione alta';
         description =
             'Hai caricato abbastanza dati da rendere la stima molto affidabile.';
         break;
       case PrecisionLevel.medium:
         accent = _DutyPayColors.warning;
-        soft = _DutyPayColors.warning.withOpacity(0.12);
+        soft = _DutyPayColors.warning.withValues(alpha: 0.12);
         label = 'Precisione media';
         description =
             'La stima è buona, ma può migliorare aggiungendo più dati e cedolini.';
         break;
       case PrecisionLevel.low:
         accent = _DutyPayColors.danger;
-        soft = _DutyPayColors.danger.withOpacity(0.12);
+        soft = _DutyPayColors.danger.withValues(alpha: 0.12);
         label = 'Precisione bassa';
         description =
             'La stima è ancora utile, ma serve più storico per essere davvero solida.';
@@ -2582,13 +2582,13 @@ class _MetricBlock extends StatelessWidget {
 
     switch (tone) {
       case _MetricTone.warning:
-        background = _DutyPayColors.warning.withOpacity(0.10);
-        border = _DutyPayColors.warning.withOpacity(0.18);
+        background = _DutyPayColors.warning.withValues(alpha: 0.10);
+        border = _DutyPayColors.warning.withValues(alpha: 0.18);
         valueColor = _DutyPayColors.warning;
         break;
       case _MetricTone.positive:
-        background = _DutyPayColors.positive.withOpacity(0.10);
-        border = _DutyPayColors.positive.withOpacity(0.18);
+        background = _DutyPayColors.positive.withValues(alpha: 0.10);
+        border = _DutyPayColors.positive.withValues(alpha: 0.18);
         valueColor = _DutyPayColors.positive;
         break;
       case _MetricTone.neutral:
@@ -2711,7 +2711,7 @@ class _PremiumCard extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.18),
+            color: Colors.black.withValues(alpha: 0.18),
             blurRadius: 18,
             offset: const Offset(0, 10),
           ),
@@ -2803,7 +2803,7 @@ class _GhostButton extends StatelessWidget {
           side: BorderSide(
             color: enabled ? _DutyPayColors.cardBorder : _DutyPayColors.divider,
           ),
-          backgroundColor: _DutyPayColors.surface.withOpacity(0.35),
+          backgroundColor: _DutyPayColors.surface.withValues(alpha: 0.35),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
           ),
@@ -2916,7 +2916,7 @@ class _EmptyStateCard extends StatelessWidget {
             width: 62,
             height: 62,
             decoration: BoxDecoration(
-              color: _DutyPayColors.info.withOpacity(0.12),
+              color: _DutyPayColors.info.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(20),
             ),
             child: const Icon(
@@ -2988,7 +2988,7 @@ class _CalibrationExplainerCard extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.16),
+            color: Colors.black.withValues(alpha: 0.16),
             blurRadius: 18,
             offset: const Offset(0, 10),
           ),
@@ -3073,7 +3073,7 @@ class _CedolinoDisclaimerCard extends StatelessWidget {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: _DutyPayColors.info.withOpacity(0.12),
+              color: _DutyPayColors.info.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(
