@@ -415,3 +415,24 @@ Assumere sempre che:
 Obiettivo:
 
 proseguire lo sviluppo senza introdurre regressioni, mantenendo la coerenza architetturale e la separazione tra Core Economico e Break.
+## Break Validation
+
+La feature Break è stata validata sia tramite test automatici che tramite test manuale multi-client.
+
+Scenario verificato:
+
+Host:
+- crea stanza
+
+Client:
+- entra tramite codice
+
+Entrambi:
+- visualizzano gli stessi partecipanti
+- sincronizzano il countdown
+- sincronizzano la gara
+- ricevono lo stesso vincitore
+
+Stato:
+
+✅ VALIDATO

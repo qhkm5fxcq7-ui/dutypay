@@ -308,3 +308,25 @@ Prima della release pubblica restano da completare esclusivamente i test end-to-
 - UX finale della feature Break.
 
 La logica di dominio e il Challenge Engine sono considerati consolidati; le attività residue riguardano principalmente integrazione UI e validazione multiplayer.
+## Validazione Eseguita
+
+Data: giugno 2026
+
+Ambiente:
+
+- Chrome (2 finestre indipendenti)
+- Firebase reale
+
+Scenario verificato:
+
+- Creazione stanza
+- Join tramite codice
+- Partecipanti sincronizzati
+- Countdown sincronizzato
+- Gara sincronizzata
+- Identico vincitore su entrambi i client
+- Nessuna desincronizzazione osservata
+
+Esito:
+
+✅ PASS
