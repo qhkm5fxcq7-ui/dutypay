@@ -2,37 +2,44 @@
 
 ## Visione
 
-Costruire il punto di riferimento digitale per il personale della Polizia di Stato.
+Costruire il punto di riferimento digitale per il personale delle Forze dell'Ordine.
+
+DutyPay deve evolvere come ecosistema completo, non solo come calcolatore di straordinari.
 
 Ogni evoluzione del prodotto dovrà rispettare questa gerarchia:
 
 1. Precisione
 2. Affidabilità
-3. Esperienza utente
-4. Brand Identity
-5. Community
-6. Innovazione
+3. Stabilità
+4. Esperienza utente
+5. Brand Identity
+6. Community
+7. Innovazione
 
 ---
 
 # Stato attuale
 
-DutyPay è un ecosistema composto da quattro aree principali.
+DutyPay è composto da quattro aree principali.
 
 ## Core Engine
 
 Responsabile di:
 
-- Turni
-- Straordinari
-- Cedolino
-- Basket
-- Missioni
-- Reparti
+* turni;
+* straordinari;
+* cedolino;
+* basket;
+* compensativi;
+* parser;
+* reparti;
+* summary.
 
 Il Core Engine rappresenta il cuore del prodotto.
 
-La precisione del motore rimane la priorità assoluta.
+Stato:
+
+✅ Consolidato in RC 1.0.9
 
 ---
 
@@ -40,15 +47,19 @@ La precisione del motore rimane la priorità assoluta.
 
 Responsabile di:
 
-- UX
-- Break
-- Microinterazioni
-- Animazioni
-- Feedback visivi
+* UX;
+* Break;
+* microinterazioni;
+* animazioni;
+* feedback visivi.
 
 Obiettivo:
 
 rendere l'utilizzo quotidiano semplice e piacevole.
+
+Stato:
+
+🟡 In evoluzione
 
 ---
 
@@ -56,14 +67,18 @@ rendere l'utilizzo quotidiano semplice e piacevole.
 
 Componenti:
 
-- VISION.md
-- DESIGN_SYSTEM.md
-- Agente DP
-- Tone of Voice
+* VISION.md;
+* DESIGN_SYSTEM.md;
+* Agente DP;
+* Tone of Voice.
 
 Obiettivo:
 
 costruire un'identità immediatamente riconoscibile.
+
+Stato:
+
+🟡 Avviato
 
 ---
 
@@ -71,94 +86,157 @@ costruire un'identità immediatamente riconoscibile.
 
 Canali:
 
-- Facebook
-- WhatsApp
-- Feedback utenti
-- Supporto
+* Facebook;
+* WhatsApp;
+* feedback utenti;
+* supporto;
+* passaparola.
 
 Obiettivo:
 
 trasformare DutyPay in una community oltre che in un'app.
 
+Stato:
+
+🟡 Attivo
+
 ---
 
 # Roadmap
 
-## Fase 1
+## Fase 1 — Core Engine
 
-Core Engine
+Stato:
 
-**Stato:** ✓ Completata
+✅ Completata
 
-Motore economico stabile.
+Risultato:
 
----
-
-## Fase 2
-
-Espansione reparti
-
-**Stato:** ✓ In corso
-
-Completati:
-
-- Reparto Mobile
-- Polfer
-- Questura Uffici
-- Questura Volanti
-- Polstrada
-
-L'architettura consente l'aggiunta di nuovi reparti senza modificare il motore.
+* motore economico stabile;
+* Source of Truth centralizzata;
+* pipeline multi reparto consolidata;
+* regression pack estesi.
 
 ---
 
-## Fase 3
+## Fase 2 — Reparti attuali
 
-Break
+Stato:
 
-**Stato:** ✓ Feature Complete v1
+✅ Completata
+
+Reparti consolidati:
+
+* Reparto Mobile;
+* Polfer;
+* Questura Uffici;
+* Questura Volanti.
+
+L'architettura consente l'aggiunta di nuovi reparti tramite DepartmentPolicy dedicate.
+
+---
+
+## Fase 3 — Regression Strategy
+
+Stato:
+
+✅ Completata per RC 1.0.9
+
+Copertura:
+
+* Core Calculation Engine;
+* Reparto Mobile;
+* Polfer;
+* Questura;
+* Multi Department;
+* Basket Straordinari;
+* Basket Compensativi;
+* Basket RFI;
+* Monthly Summary;
+* Break Domain;
+* Break DTO;
+* Break Challenge Engine.
+
+Suite attuale:
+
+**156 test PASS**
+
+---
+
+## Fase 4 — Break
+
+Stato:
+
+🟡 In completamento
 
 Completato:
 
-- lobby
-- stanze
-- sincronizzazione
-- countdown
-- gara
-- suspense
-- risultato
+* architettura;
+* Domain;
+* DTO;
+* Repository;
+* Datasource;
+* Challenge Engine;
+* regression pack.
 
-Break rimane congelato fino alla completa stabilizzazione della piattaforma.
+Da completare:
+
+* UI definitiva;
+* validazione multiplayer reale;
+* Firestore Security Rules;
+* rifiniture UX.
 
 ---
 
-## Fase 4
+## Fase 5 — Stabilità Release
 
-Stabilità
+Stato:
 
-**Stato:** In corso
+🟡 In corso
 
 Priorità:
 
-- Crashlytics
-- Analytics
-- monitoraggio release
-- zero regressioni
+* Crashlytics;
+* Analytics;
+* monitoraggio release;
+* zero regressioni;
+* smoke test multi reparto;
+* verifica store.
 
 Ogni release deve aumentare l'affidabilità del prodotto.
 
 ---
 
-## Fase 5
+## Fase 6 — Nuovi Reparti
 
-Brand Identity
+Stato:
 
-**Stato:** Avviata
+🔵 Futuro controllato
+
+Possibili candidati:
+
+* Polaria;
+* Frontiera;
+* Digos;
+* Squadra Mobile;
+* altri reparti specialistici.
+
+Regola:
+
+nessun nuovo reparto deve introdurre pipeline alternativa al Core Engine.
+
+---
+
+## Fase 7 — Brand Identity
+
+Stato:
+
+🟡 Avviata
 
 Documenti:
 
-- VISION.md
-- DESIGN_SYSTEM.md
+* VISION.md;
+* DESIGN_SYSTEM.md.
 
 Obiettivo:
 
@@ -166,71 +244,64 @@ trasformare DutyPay da semplice applicazione a prodotto riconoscibile.
 
 ---
 
-## Fase 6
+## Fase 8 — Agente DP
 
-Agente DP
+Stato:
 
-**Stato:** Concept
+🔵 Concept
 
 Agente DP diventerà la mascotte ufficiale di DutyPay.
 
 Utilizzi futuri:
 
-- onboarding
-- empty state
-- loading
-- Break
-- statistiche
-- achievement
-- marketing
-- community
+* onboarding;
+* empty state;
+* loading;
+* Break;
+* statistiche;
+* achievement;
+* marketing;
+* community.
 
 ---
 
-## Fase 7
-
-Design System completo
+## Fase 9 — Design System completo
 
 Da sviluppare:
 
-- component library
-- palette definitiva
-- motion
-- typography
-- iconografia
-- asset Agente DP
+* component library;
+* palette definitiva;
+* motion;
+* typography;
+* iconografia;
+* asset Agente DP.
 
 ---
 
-## Fase 8
-
-Community
-
-Espansione della community ufficiale.
+## Fase 10 — Community
 
 Obiettivi:
 
-- maggiore coinvolgimento
-- feedback continui
-- crescita organica
-- contenuti dedicati
+* maggiore coinvolgimento;
+* feedback continui;
+* crescita organica;
+* contenuti dedicati;
+* supporto utenti.
 
 ---
 
-## Fase 9
+## Fase 11 — DutyPay 2.0
 
-DutyPay 2.0
+Obiettivo finale:
 
-Obiettivo finale.
+un ecosistema completo composto da:
 
-Un ecosistema completo composto da:
+* Core Engine;
+* Experience;
+* Brand;
+* Community.
 
-- Core Engine
-- Experience
-- Brand
-- Community
-
-integrati in un unico prodotto.
+Tutti integrati in un unico prodotto.
 
 ---
 
@@ -238,7 +309,6 @@ integrati in un unico prodotto.
 
 Ogni nuova funzionalità dovrà rispondere a questa domanda:
 
-"Questa funzione rende DutyPay più vicino alla sua Vision?"
+"Questa funzione rende DutyPay più precisa, affidabile o utile per l'utente?"
 
 Se la risposta è no, probabilmente non è una priorità.
-

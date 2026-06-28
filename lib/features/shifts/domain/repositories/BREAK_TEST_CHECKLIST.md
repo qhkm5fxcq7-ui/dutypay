@@ -243,3 +243,68 @@ Versione documento: 1.0
 Feature: Break
 
 Ultimo aggiornamento: giugno 2026
+# Stato
+
+Versione documento:
+
+**1.0.9 (Release Candidate)**
+
+Stato attuale della feature:
+
+### Core completato
+
+- ✅ Architettura modulare
+- ✅ Dependency Injection dedicata
+- ✅ Domain Models
+- ✅ Repository
+- ✅ DTO
+- ✅ Firestore Datasource
+- ✅ Local Identity
+- ✅ Code Generator
+- ✅ Use Case principali
+- ✅ Challenge Engine deterministico
+- ✅ Serializzazione Firestore
+- ✅ Gestione stato stanza
+- ✅ Gestione partecipanti
+
+### Regression Pack disponibili
+
+Copertura automatica:
+
+- Break Domain Regression Pack
+- Break DTO Regression Pack
+- Break Challenge Engine Regression Pack
+
+Tutti i regression pack devono rimanere verdi prima di ogni release.
+
+### Test automatici
+
+Verifiche garantite:
+
+- modelli Domain;
+- serializzazione/deserializzazione DTO;
+- persistenza dei dati;
+- determinismo del Challenge Engine;
+- coerenza dei frame della gara;
+- sincronizzazione del vincitore;
+- stabilità delle animazioni.
+
+### Stato Release
+
+- flutter test: PASS (156/156)
+- flutter analyze: PASS
+- nessun warning
+- nessun errore bloccante
+
+### Componenti ancora da validare manualmente
+
+Prima della release pubblica restano da completare esclusivamente i test end-to-end relativi a:
+
+- creazione stanza da UI;
+- join tramite codice;
+- sincronizzazione realtime Firestore;
+- animazioni multiplayer tra dispositivi reali;
+- Firestore Security Rules;
+- UX finale della feature Break.
+
+La logica di dominio e il Challenge Engine sono considerati consolidati; le attività residue riguardano principalmente integrazione UI e validazione multiplayer.

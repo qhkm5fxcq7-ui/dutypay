@@ -1,306 +1,313 @@
 # TEST STRATEGY
 
-## Parser Testing Strategy
+## Obiettivo
+
+La strategia di test di DutyPay garantisce che ogni modifica mantenga la coerenza del motore di calcolo e non introduca regressioni tra i diversi reparti o moduli dell'applicazione.
+
+Ogni bug corretto deve produrre almeno un nuovo test automatico.
+
+Una modifica non è considerata completata finché:
+
+1. il bug è riproducibile;
+2. esiste un test che fallisce prima della correzione;
+3. il test passa dopo la correzione;
+4. l'intera suite rimane completamente verde.
+
+---
+
+# Parser Testing Strategy
 
 I test parser devono utilizzare:
 
-* fixture reali (PDF o raw text reale)
-* non solo dati sintetici
+* fixture reali (PDF o testo reale)
+* non dati sintetici
 
-### Motivazione
+## Motivazione
 
 I cedolini NoiPA presentano frequentemente:
 
-* duplicazione blocchi
-* layout non lineare
-* variazioni di formattazione
-* righe ripetute
-* differenze tra reparti
+* duplicazione dei blocchi;
+* layout non lineare;
+* variazioni di formattazione;
+* righe ripetute;
+* differenze tra reparti.
 
-I test sintetici non sono sufficienti per garantire affidabilità.
+I test sintetici non sono sufficienti a garantire affidabilità.
 
-### Regola obbligatoria
+## Regola obbligatoria
 
-Qualsiasi bug parser scoperto in produzione deve generare:
+Qualsiasi bug del parser scoperto in produzione deve generare:
 
-1. nuova fixture reale
-2. nuovo test automatico
-3. successiva correzione del parser
+1. nuova fixture reale;
+2. nuovo test automatico;
+3. correzione del parser.
 
-La fixture deve essere introdotta prima del refactor del parser.
-
----
-
-## Test RFI obbligatori
-
-Copertura minima richiesta:
-
-### Inserimento scalo
-
-Verificare:
-
-* generazione automatica basket RFI
-* inserimento movimento OPEN
-
-### Separazione contabile
-
-Verificare:
-
-* nessun impatto su accessorie
-* nessun impatto su straordinari
-* nessun impatto su compensativi
-
-### Pagamento
-
-Verificare:
-
-* pagamento manuale
-* passaggio OPEN → PAID
-
-### Cedolino
-
-Verificare:
-
-* inclusione solo nel mese di pagamento
-
-### UI
-
-Verificare sempre:
-
-* Preview = turno salvato
-* Card = dettaglio turno
-* Totale = breakdown
+La fixture deve essere aggiunta prima del refactor.
 
 ---
 
-## Parser Cedolini – Fixture Reali
+# Parser Cedolini – Fixture Reali
 
-### File test
+## File
 
 `test/unit/parser/payslip_parser_service_test.dart`
 
-### Fixture validate
+## Fixture validate
 
 * RM Marzo 2026
 * RM Febbraio 2026
 * Polfer Marzo 2026
 
-### Verifiche effettuate
+## Verifiche
 
-Per ogni fixture:
+Per ogni fixture vengono controllati:
 
-* parsing corretto riepilogo cedolino
-* estrazione corretta accessoryEntries
-* estrazione corretta operationalAccessoryEntries
-* derivazione corretta tariffe straordinario
-* costruzione corretta profilo dinamico
-
-### Esito
-
-Tutti i test passano.
-
-### Impatto
-
-Questa copertura protegge:
-
-* parser cedolino
-* accessorie reali
-* profilo dinamico
-* stima cedolino
-* regressioni future
+* parsing riepilogo cedolino;
+* accessoryEntries;
+* operationalAccessoryEntries;
+* tariffe straordinario;
+* costruzione profilo dinamico.
 
 ---
 
-## Programmed Overtime Segment Tests
+# Core Engine Regression
 
-### File test
+Copertura:
 
-`test/unit/usecases/programmed_overtime_segment_test.dart`
+* CalculateShiftUseCase
+* BuildShiftComputationUseCase
+* BuildDailyShiftResultUseCase
+* BuildMonthlySummaryUseCase
 
-### Covered Cases
+Verifiche:
 
-#### Caso 1 – Ordinary + Programmed Overtime
-
-Turno:
-
-* 07:00–16:00
-
-Programmato:
-
-* 13:00–16:00
-
-Atteso:
-
-* overtime = 3h
+* straordinari;
+* notturno;
+* festivo;
+* ordine pubblico;
+* benefit;
+* compensativi;
+* breakdown;
+* totale turno;
+* riepilogo giornaliero;
+* riepilogo mensile.
 
 ---
 
-#### Caso 2 – Programmed Compensative Overtime
+# Department Regression Packs
 
-Turno:
+## Reparto Mobile
 
-* 07:00–16:00
+Copertura:
 
-Programmato:
-
-* 13:00–16:00
-
-Destinazione:
-
-* compensativo
-
-Atteso:
-
-* overtime totale = 3h
-* compensativo = 3h
-* importo pagato = 0
+* soglia ordinaria 6h;
+* straordinario;
+* notturno;
+* ordine pubblico;
+* servizi esterni;
+* riepiloghi mensili.
 
 ---
 
-#### Caso 3 – Out of Range Segment
+## Polfer
 
-Turno:
+Copertura:
 
-* 07:00–13:00
-
-Programmato:
-
-* 12:00–18:00
-
-Atteso:
-
-* clamp corretto
-* overtime = 1h
-
-### Regression Requirements
-
-Devono rimanere stabili:
-
-* soglia RM 6h
-* logica Polfer notturno e territorio
-* logica Questura Uffici
-* logica preset Questura Volanti
-* overtime programmato
-* compensativi programmati
-* separazione basket RFI
+* fine turno teorica;
+* controllo territorio;
+* RFI;
+* scalo automatico;
+* scalo manuale;
+* straordinario programmato.
 
 ---
 
-## Compensative Basket Test Coverage
-
-### Summary Model
+## Questura
 
 Copertura:
 
-* earned − recovered = residual
-* adjustment positivo
-* adjustment negativo
+### Uffici
 
-### Movement Model
+* override ordinario;
+* 6h;
+* 7h12;
+* personalizzato.
 
-Copertura:
+### Volanti
 
-* JSON serialization
-* JSON deserialization
-* fallback sicuro movement type sconosciuto
-
-### Movement Builder
-
-Copertura:
-
-* earned da turno compensativo
-* recovered da Recupero compensativo
-* storico misto nello stesso mese
-
-### Summary From Movements
-
-Copertura:
-
-* earned aggregation
-* recovered aggregation
-* adjustment aggregation
-* validazione formula residuale
-
-### Adjustment Governance
-
-Copertura:
-
-* adjustment positivo aumenta residuo
-* adjustment negativo diminuisce residuo
-* nota vuota blocca adjustment
-* delete consentito solo sugli adjustment
-
-### Immutability Rules
-
-Movimenti automatici:
-
-* earned = generato dal sistema
-* recovered = generato dal sistema
-
-Regole:
-
-* earned non modificabile
-* earned non eliminabile
-* recovered non modificabile
-* recovered non eliminabile
-
-L'unico movimento modificabile dall'utente è:
-
-* adjustment
-
-### Regression Requirements
-
-I compensativi:
-
-* non devono impattare il cedolino
-* non devono impattare il basket RFI
-* non devono impattare il basket pagamenti
-* non devono alterare la segmentazione overtime programmato
-* non devono alterare il motore centrale
+* preset mattina;
+* preset pomeriggio;
+* preset sera;
+* preset notte;
+* straordinario oltre preset.
 
 ---
 
-## Release Baseline
+## Multi Department
+
+Verifica:
+
+* isolamento delle policy;
+* nessuna contaminazione tra reparti;
+* stessa casistica produce risultati differenti solo quando previsto dalle rispettive regole.
+
+---
+
+# Programmed Overtime
+
+Copertura:
+
+* segmento programmato;
+* clamp automatico;
+* destinazione pagamento;
+* destinazione compensativo.
+
+Verifiche:
+
+* overtime corretto;
+* compensativo corretto;
+* importo pagato corretto.
+
+---
+
+# Basket Regression
+
+## Basket Straordinari
+
+Copertura:
+
+* pagamenti;
+* residuo;
+* serializzazione;
+* persistenza.
+
+---
+
+## Basket Compensativi
+
+Copertura:
+
+* earned;
+* recovered;
+* adjustment;
+* riepiloghi;
+* governance.
+
+Verifiche:
+
+* adjustment positivo;
+* adjustment negativo;
+* nota obbligatoria;
+* eliminazione consentita solo agli adjustment.
+
+---
+
+## Basket RFI
+
+Copertura:
+
+* generazione automatica;
+* stato OPEN;
+* pagamento;
+* stato PAID;
+* proiezione cedolino.
+
+Verifiche:
+
+* nessuna interferenza con:
+  * straordinari;
+  * compensativi;
+  * accessorie.
+
+---
+
+# Break Regression Packs
+
+## Domain
+
+Copertura:
+
+* BreakRoom;
+* BreakParticipant;
+* BreakIdentity.
+
+---
+
+## DTO
+
+Copertura:
+
+* serializzazione;
+* deserializzazione;
+* backward compatibility.
+
+---
+
+## Challenge Engine
+
+Copertura:
+
+* ChallengeRunner;
+* ChallengeFrame;
+* ChallengeState;
+* determinismo del motore;
+* vincitore;
+* animazioni;
+* frame generati.
+
+---
+
+# UI Regression
+
+Verificare sempre:
+
+* Preview = turno salvato;
+* Breakdown = totale;
+* Totale turno = riepilogo giornaliero;
+* Riepilogo giornaliero = riepilogo mensile;
+* Cedolino = proiezione motore.
+
+---
+
+# Release Validation Checklist
+
+Prima di ogni release devono risultare verdi:
+
+* flutter analyze
+* flutter test
+* regression pack Reparto Mobile
+* regression pack Polfer
+* regression pack Questura
+* regression pack Multi Department
+* regression pack Basket Straordinari
+* regression pack Basket Compensativi
+* regression pack Basket RFI
+* regression pack Break Domain
+* regression pack Break DTO
+* regression pack Break Challenge Engine
+
+---
+
+# Stato attuale
 
 Versione validata:
 
-DutyPay 1.0.5
+**DutyPay 1.0.9**
 
-Reparti coperti:
+Reparti supportati:
 
 * Reparto Mobile
 * Polfer
 * Questura Uffici
 * Questura Volanti
 
-Prima di ogni release:
+Suite automatica:
 
-* flutter analyze
-* flutter test
-* smoke test multi reparto
-* verifica preview ↔ dettaglio ↔ summary
-## Regression tests aggiunti
+**156 test superati**
 
-### RC-BASKET-OVERTIME-01
-File:
-`test/regression/basket_regression_test.dart`
+Verifica qualità:
 
-Copre:
-- pagamento basket straordinari;
-- riduzione residuo ore;
-- serializzazione/deserializzazione `BasketPayment`.
+* flutter analyze → 0 errori
+* flutter test → PASS
 
-### RC-BASKET-COMPENSATIVO-01
-File:
-`test/regression/compensative_basket_regression_test.dart`
-
-Copre:
-- ore compensative maturate;
-- ore recuperate;
-- correzione manuale positiva;
-- correzione manuale negativa;
-- blocco correzione senza nota;
-- eliminazione consentita solo per correzioni manuali.
-
-Stato:
-`flutter test` PASS: `+86 All tests passed`.
+La suite di regressione protegge l'intero motore di calcolo e tutti i moduli principali dell'applicazione.

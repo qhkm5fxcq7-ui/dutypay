@@ -2,14 +2,16 @@
 
 ## Obiettivo
 
-Definire l'architettura ufficiale di DutyPay.
+Questo documento definisce l'architettura ufficiale di DutyPay.
 
-Questo documento descrive:
+Descrive:
 
-- componenti
-- responsabilità
-- pipeline dati
-- vincoli architetturali
+* componenti;
+* responsabilità;
+* pipeline di calcolo;
+* principi architetturali;
+* flussi economici;
+* vincoli progettuali.
 
 Non descrive roadmap o backlog.
 
@@ -17,11 +19,13 @@ Non descrive roadmap o backlog.
 
 # Architettura Generale
 
-DutyPay è organizzata in tre livelli:
+DutyPay adotta una Clean Architecture suddivisa in tre livelli:
 
 1. Presentation
 2. Application
 3. Domain
+
+Ogni livello ha responsabilità ben definite e non deve contenere logiche appartenenti agli altri livelli.
 
 ---
 
@@ -29,26 +33,31 @@ DutyPay è organizzata in tre livelli:
 
 Responsabilità:
 
-- Flutter UI
-- schermate
-- cards
-- dashboard
-- calendario
-- form inserimento turno
-- preview
+* Flutter UI;
+* schermate;
+* dashboard;
+* cards;
+* calendario;
+* inserimento turni;
+* preview;
+* modulo Break;
+* animazioni.
 
 Può:
 
-- leggere dati
-- visualizzare dati
+* leggere dati;
+* mostrare dati;
+* raccogliere input utente.
 
 Non può:
 
-- calcolare overtime
-- calcolare importi
-- classificare ore
-- classificare festivi
-- implementare logiche reparto
+* calcolare importi;
+* classificare ore;
+* determinare straordinari;
+* applicare regole di reparto;
+* modificare risultati economici.
+
+La Presentation visualizza esclusivamente risultati provenienti dal motore centrale.
 
 ---
 
@@ -56,20 +65,22 @@ Non può:
 
 Responsabilità:
 
-- orchestrazione
-- aggregazione
-- costruzione summary
-- costruzione pipeline economiche
+* orchestrazione;
+* coordinamento dei Use Case;
+* aggregazione risultati;
+* costruzione dei riepiloghi;
+* pipeline economiche.
 
-UseCase principali:
+Use Case principali:
 
-- BuildDailyShiftResultUseCase
-- BuildShiftComputationUseCase
-- BuildMonthlySummaryUseCase
-- BuildCompensativeBasketMovementsUseCase
-- BuildCompensativeBasketSummaryFromMovementsUseCase
+* CalculateShiftUseCase
+* BuildShiftComputationUseCase
+* BuildDailyShiftResultUseCase
+* BuildMonthlySummaryUseCase
+* BuildCompensativeBasketMovementsUseCase
+* BuildCompensativeBasketSummaryFromMovementsUseCase
 
-I UseCase NON devono contenere regole reparto.
+I Use Case non contengono regole specifiche dei reparti.
 
 ---
 
@@ -77,66 +88,88 @@ I UseCase NON devono contenere regole reparto.
 
 Responsabilità:
 
-- logiche reparto
-- regole economiche
-- classificazione ore
-- overtime
-- notturno
-- festivo
+* motore economico;
+* regole operative;
+* policy dei reparti;
+* classificazione ore;
+* straordinari;
+* notturno;
+* festivo;
+* gestione basket;
+* compensativi.
+
+Il Domain rappresenta il cuore dell'applicazione.
 
 ---
 
 # Source of Truth
 
-La fonte di verità assoluta è:
+La Source of Truth ufficiale dell'intero sistema è:
 
-BuildDailyShiftResultUseCase
+**BuildDailyShiftResultUseCase**
 
-Responsabile di:
+È responsabile della costruzione dei risultati utilizzati da tutta l'applicazione.
 
-- overtime
-- notturno
-- festivo
-- OP
-- servizi esterni
-- compensativi
-- breakdown
-- totale turno
-- totale giorno
+Produce:
 
-Regola:
+* overtime;
+* notturno;
+* festivo;
+* Ordine Pubblico;
+* servizi esterni;
+* benefit;
+* basket;
+* compensativi;
+* breakdown;
+* totale turno;
+* totale giornata.
 
-Qualsiasi schermata deve derivare dai risultati di questo motore.
+Nessun widget può produrre risultati economici autonomi.
 
 ---
 
-# Pipeline Principale
+# Pipeline di Calcolo
 
+Il flusso ufficiale del motore è:
+
+```text
 Shift
-↓
-BuildDailyShiftResultUseCase
-↓
-BuildShiftComputationUseCase
-↓
+        ↓
+CalculateShiftUseCase
+        ↓
 DepartmentPolicy
-↓
-DailyShiftResult
-↓
-UI / Summary / Cedolino
+        ↓
+ShiftCalculationResult
+        ↓
+BuildShiftComputationUseCase
+        ↓
+BuildDailyShiftResultUseCase
+        ↓
+Dashboard
+Preview
+Cedolino
+Summary
+```
+
+Questa rappresenta l'unica pipeline autorizzata.
 
 ---
 
-# Policy Reparto
+# Department Policy
+
+La logica dei reparti è completamente isolata.
 
 Factory:
 
-DepartmentPolicyFactory
+* DepartmentPolicyFactory
 
-Policy attive:
+Policy disponibili:
 
-- RepartoMobilePolicy
-- PolferPolicy
-- QuesturaPolicy
+* RepartoMobilePolicy
+* PolferPolicy
+* QuesturaPolicy
+
+Ogni nuova implementazione dovrà essere aggiunta esclusivamente tramite una nuova DepartmentPolicy.
 
 ---
 
@@ -144,12 +177,12 @@ Policy attive:
 
 Gestisce:
 
-- soglia 6h
-- overtime
-- OP
-- servizi esterni
-- notturno
-- festivo
+* soglia ordinaria 6h;
+* straordinario;
+* notturno;
+* festivo;
+* Ordine Pubblico;
+* servizi esterni.
 
 ---
 
@@ -157,230 +190,230 @@ Gestisce:
 
 Gestisce:
 
-- scheduled end
-- controllo territorio
-- notturno
-- scalo ferroviario
+* fine turno teorica;
+* controllo territorio;
+* notturno;
+* scalo ferroviario (RFI);
+* straordinario programmato.
 
-Regola:
-
-nessuna soglia fissa 6h.
-
----
-
-# Questura Uffici
-
-Gestisce:
-
-- ordinario configurabile
-- overtime automatico
-
-Supportati:
-
-- 6h
-- 7h12
-- custom
+Non utilizza la soglia ordinaria delle 6 ore.
 
 ---
 
-# Questura Volanti
+# Questura
 
-Preset:
-
-- Mattina
-- Pomeriggio
-- Sera
-- Notte
-
-Regola:
-
-servizio ordinario fino a fine preset
-
-overtime dopo fine preset
+## Uffici
 
 Supporta:
 
-- override ordinario
-- straordinario programmato
+* ordinario 6h;
+* ordinario 7h12;
+* ordinario personalizzato;
+* override manuale.
+
+Lo straordinario viene calcolato esclusivamente oltre l'orario ordinario configurato.
 
 ---
 
-# Programmed Overtime Architecture
+## Volanti
 
-Lo straordinario programmato è gestito come:
+Preset ufficiali:
 
-segmento temporale
+* Mattina;
+* Pomeriggio;
+* Sera;
+* Notte.
 
-Campi:
+Regole:
 
-- programmedOvertimeEnabled
-- programmedOvertimeStart
-- programmedOvertimeEnd
-- overtimeDestination
+* ordinario fino al termine del preset;
+* straordinario oltre il preset;
+* supporto allo straordinario programmato.
+
+---
+
+# Programmed Overtime
+
+Lo straordinario programmato è gestito come segmento temporale indipendente.
+
+Campi principali:
+
+* programmedOvertimeEnabled;
+* programmedOvertimeStart;
+* programmedOvertimeEnd;
+* overtimeDestination.
 
 Pipeline:
 
+```text
 Shift
-↓
-segment overlap
-↓
-clamp
-↓
-certain overtime
+        ↓
+Segment overlap
+        ↓
+Clamp automatico
+        ↓
+Overtime certo
+```
 
-Destinazioni:
+Destinazioni possibili:
 
-- payment
-- compensative
+* pagamento;
+* compensativo.
 
 ---
 
-# Basket RFI Architecture
+# Basket Straordinari
 
-Pipeline indipendente.
+Pipeline dedicata.
+
+Gestisce:
+
+* movimenti;
+* pagamenti;
+* saldo residuo;
+* proiezione cedolino;
+* correzioni manuali.
+
+È indipendente da tutti gli altri basket.
+
+---
+
+# Basket RFI
+
+Pipeline autonoma.
 
 Flusso:
 
-Turno con scalo
-↓
-rfiBasketGross
-↓
-OPEN
-↓
-PAID
-↓
+```text
+Turno con Scalo
+        ↓
+Basket OPEN
+        ↓
+Pagamento
+        ↓
+Basket PAID
+        ↓
 Cedolino
+```
 
 Separato da:
 
-- overtime
-- accessorie
-- compensativi
-
-Storage:
-
-rfiMonthlySummaries
-
-Mai utilizzare:
-
-monthlySummaries
+* straordinari;
+* compensativi;
+* accessorie.
 
 ---
 
-# Basket Compensativo Architecture
+# Basket Compensativo
 
-Pipeline indipendente basata su ore.
+Pipeline indipendente basata esclusivamente sulle ore.
 
-Domain Models:
+Domain Model:
 
-- CompensativeBasketMovement
-- CompensativeBasketSummary
+* CompensativeBasketMovement
+* CompensativeBasketSummary
 
-Tipi:
+Tipologie:
 
-- earned
-- recovered
-- adjustment
-
----
-
-## Earned
-
-Origine:
-
-compensative overtime
-
----
-
-## Recovered
-
-Origine:
-
-assenza Recupero compensativo
-
----
-
-## Adjustment
-
-Origine:
-
-utente
+* earned;
+* recovered;
+* adjustment.
 
 Regole:
 
-- nota obbligatoria
-- positivo o negativo
-- eliminabile
+* earned automatico;
+* recovered automatico;
+* adjustment modificabile;
+* nota obbligatoria;
+* earned e recovered non eliminabili.
 
 ---
 
-## Runtime Merge
-
-BuildCompensativeBasketMovementsUseCase(shifts)
-+
-manualCompensativeBasketMovements
-=
-compensativeBasketMovements
-
----
-
-# Cedolino Architecture
+# Cedolino
 
 Pipeline:
 
-Breakdown turno
-↓
-Aggregazione mensile
-↓
-Esclusione benefit
-↓
-Esclusione RFI
-↓
-Totale lordo
-↓
-Fiscalità stimata
-↓
-Netto previsto
+```text
+Breakdown Giornaliero
+        ↓
+Aggregazione Mensile
+        ↓
+Esclusione Benefit
+        ↓
+Esclusione Basket RFI
+        ↓
+Lordo Stimato
+        ↓
+Fiscalità Stimata
+        ↓
+Netto Previsto
+```
 
 ---
 
-# Benefit Architecture
+# Benefit
 
 Categorie:
 
-- ticket_meal
-- comfort
-- comfort_cdg
+* Ticket Meal;
+* Comfort;
+* Comfort CDG.
 
 Regole:
 
-- amount = 0
-- benefitAmount valorizzato
-- isBenefit = true
+* amount = 0;
+* benefitAmount valorizzato;
+* isBenefit = true.
 
-Mai inclusi in:
-
-- totalAmount
-- extraAmount
-- cedolino
+Mai inclusi nel totale economico.
 
 ---
 
 # Parser Cedolini
 
-Validato tramite fixture reali.
+Validazione effettuata tramite fixture reali.
 
 Copertura:
 
-- RM Febbraio 2026
-- RM Marzo 2026
-- Polfer Marzo 2026
+* RM Febbraio 2026;
+* RM Marzo 2026;
+* Polfer Marzo 2026.
 
-Regola:
+Regola fondamentale:
 
-utilizzare sempre l'ultima occorrenza del blocco:
+nei cedolini NoiPA il parser utilizza sempre l'ultima occorrenza del blocco:
 
 "Assegni accessori"
+
+---
+
+# Break Architecture
+
+Il modulo Break è completamente indipendente dal motore economico.
+
+Architettura:
+
+```text
+Presentation
+        ↓
+Use Case
+        ↓
+Repository
+        ↓
+Datasource
+        ↓
+Firestore
+```
+
+Componenti principali:
+
+* Identity;
+* Room;
+* Participant;
+* Challenge Engine;
+* Animation Engine.
+
+Il Challenge Engine è deterministico e completamente separato dalle logiche economiche.
 
 ---
 
@@ -388,83 +421,38 @@ utilizzare sempre l'ultima occorrenza del blocco:
 
 È vietato:
 
-- logica economica in UI
-- duplicazione Shift/Policy
-- fallback legacy
-- merge breakdown legacy
-- uso monthlySummaries per RFI
-- calcoli paralleli nella preview
+* introdurre logica economica nella UI;
+* duplicare regole del motore;
+* utilizzare pipeline alternative;
+* bypassare CalculateShiftUseCase;
+* eseguire calcoli economici nella Presentation;
+* mescolare Basket Straordinari, Basket Compensativi e Basket RFI;
+* introdurre codice legacy.
 
 ---
 
-# Baseline
+# Stato Architetturale
 
-Release:
+Versione:
 
-DutyPay 1.0.5
+**DutyPay 1.0.9 (Release Candidate)**
 
-Reparti:
+Architettura consolidata.
 
-- Reparto Mobile
-- Polfer
-- Questura Uffici
-- Questura Volanti
+Componenti validati:
 
-Stato:
+* Core Calculation Engine;
+* Multi Department Engine;
+* Parser Cedolini;
+* Basket Straordinari;
+* Basket Compensativi;
+* Basket RFI;
+* Dashboard;
+* Break.
 
-ARCHITETTURA STABILE
-- Polstrada 
-## Polstrada
+Validazione:
 
-Polstrada utilizza la stessa pipeline di Questura Pattuglia.
+* **156 test PASS**
+* **Flutter Analyze: 0 warning / 0 errori**
 
-Non esiste un motore dedicato.
-
-Riutilizzo stimato:
-
-95%
-
-Differenze attuali:
-
-- preset dedicati
-- futura indennità autostradale
-## Stato Polstrada
-
-Completata.
-
-Funzioni disponibili:
-
-- preset ufficiali
-- servizio autostradale
-- servizio esterno
-- straordinario automatico
-- straordinario programmato
-- compensativo
-- dashboard integrata
-- persistenza completa
-
-Test validati.
-
-Pronta per la release.
----
-
-# Break Architecture
-
-Break è una feature sociale indipendente dal motore economico di DutyPay.
-
-Obiettivo: aumentare l'utilizzo quotidiano dell'app e favorire il passaparola tra colleghi attraverso la funzione “Chi paga il caffè”.
-
-## Pattern
-
-```text
-Presentation
-↓
-Use Cases
-↓
-Repository Interface
-↓
-Repository Implementation
-↓
-Datasource
-↓
-Firestore
+L'architettura è considerata stabile e costituisce la baseline tecnica per le future evoluzioni del progetto.

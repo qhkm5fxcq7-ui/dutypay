@@ -2,98 +2,150 @@
 
 ## Obiettivo
 
-Mantenere traccia delle regressioni critiche risolte nel progetto.
+Questo documento raccoglie tutte le regressioni critiche risolte nel progetto.
 
-Ogni bug riportato in questo documento:
+Ogni bug riportato è stato:
 
-* è stato riprodotto
-* è stato corretto
-* è stato validato tramite test o verifica manuale
+- riprodotto;
+- corretto;
+- validato tramite test automatici o verifica funzionale;
+- protetto da regression test quando applicabile.
 
 ---
 
-# Reparto Mobile
+# Stato Generale
+
+Release:
+
+**1.0.9 (Release Candidate)**
+
+Stato:
+
+- Core Engine consolidato;
+- Source of Truth unificata;
+- nessun bug critico aperto;
+- regressioni automatiche complete.
+
+---
+
+# CORE ENGINE
+
+## CORE-001 — Preview diversa dal turno salvato
+
+### Sintomo
+
+La preview mostrava importi differenti rispetto al turno realmente salvato.
+
+### Causa
+
+Calcoli duplicati nella UI.
+
+### Soluzione
+
+Preview collegata direttamente al motore centrale.
+
+### Esito
+
+Preview e turno salvato sono identici.
+
+Status:
+
+✅ RISOLTO
+
+---
+
+## CORE-002 — Breakdown incoerente
+
+### Sintomo
+
+Breakdown corretto ma totale errato.
+
+### Soluzione
+
+Il totale viene ricostruito esclusivamente dal Breakdown del motore.
+
+Status:
+
+✅ RISOLTO
+
+---
+
+## CORE-003 — Duplicazione della logica economica
+
+### Sintomo
+
+Parte dei calcoli veniva eseguita nei widget.
+
+### Soluzione
+
+Centralizzazione definitiva della logica nel Core Engine.
+
+Status:
+
+✅ RISOLTO
+
+---
+
+# REPARTO MOBILE
 
 ## RM-001 — Perdita notturno con straordinario
 
-### Sintomo
+Status:
 
-La quota di notturno ordinario veniva ridotta o persa in presenza di straordinario notturno.
+✅ RISOLTO
 
-### Causa
+Separazione definitiva tra:
 
-Errore nella segmentazione tra:
+- ordinary night;
+- overtime night.
 
-* ordinary night
-* overtime night
+---
 
-### Soluzione
-
-Separazione completa delle due componenti.
-
-### Esito
-
-* ordinary night sempre preservato
-* overtime night indipendente
-* breakdown corretto
+## RM-002 — Multi-turno non coerente
 
 Status:
 
 ✅ RISOLTO
 
----
-
-## RM-002 — Utilizzo scenari Volanti come baseline RM
-
-### Sintomo
-
-Venivano utilizzati turni tipo:
-
-06:55 → 13:08
-
-come riferimento RM.
-
-### Causa
-
-Confusione tra logiche Reparto Mobile e turnazione in quinta.
-
-### Soluzione
-
-Formalizzazione scenari canonici RM:
-
-* soglia ordinaria 6h
-
-### Esito
-
-Regole RM isolate.
-
-Status:
-
-✅ RISOLTO
+La soglia delle 6 ore viene mantenuta correttamente anche con più turni nello stesso giorno.
 
 ---
 
-# Polfer
+# POLFER
 
 ## POLFER-001 — Falso straordinario
 
+Status:
+
+✅ RISOLTO
+
+Lo straordinario viene calcolato esclusivamente dopo la fine teorica del turno.
+
+---
+
+## POLFER-002 — Breakdown non allineato
+
+Status:
+
+✅ RISOLTO
+
+Il breakdown deriva esclusivamente dal motore.
+
+---
+
+## POLFER-003 — Validazione RFI con overtime programmato
+
 ### Sintomo
 
-Turni standard producevano straordinario non dovuto.
-
-### Causa
-
-Utilizzo della soglia RM 6h.
+Lo scalo manuale poteva risultare non valido in presenza di straordinario programmato.
 
 ### Soluzione
 
-Utilizzo della fine turno teorica Polfer.
+La validazione considera anche il segmento di overtime programmato.
 
-### Esito
+### Regression Test
 
-* mattina standard corretta
-* sera standard corretta
-* notte standard corretta
+Dedicated Regression Pack.
 
 Status:
 
@@ -101,451 +153,320 @@ Status:
 
 ---
 
-## POLFER-002 — Breakdown incoerente
+# QUESTURA
 
-### Sintomo
-
-Breakdown diverso dal risultato reale.
-
-### Causa
-
-Merge con logica legacy.
-
-### Soluzione
-
-Breakdown generato esclusivamente dal motore.
-
-### Esito
-
-Preview e dettaglio coerenti.
+## QUESTURA-001 — Override ordinario errato
 
 Status:
 
 ✅ RISOLTO
+
+Supportati:
+
+- 6h;
+- 7h12;
+- custom.
+
+---
+
+## QUESTURA-002 — Totale preview errato
+
+Status:
+
+✅ RISOLTO
+
+Totale ricostruito dal Breakdown.
+
+---
+
+## QUESTURA-003 — Preview diversa dal dettaglio
+
+Status:
+
+✅ RISOLTO
+
+Entrambi utilizzano il motore centrale.
+
+---
+
+# BASKET STRAORDINARI
+
+## BASKET-001 — Pagamenti non aggiornavano il residuo
+
+Status:
+
+✅ RISOLTO
+
+Il residuo viene aggiornato correttamente.
+
+---
+
+## BASKET-002 — Correzioni manuali assenti
+
+Status:
+
+✅ RISOLTO
+
+Introdotto:
+
+- OvertimeBasketAdjustment;
+- persistenza dedicata;
+- integrazione nel Cedolino.
+
+---
+
+## BASKET-003 — Persistenza non separata
+
+Status:
+
+✅ RISOLTO
+
+Storage dedicato:
+
+dutypay_overtime_basket_adjustments_<department>
+
+---
+
+# BASKET COMPENSATIVO
+
+## COMP-001 — Adjustment senza nota
+
+Status:
+
+✅ RISOLTO
+
+Le correzioni richiedono nota obbligatoria.
+
+---
+
+## COMP-002 — Eliminazione movimenti automatici
+
+Status:
+
+✅ RISOLTO
+
+Solo gli adjustment possono essere eliminati.
+
+---
+
+## COMP-003 — Formula residuo
+
+Status:
+
+✅ RISOLTO
+
+Formula consolidata:
+
+earned
+
+-
+
+recovered
+
++
+
+adjustments
 
 ---
 
 # RFI
 
-## RFI-001 — Scalo spariva dopo il salvataggio
-
-### Sintomo
-
-Lo scalo risultava corretto in preview ma non dopo il salvataggio.
-
-### Causa
-
-Pipeline mista engine/serializzazione.
-
-### Soluzione
-
-Separazione completa:
-
-* calcolo
-* persistenza
-
-### Esito
-
-Preview e turno salvato identici.
+## RFI-001 — Basket RFI a zero
 
 Status:
 
 ✅ RISOLTO
 
----
-
-## RFI-002 — Basket RFI a zero
-
-### Sintomo
-
-Importi RFI non visualizzati correttamente.
-
-### Causa
-
-Uso errato di:
-
-monthlySummaries
-
-invece di:
+Utilizzo esclusivo di:
 
 rfiMonthlySummaries
 
-### Soluzione
+---
 
-Pipeline dedicata.
-
-### Esito
-
-Basket aggiornato correttamente.
+## RFI-002 — RFI mostrato come ore
 
 Status:
 
 ✅ RISOLTO
-
----
-
-## RFI-003 — RFI mostrato come ore
-
-### Sintomo
-
-Il basket RFI mostrava valori orari.
-
-### Soluzione
 
 Visualizzazione esclusivamente economica.
 
-### Esito
+---
 
-Solo importi in euro.
+## RFI-003 — Pipeline condivisa con overtime
 
 Status:
 
 ✅ RISOLTO
+
+RFI completamente separato da:
+
+- overtime;
+- accessorie;
+- compensativi.
 
 ---
 
-# Benefit
+# BENEFIT
 
-## BENEFIT-001 — Benefit sommati al totale
-
-### Sintomo
-
-Ticket e comfort venivano sommati agli importi economici.
-
-### Causa
-
-Mancata distinzione tra:
-
-* benefit
-* importi monetari
-
-### Soluzione
-
-Introduzione struttura standard:
-
-* amount = 0.0
-* benefitAmount valorizzato
-* isBenefit = true
-
-### Esito
-
-Benefit visibili ma non conteggiati.
+## BENEFIT-001 — Benefit conteggiati nel totale
 
 Status:
 
 ✅ RISOLTO
+
+Benefit esclusi dai flussi economici.
 
 ---
 
-## BENEFIT-002 — Duplicazione comfort
-
-### Sintomo
-
-Comfort visualizzato due volte.
-
-### Soluzione
-
-Normalizzazione pipeline benefit.
+## BENEFIT-002 — Ticket non persistente
 
 Status:
 
 ✅ RISOLTO
+
+Serializzazione allineata.
 
 ---
 
-## BENEFIT-003 — Ticket assente post-salvataggio
-
-### Sintomo
-
-Ticket visibile in preview ma non dopo il salvataggio.
-
-### Soluzione
-
-Allineamento serializzazione.
+## BENEFIT-003 — Comfort duplicato
 
 Status:
 
 ✅ RISOLTO
+
+Pipeline normalizzata.
 
 ---
 
-# Parser Cedolini
+# PARSER CEDOLINI
 
-## PARSER-001 — Lettura blocco accessorie errato
-
-### Sintomo
-
-Accessorie incomplete.
-
-### Causa
-
-Parser utilizzava il riepilogo iniziale.
-
-### Soluzione
-
-Utilizzo dell'ultima occorrenza del blocco accessorie.
-
-### Esito
-
-Parsing corretto.
+## PARSER-001 — Blocco accessorie errato
 
 Status:
 
 ✅ RISOLTO
+
+Utilizzata sempre l'ultima occorrenza.
 
 ---
 
-## PARSER-002 — PDF reali non estratti correttamente
-
-### Sintomo
-
-Accessorie mancanti.
-
-### Soluzione
-
-Introduzione fixture reali e copertura test.
+## PARSER-002 — Parsing PDF incompleto
 
 Status:
 
 ✅ RISOLTO
+
+Fixture reali introdotte.
 
 ---
 
-## PARSER-003 — Derivazione rate straordinario errata
-
-### Sintomo
-
-Profilo dinamico non corretto.
-
-### Soluzione
-
-Parsing completo delle accessorie.
+## PARSER-003 — Tariffe straordinario errate
 
 Status:
 
 ✅ RISOLTO
+
+Profilo dinamico ricostruito correttamente.
 
 ---
 
-# Questura
+# BREAK
 
-## QUESTURA-001 — Preview override ordinario errata
-
-### Sintomo
-
-Preview mostrava valori overtime diversi dal motore.
-
-### Soluzione
-
-Preview collegata direttamente al computation del motore.
-
-### Esito
-
-Override 6h, 7h12 e custom corretti.
+## BREAK-001 — Architettura non isolata
 
 Status:
 
 ✅ RISOLTO
+
+Break completamente indipendente dal Core Economico.
 
 ---
 
-## QUESTURA-002 — Totale turno a zero con breakdown valorizzato
-
-### Sintomo
-
-Preview:
-
-€0.00
-
-nonostante breakdown corretto.
-
-### Causa
-
-TotalAmount non ricostruito dal breakdown.
-
-### Soluzione
-
-Ricostruzione del totale dai valori del motore.
-
-### Esito
-
-Preview coerente.
+## BREAK-002 — Serializzazione DTO
 
 Status:
 
 ✅ RISOLTO
+
+Regression Pack dedicato.
 
 ---
 
-## QUESTURA-003 — Preview diversa dal dettaglio turno
-
-### Sintomo
-
-Valori differenti tra:
-
-* preview
-* turno salvato
-
-### Soluzione
-
-Entrambi leggono la stessa computation.
-
-### Esito
-
-Allineamento completo.
+## BREAK-003 — Challenge Engine
 
 Status:
 
 ✅ RISOLTO
+
+Challenge deterministica tramite seed condiviso.
 
 ---
 
 # UI
 
-## UI-001 — Reset turno dopo selezione assenza
-
-### Sintomo
-
-Campi turno azzerati in modo errato.
-
-### Soluzione
-
-Correzione gestione stato.
+## UI-001 — Reset turno errato
 
 Status:
 
 ✅ RISOLTO
 
----
-
-# Baseline 1.0.5
-
-Tutti i bug sopra riportati risultano:
-
-✅ corretti
-
-✅ validati
-
-✅ inclusi nella release 1.0.5
-## RC-BASKET-OVERTIME-01 – Risolto
-
-Corretto e stabilizzato il sistema basket straordinari ordinario.
-
-Interventi:
-- aggiunto modello `OvertimeBasketAdjustment`;
-- aggiunta persistenza scoped per correzioni basket straordinari;
-- collegata la correzione manuale alla projection cedolino;
-- aggiunto pulsante UI “Correzione basket” nella card basket straordinari;
-- verificato che i pagamenti basket riducano correttamente il residuo;
-- mantenuta separazione tra basket straordinari, basket compensativo e basket RFI.
-
-Test:
-- `test/regression/basket_regression_test.dart`
-- suite completa PASS: `+86 All tests passed`
-# GIUGNO 2026
-
-## Fix preset sera Polstrada
-
-Problema:
-
-La chiusura teorica utilizzava il comportamento delle Volanti.
-
-Effetto:
-
-Generazione errata dello straordinario.
-
-Fix:
-
-Chiusura teorica corretta a 01:08.
-
-Risultato:
-
-18:55 → 01:08
-
-0 ore straordinario.
+Gestione dello stato corretta.
 
 ---
 
-## Fix preset notte Polstrada
+## UI-002 — Quick Add Preview
 
-Problema:
+Status:
 
-Calcolo errato delle ore notturne.
+✅ RISOLTO
 
-Effetto:
-
-13h05 di notturno.
-
-Fix:
-
-Correzione della normalizzazione tra scheduled end e gestione giorni.
-
-Risultato:
-
-00:55 → 07:08
-
-Notturno corretto.
-Straordinario corretto.
+La preview utilizza esclusivamente il motore centrale.
 
 ---
 
-## Basket Straordinari
+# REGRESSION PACK INTRODOTTI
 
-Corrette:
+Proteggono attualmente:
 
-- correzioni manuali
-- persistenza
-- residuo
-- scarico basket
-- controvalore economico
+- Core Calculation Engine;
+- Reparto Mobile;
+- Polfer;
+- Questura;
+- Multi Department;
+- Monthly Summary;
+- Basket Straordinari;
+- Basket Compensativi;
+- RFI;
+- Break Domain;
+- Break DTO;
+- Break Challenge Engine.
 
-Regression test aggiunti.
+---
 
-flutter test
+# Stato Validazione
 
-86/86 PASS
-## Polstrada – Servizio esterno bloccato
+Suite automatica:
 
-Problema:
+**156/156 PASS**
 
-Il servizio esterno risultava non selezionabile.
+flutter analyze:
 
-Causa:
+✅ PASS
 
-Condizione condivisa con Questura Pattuglia.
+Nessun warning.
 
-Fix:
+Nessun errore.
 
-Abilitata la selezione contemporanea di:
+---
 
-- Servizio autostradale
-- Servizio esterno
+# Regola Permanente
 
-Risultato:
+Ogni nuovo bug deve seguire questo workflow:
 
-Entrambe le indennità vengono correttamente sommate.
-## Break Feature
+1. riproduzione;
+2. correzione;
+3. regression test dedicato;
+4. aggiornamento di questo documento.
 
-### Stato attuale
-
-La feature Break è in fase di sviluppo e non è ancora stata rilasciata agli utenti.
-
-### Bug funzionali
-
-Attualmente non risultano bug funzionali aperti.
-
-### Note
-
-La feature è sviluppata in modo completamente isolato rispetto al core economico di DutyPay.
-
-Non impatta:
-
-* motore turni;
-* cedolino;
-* basket straordinari;
-* basket compensativo;
-* basket RFI;
-* backup/import/export;
-* profili stipendiali.
-
-Lo sviluppo proseguirà esclusivamente all'interno di `lib/features/break/` fino al completamento della UI e dei test end-to-end.
+Una regressione non protetta da test è considerata incompleta.

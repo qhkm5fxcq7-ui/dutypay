@@ -4,14 +4,42 @@
 
 Release:
 
-**1.0.5**
+**1.0.9 (Release Candidate)**
 
-Stato:
+Stato generale:
 
-* Android build 18 inviata a Google Play
-* iOS build 18 inviata ad Apple
-* Test automatici PASS
-* Sistema stabile
+- motore multi-reparto consolidato;
+- Source of Truth unificata;
+- Break Core implementato;
+- regression pack estesi;
+- flutter analyze senza warning;
+- suite completa di test superata.
+
+---
+
+# Stato del Progetto
+
+DutyPay è composto da due macro-moduli indipendenti:
+
+## Core Economico
+
+Comprende:
+
+- gestione turni;
+- straordinari;
+- indennità;
+- basket;
+- compensativi;
+- parser cedolino;
+- dashboard;
+- riepiloghi;
+- previsione stipendiale.
+
+## Break
+
+Feature sociale indipendente dedicata alla scelta sincronizzata di chi offre il caffè.
+
+È completamente separata dal motore economico.
 
 ---
 
@@ -21,14 +49,14 @@ Stato:
 
 Validato:
 
-* soglia ordinaria 6h
-* overtime automatico
-* notturno ordinario
-* festivo
-* notturno festivo
-* OP
-* servizi esterni
-* multi-turno
+- soglia ordinaria 6h;
+- overtime automatico;
+- notturno ordinario;
+- festivo;
+- notturno festivo;
+- OP;
+- servizi esterni;
+- multi-turno.
 
 Status:
 
@@ -40,19 +68,14 @@ Status:
 
 Validato:
 
-* mattina standard
-* pomeriggio standard
-* sera standard
-* notte standard
-* territorio serale
-* territorio notturno
-* scalo RFI
-
-Regole:
-
-* overtime dopo fine turno teorica
-* notturno dalle 22:00
-* nessuna soglia 6h
+- mattina;
+- pomeriggio;
+- sera;
+- notte;
+- controllo territorio;
+- RFI;
+- scheduled end;
+- overtime programmato.
 
 Status:
 
@@ -64,10 +87,10 @@ Status:
 
 Validato:
 
-* override 6h
-* override 7h12
-* override personalizzato
-* straordinario automatico
+- override 6h;
+- override 7h12;
+- override personalizzato;
+- straordinario automatico.
 
 Status:
 
@@ -79,19 +102,19 @@ Status:
 
 Preset attivi:
 
-* Mattina
-* Pomeriggio
-* Sera
-* Notte
+- Mattina
+- Pomeriggio
+- Sera
+- Notte
 
 Validato:
 
-* straordinario automatico
-* straordinario programmato
-* notturno ordinario
-* servizio esterno
-* preview
-* dettaglio turno
+- straordinario automatico;
+- straordinario programmato;
+- notturno;
+- servizio esterno;
+- preview;
+- dettaglio turno.
 
 Status:
 
@@ -101,47 +124,93 @@ Status:
 
 # Source of Truth
 
-Fonte assoluta:
+La fonte di verità assoluta è:
 
 BuildDailyShiftResultUseCase
 
 Responsabile di:
 
-* overtime
-* notturno
-* festivo
-* breakdown
-* totale turno
-* totale giorno
-* accessorie
-* compensativi
+- overtime;
+- notturno;
+- festivo;
+- accessorie;
+- benefit;
+- compensativi;
+- basket;
+- breakdown;
+- totale turno;
+- totale giorno.
 
-Nessun widget può eseguire calcoli paralleli.
+Nessun widget può eseguire calcoli economici autonomi.
 
 ---
 
-# Pipeline
+# Pipeline Ufficiale
 
+```
 Shift
 ↓
-BuildDailyShiftResultUseCase
-↓
-BuildShiftComputationUseCase
+CalculateShiftUseCase
 ↓
 DepartmentPolicy
 ↓
-DailyShiftResult
+ShiftCalculationResult
 ↓
-UI
+BuildShiftComputationUseCase
+↓
+BuildDailyShiftResultUseCase
+↓
+Dashboard
+Preview
+Dettaglio turno
+Cedolino
+Summary
+```
+
+Tutta la UI deve leggere esclusivamente il risultato di questa pipeline.
+
+---
+
+# Basket Straordinari
+
+Sistema dedicato.
+
+Supporta:
+
+- pagamento;
+- correzioni manuali;
+- residuo;
+- proiezione cedolino.
+
+Pipeline indipendente.
+
+---
+
+# Basket Compensativo
+
+Pipeline separata.
+
+Supporta:
+
+- earned;
+- recovered;
+- adjustment.
+
+Caratteristiche:
+
+- basato esclusivamente su ore;
+- nessun impatto economico;
+- nessun impatto sul cedolino.
 
 ---
 
 # Basket RFI
 
-Pipeline separata.
+Pipeline completamente indipendente.
 
 Flusso:
 
+```
 Scalo
 ↓
 OPEN
@@ -149,75 +218,48 @@ OPEN
 PAID
 ↓
 Cedolino
+```
 
 Regole:
 
-* non è overtime
-* non è accessoria
-* non è compensativo
+- non è overtime;
+- non è accessoria;
+- non è compensativo.
 
-Mai usare:
+Utilizza esclusivamente:
 
-monthlySummaries
-
-Usare:
-
+```
 rfiMonthlySummaries
-
----
-
-# Basket Compensativo
-
-Pipeline autonoma.
-
-Supporta:
-
-* earned automatico
-* recovered automatico
-* adjustment manuali
-
-Regole:
-
-* basato su ore
-* non è denaro
-* non entra nel cedolino
-* non entra nel basket RFI
-
-Storage:
-
-dutypay_compensative_basket_movements_<department>
+```
 
 ---
 
 # Programmed Overtime
 
-Implementazione attiva.
+Implementazione consolidata.
 
-Caratteristiche:
+Supporta:
 
-* overtime come segmento temporale
-* clamp automatico
-* supporto compensativo
-* supporto overtime pagato
+- segmento temporale;
+- clamp automatico;
+- destinazione pagamento;
+- destinazione compensativa.
 
-Se compensativo:
-
-* entra nel basket compensativo
-* non entra nel totale economico
+La validazione RFI tiene conto anche dello straordinario programmato.
 
 ---
 
 # Parser Cedolini
 
-Validato con fixture reali.
+Validato tramite fixture reali.
 
 Copertura:
 
-* RM Febbraio 2026
-* RM Marzo 2026
-* Polfer Marzo 2026
+- RM Febbraio 2026;
+- RM Marzo 2026;
+- Polfer Marzo 2026.
 
-Regola critica:
+Regola fondamentale:
 
 utilizzare sempre l'ultima occorrenza del blocco:
 
@@ -227,183 +269,149 @@ utilizzare sempre l'ultima occorrenza del blocco:
 
 # Benefit
 
-Supportati:
+Categorie:
 
-* ticket meal
-* comfort
-* comfort_cdg
+- ticket meal;
+- comfort;
+- comfort_cdg.
 
 Regole:
 
-* amount = 0
-* benefitAmount valorizzato
-* isBenefit = true
+- amount = 0;
+- benefitAmount valorizzato;
+- isBenefit = true.
 
 Mai inclusi in:
 
-* totalAmount
-* extraAmount
-* cedolino
+- totalAmount;
+- extraAmount;
+- cedolino.
 
 ---
 
-# Test Status
+# Break
 
-flutter test
+Implementato:
 
-PASS
+- Domain Models;
+- DTO;
+- Repository;
+- Datasource;
+- Local Identity;
+- Dependency Container;
+- Firestore Paths;
+- Challenge Engine;
+- Code Generator.
 
-flutter analyze
+Regression pack disponibili:
 
-0 errori bloccanti
+- Break Domain;
+- Break DTO;
+- Break Challenge Engine.
 
-Baseline validata:
+Da completare:
 
-* RM
-* Polfer
-* Questura Uffici
-* Questura Volanti
-* RFI
-* Compensativi
-* Programmed Overtime
-* Parser Cedolini
+- integrazione UI finale;
+- validazione multiplayer;
+- Firestore Security Rules.
 
 ---
 
-# Bug Noti
+# Regression Pack
 
-## Export macOS
+Disponibili:
 
-Errore:
+- Core Calculation Engine;
+- Reparto Mobile;
+- Polfer;
+- Questura;
+- Multi Department;
+- Basket Straordinari;
+- Basket Compensativi;
+- Basket RFI;
+- Monthly Summary;
+- Break Domain;
+- Break DTO;
+- Break Challenge Engine.
 
-Bytes are not supported on macOS
+Ogni nuovo bug corretto deve introdurre almeno un nuovo regression test.
 
-Impatto:
+---
 
-nessuno su Android/iOS
+# Stato Validazione
 
-Target:
+Suite automatica:
 
-Release 1.0.6
+**156/156 PASS**
+
+Verifiche:
+
+- flutter test ✅
+- flutter analyze ✅
+
+Nessun warning.
+
+Nessun errore bloccante.
+
+---
+
+# Bug Aperti
+
+Attualmente non risultano bug critici sul motore economico.
+
+Restano da completare:
+
+- test end-to-end Break;
+- Firestore Security Rules;
+- rifiniture UX Break.
 
 ---
 
 # Cose da Non Rompere
 
-* RM soglia 6h
-* Polfer scheduled end
-* Questura override ordinario
-* Preset Volanti
-* Basket RFI
-* Basket Compensativo
-* Preview ↔ dettaglio
-* Breakdown ↔ totale
-* Totale giorno ↔ summary mese
+- RM soglia 6h;
+- Polfer scheduled end;
+- Questura override ordinario;
+- Preset Volanti;
+- Basket Straordinari;
+- Basket Compensativo;
+- Basket RFI;
+- Preview ↔ dettaglio;
+- Breakdown ↔ totale;
+- Totale giorno ↔ summary mese;
+- Source of Truth centralizzata.
 
 ---
 
-# Priorità 1.0.6
+# Regole di Sviluppo
 
-1. Fix export macOS.
-2. Miglioramento export/import dati.
-3. Turnario annuale.
-4. Missioni evolute.
-5. Feedback utenti in-app.
-6. Cedolino Pro.
+Qualsiasi modifica ai calcoli economici deve:
+
+1. passare dal motore centrale;
+2. evitare duplicazioni in UI;
+3. mantenere coerenti preview e turno salvato;
+4. aggiornare il regression pack interessato;
+5. mantenere verde l'intera suite.
 
 ---
 
 # Prompt di Ripartenza
 
-Leggere:
+Prima di qualsiasi sviluppo leggere:
 
 1. SYSTEM_HANDOFF.md
-2. CALCULATION_RULES.md
-3. ARCHITECTURE.md
-4. CHAT_HANDOFF.md
+2. ARCHITECTURE.md
+3. CALCULATION_RULES.md
+4. WORKFLOW_MASTER.md
+5. CHAT_HANDOFF.md
 
-Assumere che:
+Assumere sempre che:
 
-* la release 1.0.5 sia stabile
-* i reparti attuali siano validati
-* il motore centrale non debba essere rifattorizzato
+- il motore economico sia consolidato;
+- BuildDailyShiftResultUseCase sia la Source of Truth;
+- Break sia una feature indipendente;
+- ogni nuova modifica debba preservare la suite completa di regressione.
 
 Obiettivo:
 
-proseguire l'evoluzione senza introdurre regressioni.
-## Handoff post RC-BASKET – 10/06/2026
-
-Stato:
-- suite completa: `+86 All tests passed`;
-- aggiunti test regressione basket ordinario e compensativo;
-- implementata correzione manuale basket straordinari;
-- confermata separazione:
-  - basket straordinari ordinario;
-  - basket compensativo;
-  - basket RFI.
-
-Fix rilevanti:
-- `OvertimeBasketAdjustment`;
-- storage scoped `dutypay_overtime_basket_adjustments_<department>`;
-- `PayslipProjectionService.projectPayslip()` riceve `overtimeBasketAdjustments`;
-- UI Cedolino: pulsante “Correzione basket” nella card basket straordinari.
-
-Regola confermata:
-RFI resta sistema separato e non viene accorpato a straordinari/accessorie standard.
-# AGGIORNAMENTO GIUGNO 2026 – POLSTRADA
-
-## Stato attuale
-
-Framework stabile.
-
-Reparti supportati:
-
-- Reparto Mobile
-- Polfer
-- Questura Uffici
-- Questura Pattuglia
-- Polstrada (staging)
-
-## Test
-
-flutter test
-
-86/86 PASS
-
-## Community
-
-Community WhatsApp DutyPay attiva:
-
-- Bacheca
-- Domande e Suggerimenti
-- Segnalazioni Bug
-
-## Release
-
-Polstrada NON rilasciata.
-
-Motivazione:
-
-Mancano le tabelle ufficiali delle indennità autostradali.
-
-Decisione:
-
-Mantenere Polstrada in staging fino alla disponibilità dei valori ufficiali.
----
-
-# BREAK FEATURE — HANDOFF
-
-È iniziato lo sviluppo della nuova feature sociale **Break**.
-
-## Obiettivo
-
-Aumentare:
-
-- frequenza d'utilizzo quotidiana;
-- viralità dell'app;
-- passaparola tra colleghi.
-
-Funzione principale prevista:
-
-```text
-☕ Chi paga il caffè
+proseguire lo sviluppo senza introdurre regressioni, mantenendo la coerenza architetturale e la separazione tra Core Economico e Break.

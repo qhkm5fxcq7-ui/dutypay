@@ -1,218 +1,217 @@
-# DUTYPAY
+# DUTYPAY — PROJECT OVERVIEW
 
-## Cos'è
+## Cos'è DutyPay
 
-DutyPay è un'app sviluppata per il personale delle Forze dell'Ordine.
+DutyPay è un'app Flutter sviluppata per il personale delle Forze dell'Ordine.
 
-Permette di:
+L'obiettivo è fornire un unico strumento per la gestione economica e operativa del servizio, sostituendo fogli Excel, calcoli manuali e strumenti non aggiornati.
 
-* calcolare straordinari
-* monitorare indennità e accessorie
-* gestire basket tecnici
-* monitorare compensativi
-* stimare il cedolino futuro
-* tenere traccia della propria attività operativa
+L'app permette di:
 
----
-
-## Problema
-
-Gli strumenti attualmente disponibili presentano spesso:
-
-* calcoli imprecisi
-* logiche non aderenti ai reparti reali
-* gestione manuale complessa
-* scarsa trasparenza sui compensi
-
-Molti operatori sono costretti a verifiche manuali o fogli Excel personali.
+* calcolare automaticamente straordinari;
+* monitorare indennità e accessorie;
+* gestire Basket Straordinari, Basket RFI e Basket Compensativi;
+* stimare il cedolino futuro;
+* monitorare la propria attività operativa;
+* gestire servizi, turnazioni e benefit.
 
 ---
 
-## Soluzione
+# Problema
 
-DutyPay offre:
+Gli strumenti tradizionalmente utilizzati dagli operatori presentano spesso:
 
-* calcolo automatico delle competenze
-* logiche specifiche per reparto
-* gestione straordinari e accessorie
-* breakdown dettagliato dei risultati
-* simulazione stipendiale
-* monitoraggio basket e compensativi
+* calcoli imprecisi;
+* regole non aderenti ai singoli reparti;
+* gestione manuale complessa;
+* scarsa trasparenza sui compensi;
+* impossibilità di simulare scenari futuri.
 
----
-
-## Reparti supportati
-
-Attualmente implementati:
-
-* Reparto Mobile
-* Polfer
-* Questura Uffici
-* Questura Volanti
-
-Ogni reparto utilizza regole operative dedicate e indipendenti.
+Molti operatori sono costretti ad utilizzare fogli Excel personali o verifiche manuali.
 
 ---
 
-## Architettura
+# Soluzione
+
+DutyPay centralizza tutte le logiche economiche in un unico motore di calcolo.
+
+L'app offre:
+
+* calcolo automatico delle competenze;
+* regole dedicate per ogni reparto;
+* simulazione economica completa;
+* breakdown dettagliato dei risultati;
+* proiezione del cedolino;
+* gestione dei basket;
+* monitoraggio compensativi;
+* riepiloghi giornalieri, settimanali e mensili.
+
+---
+
+# Reparti supportati
+
+Attualmente sono implementati:
+
+* Reparto Mobile;
+* Polfer;
+* Questura Uffici;
+* Questura Volanti.
+
+L'architettura è progettata per consentire l'aggiunta di nuovi reparti attraverso DepartmentPolicy dedicate, senza modificare il motore centrale.
+
+---
+
+# Architettura
+
+DutyPay adotta una Clean Architecture con separazione rigorosa delle responsabilità.
 
 Principi fondamentali:
 
-* motore centralizzato
-* singola fonte di verità
-* assenza di logica economica nella UI
-* separazione dei flussi economici
+* Source of Truth unica;
+* nessuna logica economica nella UI;
+* motore di calcolo centralizzato;
+* separazione Domain ↔ Presentation;
+* pipeline di calcolo unificata;
+* assenza di duplicazioni.
 
-Source of truth:
+La Source of Truth dell'intero sistema è:
 
 `BuildDailyShiftResultUseCase`
 
 ---
 
-## Moduli completati
+# Moduli principali
 
-### Calcolo turni
+## Core Economico
 
-* straordinario automatico
-* straordinario programmato
-* notturno ordinario
-* festivo
-* servizi esterni
-* Ordine Pubblico
+Comprende:
 
-### Basket
-
-* basket straordinari
-* basket RFI
-* basket compensativo
-
-### Cedolino
-
-* parser NoiPA
-* accessorie reali
-* profilo dinamico
-* previsione cedolino
-
-### Dashboard
-
-* riepiloghi giornalieri
-* riepiloghi settimanali
-* riepiloghi mensili
-* netto stimato
+* calcolo turni;
+* straordinari;
+* straordinario programmato;
+* notturno;
+* festivo;
+* servizi esterni;
+* Ordine Pubblico;
+* accessorie;
+* benefit;
+* riepiloghi;
+* previsione cedolino.
 
 ---
 
-## Stato progetto
+## Basket
 
-Release corrente:
+Comprende:
 
-**1.0.5**
+* Basket Straordinari;
+* Basket Compensativi;
+* Basket RFI.
 
-Stato:
-
-* Android build 18 inviata a Google Play
-* iOS build 18 inviata ad Apple
-
-Validazione:
-
-* 78/78 test automatici PASS
-* smoke test multi reparto PASS
-* validazione utenti reali completata
+Ogni basket è completamente indipendente dagli altri.
 
 ---
 
-## Roadmap
+## Cedolino
 
-Priorità successive:
+Comprende:
 
-* Fix export dati macOS
-* Export / Import avanzato
-* Turnario annuale
-* Missioni evolute
-* Feedback utenti in-app
-* Cedolino Pro
-* Ulteriori reparti specialistici
+* parser NoiPA;
+* estrazione accessorie;
+* profilo dinamico;
+* proiezione stipendiale;
+* simulazione economica.
 
 ---
 
-## Visione
+## Dashboard
 
-Diventare il punto di riferimento nazionale per il calcolo stipendiale e la gestione operativa del personale delle Forze dell'Ordine.
+Comprende:
 
-Obiettivo:
+* riepilogo giornaliero;
+* riepilogo settimanale;
+* riepilogo mensile;
+* netto stimato;
+* breakdown economico.
 
-offrire uno strumento preciso, affidabile e costruito sulle esigenze reali degli operatori.
-## Stato Giugno 2026
-
-Reparti disponibili:
-
-✅ Reparto Mobile
-✅ Polfer
-✅ Questura Uffici
-✅ Questura Pattuglia
-✅ Polstrada (staging)
-
-Framework consolidato:
-
-- overtime automatico
-- overtime programmato segmentato
-- basket straordinari
-- basket compensativo
-- compensativo parziale
-- reperibilità
-- missioni
-- servizio esterno
-- ticket
-- OP
-
-Community WhatsApp ufficiale attiva.
-Reparti disponibili
-
-✅ Reparto Mobile
-✅ Polfer
-✅ Questura Uffici
-✅ Questura Pattuglia
-✅ Polstrada
 ---
 
-## Nuova Feature: Break
+## Break
 
-DutyPay ora include una seconda macro-area sperimentale oltre al core economico.
+DutyPay include anche un modulo sociale indipendente dal motore economico.
 
-### Macro-moduli
+Funzionalità:
 
-1. **Core Economico**
-   - turni
-   - straordinari
-   - indennità
-   - cedolino
-   - basket
-   - compensativi
+* stanze multiplayer;
+* sincronizzazione realtime;
+* scelta casuale di chi offre il caffè;
+* challenge animata;
+* identità locale anonima.
 
-2. **Break**
-   - feature sociale collaborativa
-   - stanze realtime
-   - scelta casuale/sincronizzata di chi paga il caffè
+Tecnologie utilizzate:
 
-### Scopo Break
+* Firebase Firestore;
+* SharedPreferences;
+* UUID;
+* Stream realtime.
 
-Break nasce per aumentare:
+Il modulo Break è completamente separato dal Core Economico e non interferisce con il motore di calcolo.
 
-- engagement quotidiano;
-- uso spontaneo dell'app;
-- viralità nei gruppi di colleghi;
-- senso di community intorno a DutyPay.
+---
 
-### Tecnologie Break
+# Stato del progetto
 
-- Firebase Firestore
-- SharedPreferences
-- UUID
-- stream realtime
-- identità anonima locale
+Versione corrente:
 
-### Stato Break
+**1.0.9 (Release Candidate)**
 
-Core/backend implementato.
+Stato attuale:
 
-UI operativa ancora da collegare.
+* motore multi reparto consolidato;
+* Source of Truth unificata;
+* architettura stabile;
+* regressioni automatiche complete;
+* Flutter Analyze pulito;
+* suite di test completamente verde.
+
+---
+
+# Qualità del software
+
+Validazione attuale:
+
+* **156 test automatici PASS**;
+* Flutter Analyze: **0 warning / 0 errori**;
+* regression pack dedicati per tutti i moduli principali;
+* validazione su casi reali e scenari multi reparto.
+
+La strategia di sviluppo prevede che ogni bug corretto generi almeno un nuovo regression test.
+
+---
+
+# Roadmap
+
+Priorità future:
+
+* Polstrada;
+* Polaria;
+* ulteriori reparti specialistici;
+* evoluzione del parser cedolini;
+* esportazione dati avanzata;
+* missioni evolute;
+* miglioramenti UX;
+* nuove funzionalità del modulo Break.
+
+---
+
+# Visione
+
+L'obiettivo di DutyPay è diventare il punto di riferimento nazionale per la gestione economica e operativa del personale delle Forze dell'Ordine.
+
+Ogni nuova funzionalità dovrà rispettare tre principi fondamentali:
+
+* massima precisione;
+* elevata affidabilità;
+* semplicità d'uso.
+
+L'architettura è progettata per evolvere nel tempo mantenendo un motore di calcolo unico, coerente e facilmente estendibile.

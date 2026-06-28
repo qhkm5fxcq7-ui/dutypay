@@ -2,67 +2,143 @@
 
 ## Obiettivo
 
-Questo documento descrive le regole di calcolo ufficiali e consolidate di DutyPay.
+Questo documento definisce le regole ufficiali del motore di calcolo di DutyPay.
 
-È la fonte di verità per:
+È la fonte di riferimento per:
 
-- sviluppo
-- debugging
-- test
-- validazione utenti
+* sviluppo;
+* debugging;
+* regression test;
+* validazione funzionale;
+* nuove implementazioni.
 
 Non contiene:
 
-- roadmap
-- refactor proposti
-- codice temporaneo
+* roadmap;
+* codice temporaneo;
+* workaround;
+* logiche legacy.
+
+---
+
+# Release di riferimento
+
+**Release Candidate 1.0.9**
+
+Stato:
+
+* motore multi-reparto consolidato;
+* Source of Truth unificata;
+* regressioni automatiche complete;
+* `flutter analyze` senza warning;
+* **156 test automatici PASS**.
 
 ---
 
 # Source of Truth
 
-Tutti i calcoli economici devono derivare da:
+Il motore economico è organizzato su due livelli.
 
-BuildDailyShiftResultUseCase
+## CalculateShiftUseCase
 
 Responsabile di:
 
-- overtime
-- notturno
-- festivo
-- OP
-- servizi esterni
-- compensativi
-- basket
-- breakdown
-- totale turno
-- totale giorno
-
-Regola:
-
-Preview, dettaglio turno, totale giorno e summary mese devono derivare dalla stessa computation.
+* selezione della DepartmentPolicy;
+* calcolo del singolo turno;
+* produzione dello `ShiftCalculationResult`.
 
 ---
 
-# Regole Comuni
+## BuildDailyShiftResultUseCase
+
+È l'unica Source of Truth utilizzata dall'intera applicazione.
+
+Responsabile di:
+
+* overtime;
+* ore ordinarie;
+* notturno;
+* festivo;
+* Ordine Pubblico;
+* servizi esterni;
+* accessorie;
+* compensativi;
+* basket;
+* breakdown;
+* totale turno;
+* totale giornata.
+
+Qualsiasi schermata deve leggere esclusivamente i risultati prodotti da questo UseCase.
+
+---
+
+# Pipeline ufficiale
+
+Shift
+
+↓
+
+CalculateShiftUseCase
+
+↓
+
+DepartmentPolicy
+
+↓
+
+ShiftCalculationResult
+
+↓
+
+BuildShiftComputationUseCase
+
+↓
+
+BuildDailyShiftResultUseCase
+
+↓
+
+Dashboard
+
+↓
+
+Preview
+
+↓
+
+Dettaglio Turno
+
+↓
+
+Cedolino
+
+↓
+
+Summary Mensile
+
+---
+
+# Regole comuni
 
 ## Ore lavorate
 
-Le ore lavorate sono:
+Le ore lavorate sono sempre:
 
+```
 end - start
+```
 
 Se:
 
+```
 end <= start
+```
 
-il turno attraversa la mezzanotte.
-
-Il turno viene normalizzato al giorno successivo.
+il turno attraversa la mezzanotte e viene automaticamente normalizzato.
 
 ---
 
-## Fasce
+## Fasce orarie
 
 ### Diurno
 
@@ -76,16 +152,13 @@ Il turno viene normalizzato al giorno successivo.
 
 ## Festivi
 
-Sono festivi:
+Sono considerati festivi:
 
-- domenica
-- festività nazionali
-- festività particolari
+* domeniche;
+* festività nazionali;
+* festività particolari.
 
-Dopo mezzanotte:
-
-- viene verificato il nuovo giorno
-- la classificazione può cambiare
+La classificazione viene rivalutata automaticamente dopo la mezzanotte.
 
 ---
 
@@ -93,52 +166,55 @@ Dopo mezzanotte:
 
 Le assenze:
 
-- restano visibili
-- non generano importi
+* restano visibili;
+* non generano importi;
+* non generano overtime.
 
-Output:
+Output previsto:
 
-- totale = 0
-- overtime = 0
-- breakdown = []
+* totale = 0
+* overtime = 0
+* breakdown vuoto
 
 ---
 
-# Benefit Non Economici
+# Benefit
 
-Categorie:
+Categorie supportate:
 
-- ticket_meal
-- comfort
-- comfort_cdg
+* ticket_meal
+* comfort
+* comfort_cdg
+
+Caratteristiche:
+
+* visualizzati nella UI;
+* presenti nel breakdown;
+* esclusi dai calcoli economici.
 
 Regole:
 
-- visibili nella UI
-- visibili nel breakdown
-- NON entrano nel totale
-- NON entrano negli extra
-- NON entrano nel cedolino
+* amount = 0
+* benefitAmount valorizzato
+* isBenefit = true
 
-Struttura:
+Mai inclusi in:
 
-- amount = 0.0
-- benefitAmount > 0
-- isBenefit = true
+* totalAmount;
+* extraAmount;
+* cedolino.
 
 ---
 
 # Reparto Mobile
 
-## Regola Base
+## Regola ordinaria
 
-Soglia ordinaria:
+Soglia:
 
-6 ore
+**6 ore**
 
-Tutto ciò che eccede:
-
-overtime
+Le ore successive diventano straordinario.
 
 ---
 
@@ -146,438 +222,366 @@ overtime
 
 Supportata:
 
-- overtime day
-- overtime night
-- overtime holiday day
-- overtime night holiday
+* overtime day;
+* overtime night;
+* overtime holiday;
+* overtime holiday night.
 
 ---
 
 ## Notturno
 
-Fascia:
-
 22:00 → 06:00
 
-Il notturno è indipendente dallo straordinario.
+Il notturno ordinario è indipendente dallo straordinario.
 
 Possono coesistere:
 
-- ordinaryNightHours
-- overtimeNightHours
+* ordinaryNightHours;
+* overtimeNightHours.
+
+Mai sottrarre uno dall'altro.
 
 ---
 
-## Principio Fondamentale
-
-NON fare:
-
-ordinaryNightHours - overtimeNightHours
-
-Le due grandezze sono indipendenti.
-
----
-
-## Multi-Turno
+## Multi turno
 
 Supportato.
 
-Più turni nello stesso giorno devono:
-
-- rispettare la soglia ordinaria
-- restare coerenti tra preview e salvataggio
+Il consumo delle ore ordinarie deve essere coerente nell'intera giornata.
 
 ---
 
-## Indennità RM
+## Indennità
 
 Supportate:
 
-- OP In sede
-- OP Fuori sede
-- OP Pernotto
-- Servizi esterni
-- Festivo
-- Festività particolare
+* OP sede;
+* OP fuori sede;
+* OP pernotto;
+* servizi esterni;
+* festivo;
+* festività particolare.
 
 ---
 
 # Polfer
 
-## Regola Straordinario
+## Straordinario
 
-Polfer NON utilizza la soglia 6h.
+Non utilizza la soglia fissa di 6 ore.
 
-Lo straordinario parte dopo la chiusura teorica.
+Lo straordinario inizia dopo la fine teorica del preset.
 
-Riferimenti:
+Preset:
 
-- Mattina → 13:08
-- Pomeriggio → 19:08
-- Sera → 00:08
-- Notte → 07:08
-
----
-
-## Turni Standard
-
-Devono generare:
-
-- overtime = 0
-
-Esempi:
-
-- 06:55 → 13:08
-- 12:55 → 19:08
-- 18:55 → 00:08
-- 00:55 → 07:08
+* Mattina → 13:08
+* Pomeriggio → 19:08
+* Sera → 00:08
+* Notte → 07:08
 
 ---
 
-## Notturno
+## Controllo territorio
 
-Fascia:
+Supportato:
 
-22:00 → 06:00
+* serale;
+* notturno.
 
----
-
-## Indennità Polfer
-
-Supportate:
-
-- Controllo territorio serale
-- Controllo territorio notturno
-- Scalo ferroviario ridotto
-- Scalo ferroviario intero
-- Scalo ferroviario misto
-- Notturno ordinario
-- Servizi esterni
+Le due indennità restano indipendenti.
 
 ---
 
-# Basket RFI
+## Scalo ferroviario
 
-Pipeline separata.
+Supportato:
 
-Lo scalo ferroviario:
+* ridotto;
+* intero;
+* misto;
+* inserimento manuale.
 
-- NON entra nelle accessorie
-- NON entra nel cedolino
-- NON entra negli straordinari
+Lo scalo genera esclusivamente Basket RFI.
 
-Flusso:
+Non produce straordinario.
 
-Turno
-↓
-rfiBasketGross
-↓
-OPEN
-↓
-PAID
-↓
-Cedolino
-
----
-
-## Regola Cedolino RFI
-
-Solo il pagato entra nel cedolino.
-
-Formula:
-
-rfiNet = rfiPaidThisMonthGross * (1 - accessoryTaxRate)
+La validazione dello scalo manuale considera anche l'eventuale straordinario programmato distribuito sul turno.
 
 ---
 
 # Questura Uffici
 
-## Ordinario Configurabile
+Supportato:
 
-Valori supportati:
+* ordinario configurabile;
+* override 6h;
+* override 7h12;
+* override libero.
 
-- 6h
-- 7h12
-- custom
-
----
-
-## Straordinario
-
-Formula:
-
-overtime = workedHours - ordinaryConfiguredHours
-
-Se negativo:
-
-0
-
----
-
-## Validato
-
-- 6h
-- 7h12
-- custom
+Lo straordinario inizia esclusivamente oltre l'ordinario configurato.
 
 ---
 
 # Questura Volanti
 
-## Preset Supportati
+Preset ufficiali:
 
-- Mattina
-- Pomeriggio
-- Sera
-- Notte
+* Mattina;
+* Pomeriggio;
+* Sera;
+* Notte.
 
----
+Lo straordinario parte dopo la fine del preset.
 
-## Regola
+Supporta:
 
-Le ore fino alla fine del preset sono:
-
-ordinarie
-
-Le ore successive sono:
-
-overtime
+* override ordinario;
+* straordinario programmato;
+* servizi esterni;
+* notturno ordinario.
 
 ---
 
-## Straordinario Programmato
+# Polstrada
 
-Supportato.
+Riutilizza la stessa pipeline di Questura Pattuglia.
+
+Supporta:
+
+* preset dedicati;
+* servizi esterni;
+* ticket;
+* compensativi;
+* straordinario programmato;
+* basket straordinari;
+* basket compensativi.
+
+L'indennità autostradale è prevista dall'architettura ma potrà essere attivata solo con valori ufficiali definitivi.
 
 ---
 
-# Programmed Overtime
+# Straordinario programmato
 
-Gestito come segmento temporale.
+È gestito come segmento temporale.
 
 Campi:
 
-- programmedOvertimeEnabled
-- programmedOvertimeStart
-- programmedOvertimeEnd
-- overtimeDestination
-
----
-
-## Regole
-
-1. viene calcolata l'intersezione col turno
-2. il segmento viene clamped
-3. il segmento diventa overtime certo
-
----
-
-## Destinazione Pagamento
-
-Il segmento entra nel totale economico.
-
----
-
-## Destinazione Compensativo
-
-Il segmento:
-
-- entra nelle compensative
-- NON entra nel totale economico
-- NON entra nel cedolino
-- NON entra nel basket RFI
-
----
-
-# Compensative Basket Rules
-
-Il basket compensativo gestisce esclusivamente ore.
-
-Non è:
-
-- denaro
-- accessoria
-- RFI
-
----
-
-## Earned
-
-Origine:
-
-DailyShiftResult.compensativeHours
-
-Movimento:
-
-earned
-
----
-
-## Recovered
-
-Origine:
-
-assenza = Recupero compensativo
-
-Movimento:
-
-recovered
-
----
-
-## Adjustment
-
-Consentiti:
-
-- positivi
-- negativi
-
-Richiedono:
-
-- nota obbligatoria
-
----
-
-## Formula Residuo
-
-residual =
-earned
-- recovered
-+ adjustments
-
----
-
-## Regole di Protezione
-
-Movimenti automatici:
-
-- earned
-- recovered
-
-non possono essere:
-
-- modificati
-- eliminati
-
-Solo:
-
-- adjustment
-
-è modificabile.
-
----
-
-# Pipeline Cedolino
-
-Tutte le accessorie sono gestite in LORDO.
+* programmedOvertimeEnabled
+* programmedOvertimeStart
+* programmedOvertimeEnd
+* overtimeDestination
 
 Pipeline:
 
-1. Breakdown turno
-2. Aggregazione mensile
-3. Esclusione benefit
-4. Esclusione RFI
-5. Totale accessorie lorde
-6. Applicazione fiscalità stimata
-7. Netto previsto
+1. calcolo intersezione;
+2. clamp sul turno reale;
+3. classificazione come overtime certo.
 
-Regola:
+Destinazioni:
 
-Nessun valore netto deve entrare prima dello step 6.
+## Payment
 
----
+Produce importo economico.
 
-# Punti Critici da Non Rompere
+## Compensative
 
-- Preview ↔ Salvataggio
-- Breakdown ↔ Totale
-- Totale giorno ↔ Summary mese
-- RM soglia 6h
-- Polfer scheduled end
-- Basket RFI separato
-- Basket compensativo separato
-- Benefit fuori dai flussi economici
-- Straordinario programmato compensativo non pagato
-- Nessuna logica economica nei widget
+Produce ore compensative.
+
+Non produce importo economico.
 
 ---
 
-# Baseline Validata
+# Basket Straordinari
 
-Release:
+Gestisce esclusivamente lo straordinario maturato.
 
-DutyPay 1.0.5
+Supporta:
 
-Reparti:
+* pagamenti;
+* correzioni manuali;
+* proiezione cedolino.
 
-- Reparto Mobile
-- Polfer
-- Questura Uffici
-- Questura Volanti
+È indipendente da:
+
+* Basket RFI;
+* Basket Compensativi.
+
+---
+
+# Basket Compensativi
+
+Gestisce esclusivamente ore.
+
+Movimenti:
+
+* earned;
+* recovered;
+* adjustment.
+
+Formula:
+
+```
+Residual =
+Earned
+- Recovered
++ Adjustments
+```
+
+Regole:
+
+* earned non modificabile;
+* recovered non modificabile;
+* adjustment modificabile;
+* adjustment eliminabile;
+* nota obbligatoria.
+
+---
+
+# Basket RFI
+
+Pipeline completamente separata.
+
+Turno
+
+↓
+
+Scalo
+
+↓
+
+RFI Basket
+
+↓
+
+OPEN
+
+↓
+
+PAID
+
+↓
+
+Cedolino
+
+Mai miscelato con:
+
+* straordinari;
+* compensativi;
+* accessorie.
+
+Solo il movimento PAID entra nella proiezione del cedolino.
+
+---
+
+# Cedolino
+
+Pipeline:
+
+Breakdown
+
+↓
+
+Aggregazione mensile
+
+↓
+
+Esclusione Benefit
+
+↓
+
+Esclusione Basket RFI OPEN
+
+↓
+
+Totale Lordo
+
+↓
+
+Fiscalità stimata
+
+↓
+
+Netto previsto
+
+Tutti i calcoli restano in lordo fino all'ultimo passaggio.
+
+---
+
+# Preview
+
+La Quick Add Shift Page non esegue alcun calcolo economico.
+
+Legge esclusivamente il risultato del motore.
+
+Devono sempre coincidere:
+
+* preview;
+* turno salvato;
+* dashboard;
+* riepilogo mensile.
+
+---
+
+# Validazioni
+
+Ogni nuova regola deve essere validata tramite regression test.
+
+Ogni bug corretto deve generare almeno un nuovo test.
+
+---
+
+# Regressioni ufficiali
+
+Copertura attuale:
+
+* Core Calculation Engine;
+* Reparto Mobile;
+* Polfer;
+* Questura;
+* Multi Department;
+* Basket Straordinari;
+* Basket Compensativi;
+* Basket RFI;
+* Monthly Summary;
+* Break Domain;
+* Break DTO;
+* Break Challenge Engine.
+
+---
+
+# Vincoli assoluti
+
+Non devono mai rompersi:
+
+* Source of Truth;
+* Preview ↔ turno salvato;
+* Breakdown ↔ totale;
+* Totale giorno ↔ summary mese;
+* soglia RM 6h;
+* preset Polfer;
+* override Questura;
+* preset Volanti;
+* separazione Basket Straordinari;
+* separazione Basket Compensativi;
+* separazione Basket RFI;
+* Benefit fuori dai flussi economici;
+* nessuna logica economica nei widget.
+
+---
+
+# Stato di validazione
+
+Versione:
+
+**DutyPay RC 1.0.9**
 
 Stato:
 
-VALIDATO
-# POLSTRADA
+* motore consolidato;
+* architettura stabile;
+* regressioni complete;
+* `flutter analyze` PASS;
+* **156/156 test PASS**.
 
-## Preset
-
-Mattina
-06:55 → 13:08
-
-Pomeriggio
-12:55 → 19:08
-
-Sera
-18:55 → 01:08
-
-Notte
-00:55 → 07:08
-
-## Straordinario
-
-Mattina:
-oltre 13:08
-
-Pomeriggio:
-oltre 19:08
-
-Sera:
-oltre 01:08
-
-Notte:
-oltre 07:08
-
-## Supportato
-
-- servizio esterno
-- ticket
-- compensativo
-- programmed overtime
-- basket straordinari
-- basket compensativo
-
-## Indennità autostradale
-
-Architettura predisposta.
-
-Importi non ancora attivati.
-
-Release sospesa fino al reperimento dei valori ufficiali.
-## Indennità autostradale
-
-Mattina:
-€ 9,50
-
-Pomeriggio:
-€ 9,50
-
-Sera:
-€ 12,00
-
-Notte:
-€ 14,50
-
-Categoria breakdown:
-
-autostrada_service
+Qualsiasi futura modifica del motore dovrà mantenere invariate le regole documentate in questo file oppure aggiornarle contestualmente.

@@ -2,60 +2,90 @@
 
 ## Stato Attuale
 
-Release baseline:
+Release corrente:
 
-1.0.5
-
-Reparti attivi:
-
-- Reparto Mobile
-- Polfer
-- Questura Uffici
-- Questura Volanti
+**1.0.9 (Release Candidate)**
 
 Stato generale:
 
-- stabile
-- validato
-- nessun bug bloccante aperto
+- motore economico consolidato;
+- architettura stabilizzata;
+- regressioni automatiche complete;
+- flutter analyze pulito;
+- suite completa di test superata.
+
+---
+
+# PRIORITÀ CRITICA
+
+Attualmente nessun task critico aperto sul Core Engine.
+
+Il motore di calcolo è considerato stabile.
 
 ---
 
 # PRIORITÀ ALTA
 
-## Export macOS
+## Break — UI Finale
 
-Problema:
+Completare:
 
-Bytes are not supported on macOS
-
-Impatto:
-
-- export dati desktop non funzionante
-
-Impatto Android/iOS:
-
-- nessuno
-
-Target:
-
-1.0.6
+- dialog nickname;
+- creazione stanza;
+- join tramite codice;
+- BreakRoomPage definitiva;
+- gestione Ready;
+- gestione Start;
+- card risultato finale;
+- UX definitiva.
 
 Status:
 
-OPEN
+IN CORSO
+
+---
+
+## Break — Multiplayer Reale
+
+Validare:
+
+- sincronizzazione Firestore;
+- partecipanti realtime;
+- round sincronizzati;
+- reset stanza;
+- recovery dopo disconnessione.
+
+Status:
+
+TODO
+
+---
+
+## Break — Firestore Security Rules
+
+Completare:
+
+- regole di accesso;
+- validazione scritture;
+- protezione documenti;
+- protezione roomCode.
+
+Status:
+
+TODO
 
 ---
 
 # PRIORITÀ MEDIA
 
-## Export / Import avanzato
+## Export / Import
 
-Obiettivo:
+Completare:
 
-- esportazione completa dati utente
-- importazione sicura
-- backup rapido
+- backup completo;
+- restore completo;
+- esportazione selettiva;
+- importazione con validazione.
 
 Status:
 
@@ -65,10 +95,11 @@ TODO
 
 ## Turnario Annuale
 
-Obiettivo:
+Implementare:
 
-- generazione automatica turni
-- supporto reparti compatibili
+- generazione automatica;
+- supporto reparti;
+- integrazione calendario.
 
 Status:
 
@@ -78,11 +109,11 @@ TODO
 
 ## Missioni Evolute
 
-Possibili miglioramenti:
+Espandere:
 
-- importi avanzati
-- gestione giorni multipli
-- riepiloghi dedicati
+- missioni multi-giorno;
+- riepiloghi dedicati;
+- gestione indennità.
 
 Status:
 
@@ -92,11 +123,11 @@ TODO
 
 ## Feedback In-App
 
-Obiettivo:
+Implementare:
 
-- raccolta bug
-- raccolta suggerimenti
-- miglioramento supporto utenti
+- invio bug;
+- suggerimenti;
+- feedback utenti.
 
 Status:
 
@@ -106,13 +137,29 @@ TODO
 
 # PRIORITÀ BASSA
 
-## Miglioramenti UI
+## Cedolino Pro
 
-Aree:
+Valutare:
 
-- dashboard
-- grafici
-- riepiloghi
+- simulazioni avanzate;
+- scenari fiscali;
+- statistiche annuali;
+- comparazione mensile.
+
+Status:
+
+BACKLOG
+
+---
+
+## Dashboard Evoluta
+
+Possibili estensioni:
+
+- grafici;
+- trend;
+- statistiche;
+- KPI personali.
 
 Status:
 
@@ -122,7 +169,14 @@ BACKLOG
 
 ## Ottimizzazioni Performance
 
-Solo se emergono problemi reali.
+Da eseguire solo se emergono problemi reali.
+
+Possibili attività:
+
+- profiling;
+- riduzione rebuild;
+- caching;
+- ottimizzazione stream.
 
 Status:
 
@@ -130,77 +184,75 @@ BACKLOG
 
 ---
 
-# FUTURO
+# FUTURE RELEASES
 
-## Cedolino Pro
-
-Possibili funzionalità:
-
-- proiezioni avanzate
-- simulazioni fiscali
-- statistiche storiche
-
-Status:
-
-IDEA
-
----
-
-## Nuovi Reparti
-
-Da valutare solo dopo consolidamento 1.0.5.
+Nuovi reparti saranno sviluppati solo dopo il completamento della Release 1.0.9.
 
 Possibili candidati:
 
-- Polaria
-- Polstrada
-- Digos
-- Squadra Mobile
-- Frontiera
+- Digos;
+- Squadra Mobile;
+- Frontiera;
+- Reparti specialistici.
 
-Status:
-
-FUTURO
+L'implementazione dovrà riutilizzare il motore multi-reparto esistente senza introdurre nuove duplicazioni.
 
 ---
 
-# NON PRIORITARIO
+# ATTIVITÀ COMPLETATE (NON PIÙ IN BACKLOG)
 
-NON pianificare:
+Completate durante la Release Candidate 1.0.9:
 
-- refactor del motore centrale
-- riscrittura architettura
-- nuove policy reparto
-
-finché la 1.0.5 non sarà consolidata sugli utenti reali.
+- motore multi-reparto;
+- CalculateShiftUseCase;
+- Source of Truth centralizzata;
+- QuickAddShiftPage allineata al motore;
+- regressioni Core Engine;
+- regressioni Reparto Mobile;
+- regressioni Polfer;
+- regressioni Questura;
+- regressioni Multi Department;
+- regressioni Basket Straordinari;
+- regressioni Basket Compensativi;
+- regressioni Monthly Summary;
+- regressioni Break Domain;
+- regressioni Break DTO;
+- regressioni Break Challenge Engine;
+- validazione RFI con straordinario programmato;
+- consolidamento pipeline economiche.
 
 ---
 
-# Regola Backlog
+# Regole del Backlog
 
-Ogni bug scoperto deve essere classificato:
+Ogni nuovo task deve:
 
-- CRITICAL
-- HIGH
-- MEDIUM
-- LOW
+- indicare la priorità;
+- specificare il modulo coinvolto;
+- riportare eventuali regression test richiesti.
 
-e riportato qui prima di essere pianificato.
-## Stato attuale post fix basket
+Ogni bug corretto deve:
 
-Nessun task critico aperto sul motore basket.
+1. essere aggiunto a `KNOWN_BUGS_RESOLVED.md`;
+2. introdurre almeno un nuovo regression test;
+3. mantenere verde l'intera suite automatica.
 
-Completati:
-- fix basket straordinari ordinario;
-- correzioni manuali basket straordinari;
-- fix basket compensativo;
-- test regressione basket;
-- persistenza scoped basket;
-- UI correzione basket ordinario.
+---
 
-Da verificare manualmente prima release:
-- RM basket pagamento/correzione;
-- Polfer RFI separato;
-- Questura Volanti;
-- Questura Uffici;
-- cedolino e proiezione.
+# Stato Finale
+
+Core Economico:
+
+✅ Consolidato
+
+Break Backend:
+
+✅ Consolidato
+
+Break UI:
+
+🟡 In completamento
+
+Release Candidate:
+
+🟢 Stabile e pronta per il completamento della fase finale di integrazione.

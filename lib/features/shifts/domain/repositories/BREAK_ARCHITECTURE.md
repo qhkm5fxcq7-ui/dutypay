@@ -2,108 +2,55 @@
 
 ## Obiettivo
 
-Break è una feature sociale sperimentale di DutyPay.
+Break è il modulo sociale di DutyPay.
 
-La sua finalità è aumentare l'utilizzo quotidiano dell'app e favorire il passaparola tra colleghi senza interferire con il motore economico.
+È completamente indipendente dal motore economico ed è progettato per aumentare:
 
-Funzione principale:
+* utilizzo quotidiano;
+* coinvolgimento;
+* viralità;
+* community tra colleghi.
 
-> **Chi paga il caffè ☕**
+La prima funzionalità implementata è:
 
-Gli utenti potranno:
+**Chi paga il caffè ☕**
+
+Gli utenti possono:
 
 * creare una stanza;
 * condividere un codice;
-* far entrare altri colleghi;
-* visualizzare i partecipanti in tempo reale;
-* avviare una sfida sincronizzata;
+* entrare tramite codice;
+* vedere i partecipanti in tempo reale;
+* sincronizzare una sfida;
 * ottenere lo stesso risultato su tutti i dispositivi.
 
 ---
 
 # Principio Fondamentale
 
-Break è completamente indipendente dal core economico.
+Break è completamente separato dal Core Economico.
 
-Non deve dipendere da:
+Non dipende da:
 
-* motore turni;
+* turni;
 * cedolino;
 * basket straordinari;
+* basket compensativi;
 * basket RFI;
-* basket compensativo;
-* backup/import/export;
-* profili stipendiali;
-* policy reparto.
+* DepartmentPolicy;
+* parser cedolini;
+* backup economici.
 
-L'unico punto di ingresso conosciuto dal resto dell'app è:
+L'unico punto di accesso è:
 
 ```text
 BreakPage
 ```
 
-Tutta la logica della feature risiede esclusivamente sotto:
+Tutto il codice risiede esclusivamente sotto:
 
 ```text
 lib/features/break/
-```
-
----
-
-# Struttura della Feature
-
-```text
-lib/features/break/
-
-├── data/
-│   ├── datasources/
-│   │   ├── firestore_break_datasource.dart
-│   │   └── local_break_identity_datasource.dart
-│   │
-│   ├── dto/
-│   │   ├── break_room_dto.dart
-│   │   └── break_participant_dto.dart
-│   │
-│   ├── repositories/
-│   │   ├── firestore_break_room_repository.dart
-│   │   └── break_identity_repository_impl.dart
-│   │
-│   └── services/
-│       └── break_code_generator.dart
-│
-├── di/
-│   └── break_dependencies.dart
-│
-├── domain/
-│   ├── constants/
-│   │   └── break_constants.dart
-│   │
-│   ├── models/
-│   │   ├── break_identity.dart
-│   │   ├── break_room.dart
-│   │   └── break_participant.dart
-│   │
-│   ├── repositories/
-│   │   ├── break_identity_repository.dart
-│   │   └── break_room_repository.dart
-│   │
-│   └── usecases/
-│       ├── create_break_room_usecase.dart
-│       ├── join_break_room_usecase.dart
-│       ├── watch_break_room_usecase.dart
-│       ├── watch_break_participants_usecase.dart
-│       ├── set_break_ready_usecase.dart
-│       ├── start_break_round_usecase.dart
-│       ├── reset_break_round_usecase.dart
-│       ├── get_local_identity_usecase.dart
-│       └── save_nickname_usecase.dart
-│
-├── infrastructure/
-│   └── firestore_break_paths.dart
-│
-└── presentation/
-    ├── break_page.dart
-    └── widgets/
 ```
 
 ---
@@ -126,7 +73,23 @@ Datasource
 Firestore
 ```
 
-La Presentation non accede mai direttamente a Firestore.
+La UI non comunica mai direttamente con Firestore.
+
+---
+
+# Struttura
+
+La feature è composta da:
+
+* Presentation;
+* Domain;
+* Data;
+* Infrastructure;
+* Dependency Injection.
+
+Il Domain contiene esclusivamente logica applicativa.
+
+La Data contiene esclusivamente persistenza.
 
 ---
 
@@ -134,89 +97,49 @@ La Presentation non accede mai direttamente a Firestore.
 
 ## BreakRoom
 
+Rappresenta una stanza multiplayer.
+
 Responsabilità:
 
-* rappresentare una stanza;
-* mantenere lo stato della partita;
-* contenere il risultato sincronizzato.
-
-Campi principali:
-
-```text
-id
-roomCode
-title
-createdBy
-createdAt
-status
-participantsCount
-maxParticipants
-selectedPayerId
-roundSeed
-resultId
-resultText
-startedAt
-completedAt
-```
-
-Status disponibili:
-
-```text
-waiting
-running
-completed
-```
+* stato della stanza;
+* round corrente;
+* seed condiviso;
+* risultato sincronizzato.
 
 ---
 
 ## BreakParticipant
 
-Responsabilità:
+Rappresenta un partecipante.
 
-* rappresentare un partecipante.
+Contiene:
 
-Campi:
-
-```text
-id
-deviceId
-roomId
-displayName
-joinedAt
-isReady
-lives
-eliminated
-position
-avatarSeed
-```
+* identità;
+* stato Ready;
+* posizione;
+* avatar;
+* dati necessari alla sincronizzazione.
 
 ---
 
 ## BreakIdentity
 
-Identità locale anonima.
+Identità locale persistente.
 
-Campi:
+Persistita tramite SharedPreferences.
 
-```text
-deviceId
-nickname
-avatarSeed
-```
-
-Non vengono raccolti:
+Non vengono memorizzati:
 
 * email;
-* matricola;
-* nome reale obbligatorio;
-* dati di servizio;
-* dati stipendiali.
+* dati personali;
+* dati stipendiali;
+* informazioni di servizio.
 
 ---
 
 # Firestore
 
-Struttura prevista:
+Collezioni principali:
 
 ```text
 breakRooms/{roomId}
@@ -226,33 +149,31 @@ breakRooms/{roomId}/participants/{deviceId}
 breakRoomCodes/{roomCode}
 ```
 
+---
+
 ## breakRooms
 
 Contiene:
 
-* dati stanza;
+* configurazione stanza;
 * stato;
-* risultato;
 * seed;
-* contatori.
+* risultato;
+* metadati del round.
 
 ---
 
 ## participants
 
-Ogni partecipante utilizza:
+Ogni documento utilizza:
 
 ```text
 deviceId
 ```
 
-come identificativo del documento.
+come chiave primaria.
 
-Vantaggi:
-
-* nessun duplicato;
-* rientro nella stanza;
-* aggiornamento semplice dello stato.
+Questo evita duplicati e semplifica il rientro nella stanza.
 
 ---
 
@@ -262,7 +183,9 @@ Indice utilizzato per convertire rapidamente:
 
 ```text
 roomCode
-        ↓
+
+↓
+
 roomId
 ```
 
@@ -270,82 +193,125 @@ roomId
 
 # DTO
 
-Firestore comunica esclusivamente tramite DTO.
+La comunicazione con Firestore passa esclusivamente tramite DTO.
 
 Pipeline:
 
 ```text
 Firestore
-     ↕
+
+↓
+
 DTO
-     ↕
+
+↓
+
 Domain Model
 ```
 
-DTO presenti:
+DTO disponibili:
 
-* BreakRoomDto
-* BreakParticipantDto
+* BreakRoomDto;
+* BreakParticipantDto.
 
 ---
 
 # Local Identity
 
-Gestione completamente locale.
-
-Componenti:
-
-* BreakIdentity
-* LocalBreakIdentityDatasource
-* BreakIdentityRepository
-* BreakIdentityRepositoryImpl
-* GetLocalIdentityUseCase
-* SaveNicknameUseCase
-
-Persistenza:
+Pipeline:
 
 ```text
 SharedPreferences
+
+↓
+
+LocalBreakIdentityDatasource
+
+↓
+
+BreakIdentityRepository
+
+↓
+
+UseCases
+
+↓
+
+Presentation
 ```
 
 ---
 
-# Dependency Container
+# Dependency Injection
 
-La feature utilizza un container dedicato.
-
-File:
+Container dedicato:
 
 ```text
-lib/features/break/di/break_dependencies.dart
+BreakDependencies
 ```
 
-La UI utilizza esclusivamente:
-
-```text
-BreakDependencies.instance
-```
-
-Responsabilità:
+Espone:
 
 * FirebaseFirestore;
-* FirestoreBreakPaths;
-* FirestoreBreakDatasource;
+* datasource;
 * repository;
 * use case;
-* datasource locali.
+* servizi locali.
+
+La UI non costruisce manualmente alcuna dipendenza.
+
+---
+
+# Challenge Engine
+
+Il Challenge Engine è completamente deterministico.
+
+Componenti principali:
+
+* ChallengeEngine;
+* ChallengeFrame;
+* ChallengeRunner;
+* ChallengeState.
+
+La simulazione utilizza:
+
+* roundSeed;
+* selectedPayerId;
+* avatarSeed.
+
+Ogni dispositivo produce la stessa animazione partendo dagli stessi dati.
+
+---
+
+# Stati Challenge
+
+Sequenza ufficiale:
+
+```text
+Countdown
+
+↓
+
+Running
+
+↓
+
+Finished
+
+↓
+
+Suspense
+
+↓
+
+Completed
+```
 
 ---
 
 # Code Generator
 
-Classe:
-
-```text
-BreakCodeGenerator
-```
-
-Genera codici stanza del tipo:
+Genera codici stanza nel formato:
 
 ```text
 BRK-X7K4M
@@ -353,60 +319,77 @@ BRK-X7K4M
 
 Caratteristiche:
 
-* brevi;
-* leggibili;
 * casuali;
-* basati su UUID;
-* privi di caratteri ambigui.
+* leggibili;
+* privi di caratteri ambigui;
+* basati su UUID.
 
 ---
 
-# Stato Implementazione
+# Stato implementazione
 
 ## Completato
 
-* Tab Break
-* Architettura feature
-* Domain Models
-* Repository Interfaces
-* DTO
-* Firestore Paths
-* Firestore Datasource
-* Firestore Repository
-* Local Identity
-* Code Generator
-* Use Cases
-* Dependency Container
+* architettura Break;
+* Domain Models;
+* DTO;
+* Firestore Datasource;
+* Repository;
+* Dependency Injection;
+* Local Identity;
+* Code Generator;
+* Use Cases;
+* Challenge Engine;
+* animazione deterministica;
+* sincronizzazione tramite seed.
 
 ---
 
-## Da implementare
+## Da completare
 
-* dialog nickname;
-* create room UI;
-* join room UI;
-* BreakRoomPage;
-* partecipanti realtime;
-* ready state;
-* avvio partita;
-* animazione sincronizzata;
-* Firestore Security Rules.
+* rifiniture UI;
+* Firestore Security Rules;
+* ottimizzazioni UX;
+* integrazione Analytics;
+* integrazione Crashlytics.
 
 ---
 
-# Roadmap Tecnica
+# Regressioni
 
-1. Collegare `BreakPage` al dependency container.
-2. Richiedere il nickname al primo avvio.
-3. Implementare "Crea stanza".
-4. Implementare "Entra tramite codice".
-5. Collegare `BreakRoomPage`.
-6. Mostrare i partecipanti realtime.
-7. Gestire lo stato Ready.
-8. Avviare il round.
-9. Sincronizzare il risultato tramite:
+Regression pack disponibili:
 
-   * `roundSeed`;
-   * `selectedPayerId`;
-   * `resultId`.
-10. Completare l'hardening delle Firestore Rules prima della release pubblica.
+* Break Domain;
+* Break DTO;
+* Break Challenge Engine.
+
+Tutti i regression pack risultano verdi.
+
+---
+
+# Vincoli Architetturali
+
+È vietato:
+
+* introdurre dipendenze verso il Core Economico;
+* accedere direttamente a Firestore dalla UI;
+* duplicare logica nei widget;
+* rendere non deterministica la simulazione della challenge.
+
+Ogni modifica del Challenge Engine deve mantenere la sincronizzazione tra dispositivi.
+
+---
+
+# Stato Attuale
+
+Release Candidate:
+
+**1.0.9**
+
+Stato:
+
+* architettura consolidata;
+* backend stabile;
+* Challenge Engine validato;
+* regression pack completo;
+* nessuna regressione nota nel modulo Break.

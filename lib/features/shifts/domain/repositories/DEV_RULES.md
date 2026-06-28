@@ -8,62 +8,103 @@ Se una modifica viola una di queste regole, la modifica deve essere rifiutata o 
 
 ---
 
-# REGOLA 1
+# Baseline Attuale
 
-## Una sola fonte della verità
+Release:
 
-La source of truth assoluta è:
+**DutyPay 1.0.9 (Release Candidate)**
 
-BuildDailyShiftResultUseCase
+Stato:
+
+* motore multi-reparto consolidato;
+* Source of Truth unificata;
+* Break isolato dal Core Economico;
+* suite automatica: 156 test PASS;
+* flutter analyze: 0 warning / 0 errori.
+
+---
+
+# REGOLA 1 — Una sola Source of Truth
+
+La Source of Truth assoluta è:
+
+**BuildDailyShiftResultUseCase**
 
 Responsabile di:
 
-* overtime
-* notturno
-* festivo
-* OP
-* servizi esterni
-* compensativi
-* basket
-* breakdown
-* totale turno
-* totale giorno
+* overtime;
+* notturno;
+* festivo;
+* OP;
+* servizi esterni;
+* accessorie;
+* benefit;
+* compensativi;
+* basket;
+* breakdown;
+* totale turno;
+* totale giorno;
+* summary.
 
 È vietato creare una seconda fonte della verità.
 
 ---
 
-# REGOLA 2
+# REGOLA 2 — Pipeline obbligatoria
 
-## Nessuna logica economica in UI
+La pipeline ufficiale è:
+
+```text
+Shift
+↓
+CalculateShiftUseCase
+↓
+DepartmentPolicy
+↓
+ShiftCalculationResult
+↓
+BuildShiftComputationUseCase
+↓
+BuildDailyShiftResultUseCase
+↓
+Dashboard / Preview / Cedolino / Summary
+```
+
+È vietato bypassare questa pipeline.
+
+---
+
+# REGOLA 3 — Nessuna logica economica in UI
 
 I widget possono:
 
-* leggere dati
-* visualizzare dati
+* leggere dati;
+* visualizzare dati;
+* raccogliere input utente.
 
 I widget NON possono:
 
-* calcolare overtime
-* calcolare importi
-* segmentare ore
-* classificare notturno
-* classificare festivo
+* calcolare overtime;
+* calcolare importi;
+* segmentare ore;
+* classificare notturno;
+* classificare festivo;
+* applicare regole reparto.
 
 Qualsiasi calcolo economico deve vivere nel motore.
 
 ---
 
-# REGOLA 3
-
-## Nessuna duplicazione
+# REGOLA 4 — Nessuna duplicazione
 
 È vietato duplicare logica tra:
 
-* Shift
-* Policy
-* UseCase
-* UI
+* Shift;
+* Policy;
+* UseCase;
+* UI;
+* Summary;
+* Preview.
 
 Prima di aggiungere una regola verificare sempre:
 
@@ -73,251 +114,261 @@ Prima di aggiungere una regola verificare sempre:
 
 ---
 
-# REGOLA 4
-
-## Le Policy sono proprietarie del reparto
+# REGOLA 5 — Le Policy sono proprietarie del reparto
 
 Le logiche reparto devono vivere esclusivamente nelle Policy.
 
 Policy attive:
 
-* RepartoMobilePolicy
-* PolferPolicy
-* QuesturaPolicy
+* RepartoMobilePolicy;
+* PolferPolicy;
+* QuesturaPolicy.
 
 Le regole di un reparto non devono contaminare gli altri.
 
 ---
 
-# REGOLA 5
-
-## Reparti isolati
+# REGOLA 6 — Reparti isolati
 
 Reparto Mobile:
 
-* soglia ordinaria 6h
+* soglia ordinaria 6h.
 
 Polfer:
 
-* scheduled end
-* logica territorio
-* logica notturno
+* scheduled end;
+* territorio;
+* notturno;
+* RFI.
 
 Questura Uffici:
 
-* ordinario personalizzato
+* ordinario personalizzato.
 
 Questura Volanti:
 
-* preset operativi
+* preset operativi.
 
 Nessuna regola deve propagarsi ad altri reparti senza esplicita progettazione.
 
 ---
 
-# REGOLA 6
-
-## RFI è una pipeline separata
+# REGOLA 7 — RFI è una pipeline separata
 
 RFI non è:
 
-* overtime
-* accessoria
-* compensativo
+* overtime;
+* accessoria;
+* compensativo.
 
 Pipeline:
 
+```text
 OPEN
 ↓
 PAID
 ↓
 Cedolino
+```
 
 Mai usare:
 
+```text
 monthlySummaries
+```
 
 per gestire RFI.
 
 Utilizzare sempre:
 
+```text
 rfiMonthlySummaries
+```
 
 ---
 
-# REGOLA 7
+# REGOLA 8 — Basket Compensativo separato
 
-## Basket Compensativo separato
+Il Basket Compensativo:
 
-Il basket compensativo:
-
-* non è denaro
-* non è RFI
-* non è accessoria
+* non è denaro;
+* non è RFI;
+* non è accessoria.
 
 Gestisce esclusivamente ore.
 
 I compensativi non devono influenzare:
 
-* cedolino
-* overtime pagato
-* accessorie
+* cedolino;
+* overtime pagato;
+* accessorie;
+* Basket RFI.
 
 ---
 
-# REGOLA 8
+# REGOLA 9 — Basket Straordinari separato
 
-## Programmed Overtime
+Il Basket Straordinari gestisce solo:
+
+* ore straordinario;
+* pagamenti;
+* correzioni manuali;
+* residuo;
+* proiezione cedolino.
+
+Non deve essere accorpato a:
+
+* RFI;
+* compensativi;
+* benefit.
+
+---
+
+# REGOLA 10 — Programmed Overtime
 
 Lo straordinario programmato è:
 
-un segmento temporale
+* un segmento temporale.
 
-NON:
+Non è:
 
-un override dell'intero turno
+* un override dell'intero turno.
 
 Regole:
 
-* clamp al turno reale
-* può essere pagato
-* può essere compensativo
+* clamp al turno reale;
+* può essere pagato;
+* può essere compensativo.
 
 Destinazione compensativa:
 
-* entra nel basket compensativo
-* non entra nel totale economico
+* entra nel Basket Compensativo;
+* non entra nel totale economico.
 
 ---
 
-# REGOLA 9
-
-## Preview = Reality
+# REGOLA 11 — Preview = Reality
 
 La preview deve sempre essere identica a:
 
-* turno salvato
-* dettaglio turno
-* totale giorno
+* turno salvato;
+* dettaglio turno;
+* totale giorno;
+* summary.
 
-Se esiste una differenza:
-
-è considerato un bug critico.
+Se esiste una differenza, è un bug critico.
 
 ---
 
-# REGOLA 10
-
-## Breakdown = Totale
+# REGOLA 12 — Breakdown = Totale
 
 Il breakdown deve sempre ricostruire il totale.
 
 Non devono esistere:
 
-* righe fantasma
-* importi nascosti
-* componenti non rappresentate
+* righe fantasma;
+* importi nascosti;
+* componenti non rappresentate.
 
 ---
 
-# REGOLA 11
-
-## UseCase non devono fare business logic
+# REGOLA 13 — UseCase senza logica reparto
 
 I UseCase possono:
 
-* orchestrare
-* aggregare
-* adattare dati
+* orchestrare;
+* aggregare;
+* adattare dati.
 
 I UseCase non devono:
 
-* implementare logiche reparto
-* classificare ore
-* classificare festivi
-* calcolare importi
+* implementare logiche reparto;
+* classificare ore;
+* classificare festivi;
+* calcolare importi specifici di reparto.
 
 ---
 
-# REGOLA 12
-
-## Nessun fallback legacy
+# REGOLA 14 — Nessun fallback legacy
 
 È vietato:
 
-* recuperare vecchie logiche
-* utilizzare metodi obsoleti
-* usare risultati legacy come fallback
+* recuperare vecchie logiche;
+* utilizzare metodi obsoleti come fonte di verità;
+* usare risultati legacy come fallback.
 
 Ogni nuova implementazione deve utilizzare il motore corrente.
 
 ---
 
-# REGOLA 13
-
-## Ogni bug genera un test
+# REGOLA 15 — Ogni bug genera un test
 
 Flusso obbligatorio:
 
+```text
 bug
 ↓
-test riproduzione
+test di riproduzione
 ↓
 fix
 ↓
 validazione
+```
 
-Mai correggere un bug senza introdurre una protezione contro la regressione.
+Mai correggere un bug senza introdurre protezione contro la regressione.
 
 ---
 
-# REGOLA 14
+# REGOLA 16 — Parser Cedolini
 
-## Parser Cedolini
-
-Il parser deve utilizzare:
-
-fixture reali
+Il parser deve utilizzare fixture reali.
 
 Ogni nuovo bug parser deve produrre:
 
-* fixture reale
-* test automatico
-* correzione
+* fixture reale;
+* test automatico;
+* correzione.
 
 Mai fare refactor del parser senza copertura test.
 
 ---
 
-# REGOLA 15
+# REGOLA 17 — Break isolato
 
-## Release Gate
+Break è indipendente dal Core Economico.
 
-Prima di ogni release:
+Non può dipendere da:
 
-* flutter analyze
-* flutter test
-* smoke test multi reparto
-* verifica preview ↔ dettaglio
-* verifica totale giorno ↔ summary mese
-* verifica basket RFI
-* verifica basket compensativo
+* turni;
+* cedolino;
+* basket;
+* compensativi;
+* DepartmentPolicy;
+* parser cedolini;
+* profili stipendiali.
 
-Solo dopo è consentita la pubblicazione.
+Il Challenge Engine deve restare deterministico.
 
 ---
 
-# Baseline Attuale
+# REGOLA 18 — Release Gate
 
-Release:
+Prima di ogni release:
 
-DutyPay 1.0.5
+* flutter analyze;
+* flutter test;
+* smoke test multi reparto;
+* verifica preview ↔ dettaglio;
+* verifica totale giorno ↔ summary mese;
+* verifica Basket RFI;
+* verifica Basket Compensativo;
+* verifica Basket Straordinari;
+* verifica Break se incluso nella release.
 
-Reparti supportati:
+---
 
-* Reparto Mobile
-* Polfer
-* Questura Uffici
-* Questura Volanti
+# Regola Finale
 
 Queste regole rappresentano la costituzione tecnica del progetto.
+
+Qualsiasi modifica che violi la Source of Truth, duplichi calcoli o reintroduca logica legacy deve essere respinta.

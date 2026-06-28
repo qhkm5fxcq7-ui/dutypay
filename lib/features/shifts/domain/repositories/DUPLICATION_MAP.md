@@ -6,10 +6,26 @@ Prevenire la reintroduzione di duplicazioni logiche nel progetto.
 
 Questo documento definisce:
 
-* dove deve vivere ogni logica
-* cosa è stato centralizzato
-* cosa è temporaneamente tollerato
-* cosa è vietato
+* dove deve vivere ogni logica;
+* cosa è stato centralizzato;
+* cosa è temporaneamente tollerato;
+* cosa è vietato.
+
+---
+
+# Baseline
+
+Release:
+
+**DutyPay 1.0.9 (Release Candidate)**
+
+Stato:
+
+* architettura consolidata;
+* Source of Truth unificata;
+* Core Engine stabile;
+* 156 test automatici PASS;
+* flutter analyze pulito.
 
 ---
 
@@ -19,11 +35,12 @@ Una sola fonte della verità.
 
 Qualsiasi regola di business deve avere un solo proprietario.
 
-Sono vietate:
+Sono vietati:
 
-* duplicazioni
-* fallback legacy
-* calcoli paralleli
+* duplicazioni;
+* fallback legacy;
+* calcoli paralleli;
+* logica economica nella UI.
 
 ---
 
@@ -31,38 +48,46 @@ Sono vietate:
 
 Fonte assoluta:
 
-BuildDailyShiftResultUseCase
+**BuildDailyShiftResultUseCase**
 
 Responsabile di:
 
-* overtime
-* notturno
-* festivo
-* OP
-* servizi esterni
-* compensativi
-* basket
-* breakdown
-* totale turno
-* totale giorno
+* overtime;
+* notturno;
+* festivo;
+* OP;
+* servizi esterni;
+* accessorie;
+* benefit;
+* compensativi;
+* basket;
+* breakdown;
+* totale turno;
+* totale giorno.
 
 Nessun widget può eseguire logiche economiche autonome.
 
 ---
 
-# Architettura Corretta
+# Pipeline Corretta
 
-Shift (dati)
+```text
+Shift
 ↓
-BuildDailyShiftResultUseCase
-↓
-BuildShiftComputationUseCase
+CalculateShiftUseCase
 ↓
 DepartmentPolicy
 ↓
-DailyShiftResult
+ShiftCalculationResult
 ↓
-UI
+BuildShiftComputationUseCase
+↓
+BuildDailyShiftResultUseCase
+↓
+UI / Dashboard / Cedolino / Summary
+```
+
+Questa è l'unica pipeline autorizzata.
 
 ---
 
@@ -72,19 +97,20 @@ UI
 
 Consentito:
 
-* serializzazione
-* deserializzazione
-* start/end
-* crossesMidnight
-* helper generici
+* serializzazione;
+* deserializzazione;
+* start/end;
+* crossesMidnight;
+* helper generici non economici.
 
 Vietato:
 
-* overtime
-* breakdown economico
-* notturno
-* festivo
-* logiche reparto
+* overtime;
+* breakdown economico;
+* notturno;
+* festivo;
+* regole reparto;
+* importi.
 
 ---
 
@@ -92,18 +118,18 @@ Vietato:
 
 Responsabili di:
 
-* overtime
-* notturno
-* festivo
-* classificazione giorno/notte
-* logiche reparto
-* importi
+* overtime;
+* notturno;
+* festivo;
+* classificazione giorno/notte;
+* logiche reparto;
+* importi di reparto.
 
 Policy attive:
 
-* RepartoMobilePolicy
-* PolferPolicy
-* QuesturaPolicy
+* RepartoMobilePolicy;
+* PolferPolicy;
+* QuesturaPolicy.
 
 ---
 
@@ -111,14 +137,29 @@ Policy attive:
 
 Responsabili di:
 
-* orchestrazione
-* aggregazione
-* adattamento dati
+* orchestrazione;
+* aggregazione;
+* adattamento dati;
+* summary.
 
 Non devono:
 
-* calcolare soldi
-* implementare logiche reparto
+* duplicare regole reparto;
+* creare calcoli paralleli;
+* bypassare DepartmentPolicy.
+
+---
+
+## UI
+
+Responsabile solo di:
+
+* input;
+* visualizzazione;
+* navigazione;
+* stato grafico.
+
+Mai responsabile di calcoli economici.
 
 ---
 
@@ -128,15 +169,15 @@ Non devono:
 
 Centralizzato in:
 
-* ShiftTimeHelper
-* TimeBandHelper
+* ShiftTimeHelper;
+* TimeBandHelper.
 
 Copertura:
 
-* normalizedEnd
-* overlapMinutes
-* night calculation
-* band calculation
+* normalizedEnd;
+* overlapMinutes;
+* night calculation;
+* band calculation.
 
 Status:
 
@@ -148,13 +189,13 @@ Status:
 
 Centralizzato in:
 
-* DateClassificationHelper
+* DateClassificationHelper.
 
 Copertura:
 
-* holiday detection
-* super holidays
-* Easter calculation
+* holiday detection;
+* super holidays;
+* Easter calculation.
 
 Status:
 
@@ -166,14 +207,15 @@ Status:
 
 Prima:
 
-* engine breakdown
-* Shift breakdown
-* UI merge
+* engine breakdown;
+* Shift breakdown;
+* UI merge.
 
 Ora:
 
-* solo engine breakdown
-* enrichment layer controllato
+* engine breakdown;
+* enrichment layer controllato;
+* nessuna source of truth parallela.
 
 Status:
 
@@ -185,14 +227,16 @@ Status:
 
 Prima:
 
-* Shift
-* RM
-* Polfer
+* Shift;
+* RM;
+* Polfer;
+* UI.
 
 Ora:
 
-* DepartmentPolicy
-* BuildDailyShiftResultUseCase
+* DepartmentPolicy;
+* CalculateShiftUseCase;
+* BuildDailyShiftResultUseCase.
 
 Status:
 
@@ -204,12 +248,13 @@ Status:
 
 Prima:
 
-* contaminazione RM 6h
+* contaminazione RM 6h.
 
 Ora:
 
-* scheduled end
-* chiusura teorica turno
+* scheduled end;
+* chiusura teorica turno;
+* RFI separato.
 
 Status:
 
@@ -221,12 +266,12 @@ Status:
 
 Implementata tramite:
 
-QuesturaPolicy
+* QuesturaPolicy.
 
 Supporta:
 
-* Uffici
-* Volanti
+* Uffici;
+* Volanti.
 
 Status:
 
@@ -238,16 +283,16 @@ Status:
 
 Prima:
 
-* override turno
+* override turno.
 
 Ora:
 
-* segmento temporale dedicato
+* segmento temporale dedicato.
 
 Gestione:
 
-* paid
-* compensative
+* paid;
+* compensative.
 
 Status:
 
@@ -263,11 +308,13 @@ Mai trattato come accessoria.
 
 Flusso:
 
+```text
 OPEN
 ↓
 PAID
 ↓
 Cedolino
+```
 
 Status:
 
@@ -281,9 +328,55 @@ Pipeline autonoma.
 
 Separato da:
 
-* overtime pagato
-* RFI
-* accessorie
+* overtime pagato;
+* RFI;
+* accessorie.
+
+Status:
+
+✅ CLEAN
+
+---
+
+## Basket Straordinari
+
+Pipeline dedicata.
+
+Separato da:
+
+* RFI;
+* compensativi;
+* benefit.
+
+Supporta:
+
+* pagamenti;
+* adjustment;
+* residuo.
+
+Status:
+
+✅ CLEAN
+
+---
+
+## Break
+
+Feature separata dal Core Economico.
+
+Contenuta in:
+
+```text
+lib/features/break/
+```
+
+Non deve dipendere da:
+
+* turni;
+* cedolino;
+* basket;
+* profili stipendiali;
+* DepartmentPolicy.
 
 Status:
 
@@ -297,14 +390,15 @@ Status:
 
 Possono rimanere solo se:
 
-* non utilizzati dal motore
-* necessari per retrocompatibilità
+* non utilizzati dal motore come Source of Truth;
+* necessari per retrocompatibilità;
+* non producono pipeline alternativa.
 
 Esempi tollerati:
 
-* OP helper
-* comfort helper
-* servizio esterno helper
+* OP helper;
+* comfort helper;
+* servizio esterno helper.
 
 Status:
 
@@ -316,15 +410,15 @@ Status:
 
 Mai introdurre:
 
-❌ shift.getSalaryBreakdown
+❌ `shift.getSalaryBreakdown`
 
-❌ shift.overtimeHours come source of truth
+❌ `shift.overtimeHours` come Source of Truth
 
 ❌ logiche economiche in UI
 
 ❌ merge breakdown legacy
 
-❌ monthlySummaries per RFI
+❌ `monthlySummaries` per RFI
 
 ❌ calcoli duplicati preview
 
@@ -333,6 +427,10 @@ Mai introdurre:
 ❌ logiche Polfer nei widget
 
 ❌ logiche RM nei widget
+
+❌ dipendenze Break → Core Economico
+
+❌ pipeline alternativa al motore
 
 ---
 
@@ -345,18 +443,14 @@ Prima di aggiungere una nuova regola:
 3. Esiste già in un helper condiviso?
 4. Sto duplicando una logica esistente?
 5. Sto creando una seconda fonte di verità?
+6. Sto portando logica economica nella UI?
+7. Sto contaminando un reparto con regole di un altro?
 
-Se una risposta è "sì":
-
-fermarsi e centralizzare.
+Se una risposta è "sì", fermarsi e centralizzare.
 
 ---
 
-# Stato Baseline
-
-Release:
-
-DutyPay 1.0.5
+# Stato Finale
 
 Duplicazioni critiche:
 
@@ -364,10 +458,11 @@ Duplicazioni critiche:
 
 Duplicazioni residue:
 
-⚠ solo helper legacy non utilizzati come source of truth
+⚠ solo helper legacy non utilizzati come Source of Truth
 
 Architettura:
 
 ✅ stabile
 ✅ multi reparto
-✅ pronta per ulteriori espansioni
+✅ coperta da regression test
+✅ pronta per ulteriori espansioni controllate
