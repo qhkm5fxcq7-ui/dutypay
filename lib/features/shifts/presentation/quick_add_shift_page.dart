@@ -2466,13 +2466,23 @@ if (_programmedOvertimeEnabled) ...[
 
     if (_isPolfer && _hasPolferScalo && _polferScaloManualOverride) {
       final totalManual = reducedDay + reducedNight + fullDay + fullNight;
+      final programmedOvertimeHours =
+          previewShift.programmedOvertimeEnabled &&
+                  previewShift.programmedOvertimeStart != null &&
+                  previewShift.programmedOvertimeEnd != null
+              ? previewShift.programmedOvertimeEnd!
+                      .difference(previewShift.programmedOvertimeStart!)
+                      .inMinutes /
+                  60.0
+              : 0.0;
+      final manualScaloMaxHours = duration + programmedOvertimeHours;
 
       if (totalManual <= 0) {
         return 'Inserisci almeno una quota oraria manuale per lo scalo';
       }
 
-      if (totalManual > duration) {
-        return 'Le ore scalo manuali superano la durata del turno';
+      if (totalManual > manualScaloMaxHours) {
+        return 'Le ore scalo manuali superano la durata del turno e dello straordinario programmato';
       }
     }
 
