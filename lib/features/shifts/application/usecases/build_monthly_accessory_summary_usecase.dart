@@ -2,6 +2,7 @@ import '../../presentation/models/department.dart';
 import '../../presentation/models/shift.dart';
 import '../../presentation/models/user_pay_profile.dart';
 import '../models/monthly_accessory_summary.dart';
+import '../models/daily_shift_computation.dart';
 import 'build_daily_shift_result_usecase.dart';
 
 class BuildMonthlyAccessorySummaryUseCase {
@@ -27,14 +28,29 @@ class BuildMonthlyAccessorySummaryUseCase {
 
     final shiftCount = monthShifts.length;
 
-    final dailyResult = dailyUseCase.execute(
-      shifts: monthShifts,
-      profile: profile,
-      department: department,
-    );
+    final shiftsByDay = <DateTime, List<Shift>>{};
+    for (final shift in monthShifts) {
+      final day = DateTime(
+        shift.serviceDate.year,
+        shift.serviceDate.month,
+        shift.serviceDate.day,
+      );
+      shiftsByDay.putIfAbsent(day, () => <Shift>[]).add(shift);
+    }
+
+    final computationsByShift = <Shift, DailyShiftComputation>{};
+    for (final dayShifts in shiftsByDay.values) {
+      final dailyResult = dailyUseCase.execute(
+        shifts: dayShifts,
+        profile: profile,
+        department: department,
+      );
+
+      computationsByShift.addAll(dailyResult.computations);
+    }
 
     for (final shift in monthShifts) {
-      final computation = dailyResult.computations[shift];
+      final computation = computationsByShift[shift];
       if (computation == null) continue;
 
       final shiftTotalGross = _sanitizeMoney(computation.totalAmount);
@@ -65,8 +81,26 @@ class BuildMonthlyAccessorySummaryUseCase {
       );
 
       nonOvertimeGross += shiftNonOvertimeGross < 0 ? 0.0 : shiftNonOvertimeGross;
-      overtimeGross += shiftOvertimeGross;
-      overtimeHours += computation.overtimeHours;
+
+      if (shift.overtimeDestination == OvertimeDestination.payment) {
+        final shiftPaymentOvertimeHours = _sanitizeNonNegative(
+          shift.straordinarioDiurnoHours +
+              shift.straordinarioNotturnoFestivoHours,
+        );
+
+        final effectiveOvertimeHours = shiftPaymentOvertimeHours > 0
+            ? shiftPaymentOvertimeHours
+            : computation.overtimeHours;
+
+        final overtimeRatio = computation.overtimeHours > 0
+            ? (effectiveOvertimeHours / computation.overtimeHours)
+                .clamp(0.0, 1.0)
+            : 0.0;
+
+        overtimeGross += shiftOvertimeGross * overtimeRatio;
+        overtimeHours += effectiveOvertimeHours;
+      }
+
       rfiBasketGross += shiftRfiBasketGross;
     }
 

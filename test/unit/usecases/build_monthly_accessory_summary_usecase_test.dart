@@ -67,7 +67,7 @@ void main() {
       );
 
       expect(summary.shiftCount, 3);
-      expect(summary.overtimeHours, closeTo(22.5, 0.01));
+      expect(summary.overtimeHours, closeTo(10.5, 0.01));
       expect(summary.overtimeGross, greaterThan(0));
       expect(
         summary.totalGross,

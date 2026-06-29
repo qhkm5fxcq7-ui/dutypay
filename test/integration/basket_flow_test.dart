@@ -77,7 +77,7 @@ void main() {
         afterAdjustment.currentBasketResidualHours,
         closeTo(afterPayment.currentBasketResidualHours - 2, 0.01),
       );
-      expect(afterAdjustment.manualBasketPaidHoursForMonth, closeTo(5, 0.01));
+      expect(afterAdjustment.manualBasketPaidHoursForMonth, closeTo(3, 0.01));
 
       final payload = <String, dynamic>{
         'version': 3,

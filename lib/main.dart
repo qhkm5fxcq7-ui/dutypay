@@ -514,6 +514,7 @@ class DutyPayHomePage extends StatefulWidget {
 }
 
 class _DutyPayHomePageState extends State<DutyPayHomePage> {
+  // ignore: unused_field
   static const String _legacyShiftsStorageKey = 'dutypay_shifts';
   static const String _legacyPayProfileStorageKey = 'dutypay_pay_profile';
   static const String _legacyBasketPaymentsStorageKey =
@@ -679,6 +680,7 @@ final BuildCompensativeBasketSummaryFromMovementsUseCase
     return null;
   }
 
+  // ignore: unused_element
   Future<List<String>?> _readScopedStringList({
     required SharedPreferences prefs,
     required String scopedKey,
@@ -698,8 +700,36 @@ final BuildCompensativeBasketSummaryFromMovementsUseCase
     return null;
   }
 
+  Future<void> _runHotfix1011LegacyBasketCleanup(SharedPreferences prefs) async {
+    const hotfixKey = 'dutypay_hotfix_1011_legacy_basket_cleanup_done';
+
+    if (prefs.getBool(hotfixKey) == true) {
+      return;
+    }
+
+    final legacyShifts = prefs.getString('dutypay_shifts');
+    final scopedShifts = prefs.getString(shiftsStorageKey);
+    if (legacyShifts != null && scopedShifts == legacyShifts) {
+      await prefs.remove(shiftsStorageKey);
+    }
+
+    final legacyBasketPayments = prefs.getString('dutypay_basket_payments');
+    final scopedBasketPayments = prefs.getString(basketPaymentsStorageKey);
+    if (legacyBasketPayments != null &&
+        scopedBasketPayments == legacyBasketPayments) {
+      await prefs.remove(basketPaymentsStorageKey);
+    }
+
+    await prefs.remove('dutypay_shifts');
+    await prefs.remove('dutypay_basket_payments');
+
+    await prefs.setBool(hotfixKey, true);
+  }
+
   Future<void> loadData() async {
     final prefs = await SharedPreferences.getInstance();
+
+    await _runHotfix1011LegacyBasketCleanup(prefs);
 
     final loadedShifts = await _loadShiftsFromPrefs(prefs);
     loadedShifts.sort((a, b) => b.start.compareTo(a.start));
@@ -758,11 +788,7 @@ final loadedCompensativeMovements =
 
   Future<List<Shift>> _loadShiftsFromPrefs(SharedPreferences prefs) async {
     try {
-      final rawJson = await _readScopedString(
-        prefs: prefs,
-        scopedKey: shiftsStorageKey,
-        legacyKey: _legacyShiftsStorageKey,
-      );
+      final rawJson = prefs.getString(shiftsStorageKey);
 
       if (rawJson != null && rawJson.trim().isNotEmpty) {
         final decoded = jsonDecode(rawJson);
@@ -780,11 +806,7 @@ final loadedCompensativeMovements =
       }
     } catch (_) {}
 
-    final rawLegacyList = await _readScopedStringList(
-      prefs: prefs,
-      scopedKey: shiftsStorageKey,
-      legacyKey: _legacyShiftsStorageKey,
-    );
+    final rawLegacyList = prefs.getStringList(shiftsStorageKey);
 
     if (rawLegacyList == null || rawLegacyList.isEmpty) {
       return [];
@@ -950,6 +972,20 @@ List<OvertimeBasketAdjustment> _loadOvertimeBasketAdjustments(String? raw) {
   );
   await prefs.setString(compensativeBasketMovementsStorageKey, raw);
 }
+
+  Future<void> deleteBasketPayment(DateTime paymentMonth, double hoursPaid, String note) async {
+    setState(() {
+      basketPayments.removeWhere(
+        (item) =>
+            item.paymentMonth.year == paymentMonth.year &&
+            item.paymentMonth.month == paymentMonth.month &&
+            item.hoursPaid == hoursPaid &&
+            item.note == note,
+      );
+    });
+
+    await _saveBasketPayments();
+  }
 
   Future<void> addBasketPayment(
     DateTime paymentMonth,
@@ -2142,6 +2178,44 @@ _MonthlyLiveProjection _buildMonthlyLiveProjection({
                     hintText: 'Nota obbligatoria',
                   ),
                 ),
+                if (overtimeBasketAdjustments.isNotEmpty) ...[
+                  const SizedBox(height: 18),
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Correzioni salvate',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 220),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: overtimeBasketAdjustments.reversed.map((item) {
+                          final sign = item.hours >= 0 ? '+' : '';
+                          final monthLabel =
+                              '${item.month.month.toString().padLeft(2, '0')}/${item.month.year}';
+
+                          return ListTile(
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            title: Text('$sign${item.hours.toStringAsFixed(1)}h · $monthLabel'),
+                            subtitle: Text(item.note.isEmpty ? 'Nessuna nota' : item.note),
+                            trailing: IconButton(
+                              tooltip: 'Elimina correzione',
+                              icon: const Icon(Icons.delete_outline_rounded),
+                              onPressed: () async {
+                                await _deleteOvertimeBasketAdjustment(item.id);
+                                setModalState(() {});
+                              },
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
             actions: [
@@ -2574,6 +2648,14 @@ Future<void> _addOvertimeBasketAdjustment({
   setState(() {
     overtimeBasketAdjustments.add(adjustment);
     overtimeBasketAdjustments.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+  });
+
+  await _saveOvertimeBasketAdjustments();
+}
+
+Future<void> _deleteOvertimeBasketAdjustment(String adjustmentId) async {
+  setState(() {
+    overtimeBasketAdjustments.removeWhere((item) => item.id == adjustmentId);
   });
 
   await _saveOvertimeBasketAdjustments();
@@ -3188,6 +3270,8 @@ SizedBox(
   projection: projection,
   selectedMonth: selectedPayslipMonth,
   onOpenCalibration: openCalibratePayslips,
+  basketPayments: basketPayments,
+  onDeleteBasketPayment: deleteBasketPayment,
   onAddBasketPayment: addBasketPayment,
   onAddOvertimeBasketAdjustment: _openOvertimeBasketAdjustmentDialog,
   onAddRfiBasketPayment:

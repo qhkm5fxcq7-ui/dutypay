@@ -215,3 +215,22 @@ Ogni nuova funzionalità dovrà rispettare tre principi fondamentali:
 * semplicità d'uso.
 
 L'architettura è progettata per evolvere nel tempo mantenendo un motore di calcolo unico, coerente e facilmente estendibile.
+## Release 1.0.12 (Build 42)
+
+Stato: Rilasciata
+
+Principali novità:
+
+- Stabilizzazione definitiva del Basket Straordinari.
+- Corretto il calcolo delle ore oltre il limite mensile.
+- Il basket viene ora ricostruito dinamicamente dai turni salvati.
+- Eliminazione dei pagamenti basket registrati.
+- Eliminazione delle correzioni basket.
+- Migliorata la coerenza tra cedolino previsto e basket.
+
+Validazione:
+
+- flutter analyze PASS
+- flutter test 158/158 PASS
+- Android Release PASS
+- iOS Release PASS

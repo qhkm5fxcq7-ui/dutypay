@@ -103,7 +103,63 @@ void main() {
       expect(result.currentBasketResidualHours, closeTo(1, 0.01));
     });
 
-    test('negative overtime basket adjustment is shown as paid this month', () {
+
+    test('overtime above monthly payable limit is carried to basket with accessory delay', () {
+      final result = service.projectPayslip(
+        payslipMonth: DateTime(2026, 8),
+        allShifts: [
+          CanonicalShiftScenarios.rmMorningWithHalfHourOvertime(
+            serviceDate: DateTime(2026, 6, 1),
+          ).copyWith(
+            straordinarioDiurnoHours: 60,
+            straordinarioNotturnoFestivoHours: 0,
+          ),
+        ],
+        payProfile: CanonicalShiftScenarios.defaultProfile().copyWith(
+          monthlyOvertimePayableHoursLimit: 55,
+        ),
+        department: Department.repartoMobile,
+      );
+
+      expect(result.accessoryReferenceMonth, DateTime(2026, 6));
+      expect(result.overtimeHoursFromReferenceMonth, closeTo(60, 0.01));
+      expect(result.liquidatedOvertimeHours, closeTo(55, 0.01));
+      expect(result.overtimeInBasketHours, closeTo(5, 0.01));
+      expect(result.currentBasketResidualHours, closeTo(5, 0.01));
+    });
+
+    test('basket payment reduces residual and is reported as paid this month', () {
+      final result = service.projectPayslip(
+        payslipMonth: DateTime(2026, 8),
+        allShifts: [
+          CanonicalShiftScenarios.rmMorningWithHalfHourOvertime(
+            serviceDate: DateTime(2026, 6, 1),
+          ).copyWith(
+            straordinarioDiurnoHours: 70,
+            straordinarioNotturnoFestivoHours: 0,
+          ),
+        ],
+        payProfile: CanonicalShiftScenarios.defaultProfile().copyWith(
+          monthlyOvertimePayableHoursLimit: 55,
+        ),
+        department: Department.repartoMobile,
+        basketPayments: [
+          BasketPayment(
+            paymentMonth: DateTime(2026, 8),
+            hoursPaid: 10,
+            note: 'test',
+          ),
+        ],
+      );
+
+      expect(result.overtimeInBasketHours, closeTo(15, 0.01));
+      expect(result.currentBasketResidualHours, closeTo(5, 0.01));
+      expect(result.manualBasketPaidHoursForMonth, closeTo(10, 0.01));
+      expect(result.manualBasketPaidGrossForMonth, greaterThan(0));
+    });
+
+
+    test('negative overtime basket adjustment is not shown as paid this month', () {
       final profile = CanonicalShiftScenarios.defaultProfile().copyWith(
         monthlyOvertimePayableHoursLimit: 0,
       );
@@ -142,7 +198,7 @@ void main() {
         withAdjustment.currentBasketResidualHours,
         closeTo(withoutAdjustment.currentBasketResidualHours - 2, 0.01),
       );
-      expect(withAdjustment.manualBasketPaidHoursForMonth, closeTo(2, 0.01));
+      expect(withAdjustment.manualBasketPaidHoursForMonth, closeTo(0, 0.01));
     });
 
 

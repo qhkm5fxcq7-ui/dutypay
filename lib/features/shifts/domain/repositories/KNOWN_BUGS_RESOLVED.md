@@ -470,3 +470,18 @@ Ogni nuovo bug deve seguire questo workflow:
 4. aggiornamento di questo documento.
 
 Una regressione non protetta da test è considerata incompleta.
+## Basket Straordinari (1.0.12)
+
+Problema:
+Il basket poteva perdere coerenza dopo modifiche retroattive ai turni o dopo registrazioni manuali.
+
+Soluzione:
+Il basket viene ricostruito dinamicamente dai riepiloghi mensili e dai movimenti manuali, senza dipendere da stati persistenti.
+
+Sono inoltre disponibili:
+
+- eliminazione pagamenti basket;
+- eliminazione correzioni basket.
+
+Stato:
+RISOLTO

@@ -171,7 +171,6 @@ List<RfiBasketPayment> rfiBasketPayments = const [],
             )
             .toList();
 
-    double remainingCapacityHours = overtimeHoursLimit;
     double basketRecoveredGross = 0.0;
     double basketRecoveredHours = 0.0;
     final openBasketEntries = <BasketCarryEntry>[];
@@ -181,35 +180,19 @@ List<RfiBasketPayment> rfiBasketPayments = const [],
         continue;
       }
 
-      if (remainingCapacityHours <= 0) {
-        openBasketEntries.add(
-          BasketCarryEntry(
-            sourceMonth: monthSummary.month,
-            overtimeGrossRemaining: _sanitizeMoney(monthSummary.overtimeGross),
-            overtimeHoursRemaining: _sanitizeNonNegative(
-              monthSummary.overtimeHours,
-            ),
-          ),
-        );
-        continue;
-      }
-
-      final liquidableHours =
-          monthSummary.overtimeHours <= remainingCapacityHours
-              ? monthSummary.overtimeHours
-              : remainingCapacityHours;
+      final monthlyCapacityHours = overtimeHoursLimit;
 
       final grossPerHour = monthSummary.overtimeHours > 0
           ? monthSummary.overtimeGross / monthSummary.overtimeHours
           : 0.0;
 
-      final recoveredGross = liquidableHours * grossPerHour;
-      final residualHours = monthSummary.overtimeHours - liquidableHours;
-      final residualGross = monthSummary.overtimeGross - recoveredGross;
+      final residualHours =
+          (monthSummary.overtimeHours - monthlyCapacityHours).clamp(
+        0.0,
+        monthSummary.overtimeHours,
+      );
 
-      basketRecoveredHours += liquidableHours;
-      basketRecoveredGross += recoveredGross;
-      remainingCapacityHours -= liquidableHours;
+      final residualGross = residualHours * grossPerHour;
 
       if (residualHours > 0.0001 && residualGross > 0.0001) {
         openBasketEntries.add(
@@ -229,27 +212,22 @@ List<RfiBasketPayment> rfiBasketPayments = const [],
 
     if (referenceSummary.overtimeHours > 0 &&
         referenceSummary.overtimeGross > 0) {
-      if (remainingCapacityHours <= 0) {
-        overtimeInBasketHours = referenceSummary.overtimeHours;
-        overtimeInBasketGross = referenceSummary.overtimeGross;
-      } else {
-        final liquidableHours =
-            referenceSummary.overtimeHours <= remainingCapacityHours
-                ? referenceSummary.overtimeHours
-                : remainingCapacityHours;
+      final monthlyCapacityHours = overtimeHoursLimit;
 
-        final grossPerHour = referenceSummary.overtimeHours > 0
-            ? referenceSummary.overtimeGross / referenceSummary.overtimeHours
-            : 0.0;
+      final grossPerHour = referenceSummary.overtimeHours > 0
+          ? referenceSummary.overtimeGross / referenceSummary.overtimeHours
+          : 0.0;
 
-        liquidatedOvertimeHours = liquidableHours;
-        liquidatedOvertimeGross = liquidableHours * grossPerHour;
+      overtimeInBasketHours =
+          (referenceSummary.overtimeHours - monthlyCapacityHours).clamp(
+        0.0,
+        referenceSummary.overtimeHours,
+      );
+      overtimeInBasketGross = overtimeInBasketHours * grossPerHour;
 
-        overtimeInBasketHours =
-            referenceSummary.overtimeHours - liquidableHours;
-        overtimeInBasketGross =
-            referenceSummary.overtimeGross - liquidatedOvertimeGross;
-      }
+      liquidatedOvertimeHours =
+          referenceSummary.overtimeHours - overtimeInBasketHours;
+      liquidatedOvertimeGross = liquidatedOvertimeHours * grossPerHour;
     }
 
     if (overtimeInBasketHours > 0.0001 && overtimeInBasketGross > 0.0001) {
@@ -354,17 +332,6 @@ final positiveOvertimeBasketAdjustmentHours = overtimeBasketAdjustments
       (sum, item) => sum + item.hours,
     );
 
-final negativeOvertimeBasketAdjustmentHoursForMonth = overtimeBasketAdjustments
-    .where(
-      (item) =>
-          _isSameMonth(item.month, normalizedPayslipMonth) &&
-          item.hours < 0,
-    )
-    .fold<double>(
-      0.0,
-      (sum, item) => sum + item.hours.abs(),
-    );
-
 final adjustedBasketRecoveredHours = _sanitizeNonNegative(
   basketRecoveredHours + positiveOvertimeBasketAdjustmentHours,
 );
@@ -392,11 +359,8 @@ final adjustedCurrentBasketResidualHours = _sanitizeNonNegative(
       adjustmentHoursConsumedByUnappliedPayments,
 );
 
-manualBasketPaidHoursForMonth +=
-    adjustmentHoursConsumedThisMonth + negativeOvertimeBasketAdjustmentHoursForMonth;
-manualBasketPaidGrossForMonth +=
-    adjustmentGrossConsumedThisMonth +
-    (negativeOvertimeBasketAdjustmentHoursForMonth * payProfile.overtimeDayRate);
+manualBasketPaidHoursForMonth += adjustmentHoursConsumedThisMonth;
+manualBasketPaidGrossForMonth += adjustmentGrossConsumedThisMonth;
 
 final grossPerResidualHour = currentBasketResidualHours > 0
     ? currentBasketResidualGrossEstimate / currentBasketResidualHours

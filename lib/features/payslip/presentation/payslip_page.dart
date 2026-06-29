@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../shifts/domain/engine/models/rfi_basket_open_entry.dart';
 import '../../shifts/domain/engine/models/precision_status.dart';
 import '../../shifts/domain/engine/models/payslip_projection_result.dart';
+import '../../shifts/domain/engine/models/basket_payment.dart';
 import '../../shifts/application/models/compensative_basket_movement.dart';
 
 class PayslipPage extends StatefulWidget {
@@ -17,6 +18,8 @@ class PayslipPage extends StatefulWidget {
     this.precision,
     this.precisionStatus,
     this.onOpenCalibration,
+    this.basketPayments = const [],
+    this.onDeleteBasketPayment,
     this.onAddBasketPayment,
     this.onAddOvertimeBasketAdjustment,
     this.onAddRfiBasketPayment,
@@ -38,6 +41,14 @@ this.onDeleteCompensativeBasketAdjustment,
   final PrecisionStatus? precisionStatus;
 
   final VoidCallback? onOpenCalibration;
+
+  final List<BasketPayment> basketPayments;
+
+  final FutureOr<void> Function(
+    DateTime paymentMonth,
+    double hoursPaid,
+    String note,
+  )? onDeleteBasketPayment;
 
   final FutureOr<void> Function(
     DateTime paymentMonth,
@@ -246,6 +257,7 @@ class _PayslipPageState extends State<PayslipPage> {
             recoveredGross: basketRecoveredGross,
             paidThisMonthHours: basketPaidThisMonthHours,
             paidThisMonthGross: basketPaidThisMonthGross,
+            hasSavedPayments: widget.basketPayments.isNotEmpty,
             onAddPayment: widget.onAddBasketPayment == null
     ? null
     : () => _openBasketDialog(
@@ -567,6 +579,8 @@ _MinimalActionRow(
       month: month,
       onSubmit: widget.onAddBasketPayment,
       successMessage: 'Pagamento basket registrato correttamente.',
+      savedPayments: widget.basketPayments,
+      onDeletePayment: widget.onDeleteBasketPayment,
     );
   }
   Future<void> _openSelectRfiSourceMonthDialog(
@@ -950,6 +964,12 @@ _MinimalActionRow(
       String note,
     )? onSubmit,
     required String successMessage,
+    List<BasketPayment> savedPayments = const [],
+    FutureOr<void> Function(
+      DateTime paymentMonth,
+      double hoursPaid,
+      String note,
+    )? onDeletePayment,
   }) async {
     final hoursController = TextEditingController();
     final noteController = TextEditingController();
@@ -1094,6 +1114,92 @@ _MinimalActionRow(
                             color: _DutyPayColors.danger,
                             fontSize: 13.2,
                             fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                    if (savedPayments.isNotEmpty) ...[
+                      const SizedBox(height: 18),
+                      const Text(
+                        'Pagamenti salvati',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 180),
+                        child: SingleChildScrollView(
+                          child: Column(
+                            children: savedPayments.reversed.map((item) {
+                              final monthLabel =
+                                  '${item.paymentMonth.month.toString().padLeft(2, '0')}/${item.paymentMonth.year}';
+
+                              return ListTile(
+                                dense: true,
+                                contentPadding: EdgeInsets.zero,
+                                title: Text(
+                                  '${_formatHours(item.hoursPaid)} · $monthLabel',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  item.note.trim().isEmpty
+                                      ? 'Nessuna nota'
+                                      : item.note,
+                                  style: const TextStyle(
+                                    color: _DutyPayColors.textSecondary,
+                                  ),
+                                ),
+                                trailing: IconButton(
+                                  tooltip: 'Elimina pagamento',
+                                  icon: const Icon(
+                                    Icons.delete_outline_rounded,
+                                    color: _DutyPayColors.danger,
+                                  ),
+                                  onPressed: onDeletePayment == null || saving
+                                      ? null
+                                      : () async {
+                                          setDialogState(() {
+                                            saving = true;
+                                            errorText = null;
+                                          });
+
+                                          try {
+                                            await onDeletePayment(
+                                              item.paymentMonth,
+                                              item.hoursPaid,
+                                              item.note,
+                                            );
+
+                                            if (!dialogContext.mounted) return;
+                                            Navigator.of(dialogContext).pop();
+
+                                            if (mounted && context.mounted) {
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                const SnackBar(
+                                                  content: Text(
+                                                    'Pagamento basket eliminato.',
+                                                  ),
+                                                ),
+                                              );
+                                            }
+                                          } catch (_) {
+                                            setDialogState(() {
+                                              saving = false;
+                                              errorText =
+                                                  'Impossibile eliminare il pagamento.';
+                                            });
+                                          }
+                                        },
+                                ),
+                              );
+                            }).toList(),
                           ),
                         ),
                       ),
@@ -1978,6 +2084,7 @@ class _BasketCard extends StatelessWidget {
     required this.paidThisMonthHours,
     required this.paidThisMonthGross,
     required this.onAddPayment,
+    this.hasSavedPayments = false,
     this.onAddAdjustment,
   });
 
@@ -1990,6 +2097,7 @@ class _BasketCard extends StatelessWidget {
   final double paidThisMonthHours;
   final double paidThisMonthGross;
   final VoidCallback? onAddPayment;
+  final bool hasSavedPayments;
   final VoidCallback? onAddAdjustment;
 
   @override
@@ -2102,26 +2210,6 @@ class _BasketCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _MetricBlock(
-                  label: 'Ore a basket',
-                  value: _PayslipPageState._formatHours(recoveredHours),
-                  tone: _MetricTone.positive,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _MetricBlock(
-                  label: 'Lordo a basket',
-                  value: _PayslipPageState._currency(recoveredGross),
-                  tone: _MetricTone.positive,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _MetricBlock(
                   label: 'Pagato questo mese',
                   value: _PayslipPageState._formatHours(paidThisMonthHours),
                 ),
@@ -2137,13 +2225,13 @@ class _BasketCard extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           _PrimaryButton(
-            label: hasResidual
+            label: hasResidual || hasSavedPayments
                 ? 'Registra pagamento basket'
                 : 'Nessuna ora disponibile',
-            icon: hasResidual
+            icon: hasResidual || hasSavedPayments
                 ? Icons.add_task_rounded
                 : Icons.lock_outline_rounded,
-            onPressed: hasResidual ? onAddPayment : null,
+            onPressed: hasResidual || hasSavedPayments ? onAddPayment : null,
           ),
           if (onAddAdjustment != null) ...[
   const SizedBox(height: 10),
