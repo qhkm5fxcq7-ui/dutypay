@@ -24,7 +24,7 @@ Stato:
 * architettura consolidata;
 * Source of Truth unificata;
 * Core Engine stabile;
-* 156 test automatici PASS;
+* 160 test automatici PASS;
 * flutter analyze pulito.
 
 ---

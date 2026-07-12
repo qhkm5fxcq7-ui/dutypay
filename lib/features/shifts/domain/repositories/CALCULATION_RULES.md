@@ -31,7 +31,7 @@ Stato:
 * Source of Truth unificata;
 * regressioni automatiche complete;
 * `flutter analyze` senza warning;
-* **156 test automatici PASS**.
+* **160 test automatici PASS**.
 
 ---
 
@@ -582,6 +582,6 @@ Stato:
 * architettura stabile;
 * regressioni complete;
 * `flutter analyze` PASS;
-* **156/156 test PASS**.
+* **160/160 test PASS**.
 
 Qualsiasi futura modifica del motore dovrà mantenere invariate le regole documentate in questo file oppure aggiornarle contestualmente.

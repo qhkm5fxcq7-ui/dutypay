@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:dutypay/features/shifts/application/usecases/build_monthly_accessory_summary_usecase.dart';
 import 'package:dutypay/features/shifts/presentation/models/department.dart';
+import 'package:dutypay/features/shifts/presentation/models/shift.dart';
 
 import '../../scenarios/canonical_shift_scenarios.dart';
 
@@ -74,6 +75,56 @@ void main() {
         closeTo(summary.nonOvertimeGross + summary.overtimeGross, 0.01),
       );
     });
+
+    test(
+      'same-day additional services do not become basket overtime',
+      () {
+        final serviceDay = DateTime(2026, 7, 4);
+
+        final overnightService = Shift(
+          description: 'OP Roma via Montpellier',
+          start: DateTime(2026, 7, 3, 20),
+          end: DateTime(2026, 7, 4, 10),
+          serviceDate: serviceDay,
+          absence: 'Nessuna',
+          orderPublic: 'Pernotto',
+          externalService: false,
+        );
+
+        final lunch = Shift(
+          description: 'Pranzo',
+          start: DateTime(2026, 7, 4, 13),
+          end: DateTime(2026, 7, 4, 15),
+          serviceDate: serviceDay,
+          absence: 'Nessuna',
+          orderPublic: 'Nessuno',
+          externalService: false,
+        );
+
+        final dinner = Shift(
+          description: 'Cena',
+          start: DateTime(2026, 7, 4, 19),
+          end: DateTime(2026, 7, 4, 21),
+          serviceDate: serviceDay,
+          absence: 'Nessuna',
+          orderPublic: 'Nessuno',
+          externalService: false,
+        );
+
+        final summary = useCase.execute(
+          month: DateTime(2026, 7),
+          allShifts: [overnightService, lunch, dinner],
+          profile: CanonicalShiftScenarios.defaultProfile(),
+          department: Department.repartoMobile,
+        );
+
+        expect(overnightService.overtimeHours, closeTo(8, 0.01));
+        expect(lunch.overtimeHours, closeTo(0, 0.01));
+        expect(dinner.overtimeHours, closeTo(0, 0.01));
+        expect(summary.shiftCount, 3);
+        expect(summary.overtimeHours, closeTo(8, 0.01));
+      },
+    );
 
     test('filters shifts by selected month only', () {
       final may = useCase.execute(

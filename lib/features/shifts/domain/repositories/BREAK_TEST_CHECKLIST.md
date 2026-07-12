@@ -291,7 +291,7 @@ Verifiche garantite:
 
 ### Stato Release
 
-- flutter test: PASS (156/156)
+- flutter test: PASS (160/160)
 - flutter analyze: PASS
 - nessun warning
 - nessun errore bloccante

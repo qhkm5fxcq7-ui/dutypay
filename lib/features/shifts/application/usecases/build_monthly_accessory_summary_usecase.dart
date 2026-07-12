@@ -60,7 +60,8 @@ class BuildMonthlyAccessorySummaryUseCase {
             .where((item) => _isOvertimeCategory(item['category']))
             .fold<double>(
               0.0,
-              (sum, item) => sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
+              (sum, item) =>
+                  sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
             ),
       );
 
@@ -72,7 +73,8 @@ class BuildMonthlyAccessorySummaryUseCase {
             )
             .fold<double>(
               0.0,
-              (sum, item) => sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
+              (sum, item) =>
+                  sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
             ),
       );
 
@@ -80,7 +82,8 @@ class BuildMonthlyAccessorySummaryUseCase {
         shiftTotalGross - shiftOvertimeGross - shiftRfiBasketGross,
       );
 
-      nonOvertimeGross += shiftNonOvertimeGross < 0 ? 0.0 : shiftNonOvertimeGross;
+      nonOvertimeGross +=
+          shiftNonOvertimeGross < 0 ? 0.0 : shiftNonOvertimeGross;
 
       if (shift.overtimeDestination == OvertimeDestination.payment) {
         final shiftPaymentOvertimeHours = _sanitizeNonNegative(
@@ -90,7 +93,7 @@ class BuildMonthlyAccessorySummaryUseCase {
 
         final effectiveOvertimeHours = shiftPaymentOvertimeHours > 0
             ? shiftPaymentOvertimeHours
-            : computation.overtimeHours;
+            : shift.overtimeHours;
 
         final overtimeRatio = computation.overtimeHours > 0
             ? (effectiveOvertimeHours / computation.overtimeHours)

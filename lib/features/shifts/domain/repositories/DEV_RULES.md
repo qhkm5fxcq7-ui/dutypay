@@ -19,7 +19,7 @@ Stato:
 * motore multi-reparto consolidato;
 * Source of Truth unificata;
 * Break isolato dal Core Economico;
-* suite automatica: 156 test PASS;
+* suite automatica: 160 test PASS;
 * flutter analyze: 0 warning / 0 errori.
 
 ---

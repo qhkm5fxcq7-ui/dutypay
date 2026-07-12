@@ -448,7 +448,7 @@ Proteggono attualmente:
 
 Suite automatica:
 
-**156/156 PASS**
+**160/160 PASS**
 
 flutter analyze:
 
@@ -484,4 +484,102 @@ Sono inoltre disponibili:
 - eliminazione correzioni basket.
 
 Stato:
+RISOLTO
+---
+
+## BASKET-013 — Sovrastima nei giorni con più servizi distinti
+
+Versione risoluzione: 1.0.13+43
+
+Problema:
+
+Il riepilogo mensile utilizzato dal Basket Straordinari poteva trasformare
+impropriamente in straordinario i servizi aggiuntivi registrati nella stessa
+data servizio.
+
+Caso reale riprodotto:
+
+- OP 03/07 20:00 → 04/07 10:00: 8h di straordinario;
+- pranzo 04/07 13:00 → 15:00: 0h;
+- cena 04/07 19:00 → 21:00: 0h.
+
+Risultato precedente:
+
+- 12h nel riepilogo basket.
+
+Risultato corretto:
+
+- 8h nel riepilogo basket.
+
+Soluzione:
+
+`BuildMonthlyAccessorySummaryUseCase` usa ora:
+
+- le ore straordinarie legacy quantificate manualmente, quando presenti;
+- altrimenti le ore straordinarie proprie del singolo turno.
+
+Il contesto cumulativo giornaliero non può più creare ore basket su servizi
+distinti che non possiedono straordinario proprio.
+
+Test:
+
+- regression test sul caso OP + pranzo + cena;
+- aggiornamento del test sui servizi multipli;
+- suite completa 160/160 PASS.
+
+Stato:
+
+RISOLTO
+
+---
+
+## SHIFT-013 — Turno notturno con data servizio successiva
+
+Versione verifica: 1.0.13+43
+
+Scenario validato:
+
+- data servizio: 04/07/2026;
+- data reale di inizio: 03/07/2026;
+- orario: 20:00 → 10:00;
+- durata: 14h;
+- straordinario: 8h.
+
+Il turno resta associato alla data servizio selezionata e non viene aggregato
+al precedente turno del 3 luglio.
+
+È stato aggiunto un test di regressione dedicato.
+
+Stato:
+
+VALIDATO
+
+---
+
+## BREAK-013 — Codice stanza personalizzato non coerente con quello automatico
+
+Versione risoluzione: 1.0.13+43
+
+Problema:
+
+Il generatore automatico produce codici con trattino, ad esempio
+`BRK-ABCDE`, mentre la validazione dei codici personalizzati accettava
+inizialmente soltanto lettere e numeri.
+
+Soluzione:
+
+- codici da 3 a 12 caratteri;
+- lettere e numeri consentiti;
+- ammesso un trattino;
+- gestione specifica degli errori di validazione;
+- logging tecnico degli errori Firestore durante la creazione stanza.
+
+Verifica manuale:
+
+- `MAZ123`: PASS;
+- `BRL-12`: PASS;
+- codice non valido: messaggio specifico mostrato.
+
+Stato:
+
 RISOLTO

@@ -317,7 +317,7 @@ Stato:
 * Break stabilizzato lato Domain;
 * suite completa di regressione;
 * flutter analyze senza warning;
-* 156 test automatici PASS.
+* 160 test automatici PASS.
 
 ---
 

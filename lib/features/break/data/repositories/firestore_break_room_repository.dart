@@ -205,11 +205,14 @@ class FirestoreBreakRoomRepository implements BreakRoomRepository {
       return codeGenerator.generateRoomCode();
     }
 
-    final validCode = RegExp(r'^[A-Z0-9]{3,12}$').hasMatch(cleaned);
+    final validCode = RegExp(r'^[A-Z0-9]+(?:-[A-Z0-9]+)?$').hasMatch(cleaned) &&
+        cleaned.length >= 3 &&
+        cleaned.length <= 12;
 
     if (!validCode) {
       throw ArgumentError(
-        'Il codice stanza deve avere 3-12 caratteri e contenere solo lettere o numeri',
+        'Il codice stanza deve avere 3-12 caratteri e contenere '
+        'solo lettere, numeri o un trattino',
       );
     }
 

@@ -224,7 +224,24 @@ class _BreakPageState extends State<BreakPage> {
           builder: (context) => BreakRoomPage(room: room),
         ),
       );
-    } catch (_) {
+    } on ArgumentError catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error.message?.toString() ??
+                'Il codice stanza inserito non è valido.',
+          ),
+        ),
+      );
+    } catch (error, stackTrace) {
+      debugPrint('BREAK CREATE ROOM ERROR: $error');
+      debugPrintStack(
+        label: 'BREAK CREATE ROOM STACK',
+        stackTrace: stackTrace,
+      );
+
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(

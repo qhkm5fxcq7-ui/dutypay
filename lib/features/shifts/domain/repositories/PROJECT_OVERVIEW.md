@@ -180,7 +180,7 @@ Stato attuale:
 
 Validazione attuale:
 
-* **156 test automatici PASS**;
+* **160 test automatici PASS**;
 * Flutter Analyze: **0 warning / 0 errori**;
 * regression pack dedicati per tutti i moduli principali;
 * validazione su casi reali e scenari multi reparto.
@@ -234,3 +234,39 @@ Validazione:
 - flutter test 158/158 PASS
 - Android Release PASS
 - iOS Release PASS
+
+---
+
+## Release 1.0.13 (Build 43)
+
+Stato: Rilasciata su iOS e Android.
+
+Principali interventi:
+
+- corretto il riepilogo mensile del Basket Straordinari nei giorni con più
+  servizi distinti;
+- impedita la trasformazione automatica di servizi accessori in
+  straordinario;
+- aggiunto regression test sul caso OP notturno + pranzo + cena;
+- verificata la gestione dei turni con data servizio diversa dalla data reale
+  di inizio;
+- allineata la validazione dei codici stanza personalizzati Break al formato
+  dei codici automatici;
+- migliorata la diagnostica degli errori di creazione stanza;
+- rimossi i log temporanei di sviluppo.
+
+Caso basket validato:
+
+- OP 03/07 20:00 → 04/07 10:00: 8h overtime;
+- pranzo 13:00 → 15:00: 0h overtime;
+- cena 19:00 → 21:00: 0h overtime;
+- totale corretto basket: 8h, anziché 12h.
+
+Validazione tecnica:
+
+- flutter analyze: PASS;
+- flutter test: 160/160 PASS;
+- Android App Bundle: PASS;
+- archivio e upload iOS 1.0.13 (43): PASS;
+- pubblicazione Android: completata;
+- pubblicazione iOS: completata.

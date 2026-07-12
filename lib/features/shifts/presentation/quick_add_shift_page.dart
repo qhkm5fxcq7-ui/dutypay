@@ -2624,7 +2624,6 @@ double _buildPreviewTotalFromBreakdown(
         sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
   );
 
-  debugPrint('PREVIEW TOTAL = $total');
   return total;
 }
 
@@ -2632,12 +2631,7 @@ double _buildPreviewTotalFromBreakdown(
   if (previewShift.absence != 'Nessuna') {
     return [];
   }
-  debugPrint(
-  'PREVIEW SHIFT -> auto=${previewShift.hasAutostradaService}, '
-  'preset=${previewShift.questuraPreset}, '
-  'spmn=${previewShift.spmnPresetCode}, '
-  'dept=${widget.activeDepartment}',
-);
+  
 
   final items = <Map<String, String>>[];
 

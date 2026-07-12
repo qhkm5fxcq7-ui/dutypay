@@ -303,7 +303,7 @@ Reparti supportati:
 
 Suite automatica:
 
-**156 test superati**
+**160 test superati**
 
 Verifica qualità:
 

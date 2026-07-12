@@ -342,7 +342,7 @@ Ogni nuovo bug corretto deve introdurre almeno un nuovo regression test.
 
 Suite automatica:
 
-**156/156 PASS**
+**160/160 PASS**
 
 Verifiche:
 

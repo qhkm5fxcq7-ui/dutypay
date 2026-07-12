@@ -452,7 +452,7 @@ Componenti validati:
 
 Validazione:
 
-* **156 test PASS**
+* **160 test PASS**
 * **Flutter Analyze: 0 warning / 0 errori**
 
 L'architettura è considerata stabile e costituisce la baseline tecnica per le future evoluzioni del progetto.

@@ -62,8 +62,9 @@ void main() {
       );
     });
 
-
-    test('monthly basket cap uses full daily context for double services', () {
+    test(
+        'monthly basket does not invent overtime across separate same-day services',
+        () {
       final profile = CanonicalShiftScenarios.defaultProfile().copyWith(
         monthlyOvertimePayableHoursLimit: 5,
       );
@@ -98,13 +99,14 @@ void main() {
         department: Department.repartoMobile,
       );
 
-      expect(result.overtimeHoursFromReferenceMonth, closeTo(6, 0.01));
-      expect(result.overtimeInBasketHours, closeTo(1, 0.01));
-      expect(result.currentBasketResidualHours, closeTo(1, 0.01));
+      expect(result.overtimeHoursFromReferenceMonth, closeTo(0, 0.01));
+      expect(result.overtimeInBasketHours, closeTo(0, 0.01));
+      expect(result.currentBasketResidualHours, closeTo(0, 0.01));
     });
 
-
-    test('overtime above monthly payable limit is carried to basket with accessory delay', () {
+    test(
+        'overtime above monthly payable limit is carried to basket with accessory delay',
+        () {
       final result = service.projectPayslip(
         payslipMonth: DateTime(2026, 8),
         allShifts: [
@@ -128,7 +130,8 @@ void main() {
       expect(result.currentBasketResidualHours, closeTo(5, 0.01));
     });
 
-    test('basket payment reduces residual and is reported as paid this month', () {
+    test('basket payment reduces residual and is reported as paid this month',
+        () {
       final result = service.projectPayslip(
         payslipMonth: DateTime(2026, 8),
         allShifts: [
@@ -158,8 +161,8 @@ void main() {
       expect(result.manualBasketPaidGrossForMonth, greaterThan(0));
     });
 
-
-    test('negative overtime basket adjustment is not shown as paid this month', () {
+    test('negative overtime basket adjustment is not shown as paid this month',
+        () {
       final profile = CanonicalShiftScenarios.defaultProfile().copyWith(
         monthlyOvertimePayableHoursLimit: 0,
       );
@@ -200,7 +203,6 @@ void main() {
       );
       expect(withAdjustment.manualBasketPaidHoursForMonth, closeTo(0, 0.01));
     });
-
 
     test('empty month produces zero projection', () {
       final profile = CanonicalShiftScenarios.defaultProfile();

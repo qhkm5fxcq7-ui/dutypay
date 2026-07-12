@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:dutypay/features/shifts/application/usecases/build_monthly_summary_usecase.dart';
 import 'package:dutypay/features/shifts/presentation/models/department.dart';
+import 'package:dutypay/features/shifts/presentation/models/shift.dart';
 
 import '../../scenarios/canonical_shift_scenarios.dart';
 
@@ -79,6 +80,42 @@ void main() {
       expect(summary.totalOvertimeHours, greaterThan(0));
       expect(summary.totalAmount, greaterThanOrEqualTo(0));
     });
+
+    test(
+      'RM overnight service keeps accounting date and does not consume previous day ordinary hours',
+      () {
+        final morningDay = DateTime(2026, 7, 3);
+        final accountingDay = DateTime(2026, 7, 4);
+
+        final morningShift = CanonicalShiftScenarios.rmStandardMorning(
+          serviceDate: morningDay,
+          description: 'Mattina 3 luglio',
+        );
+
+        final overnightShift = Shift(
+          description: 'OP pernottamento',
+          start: DateTime(2026, 7, 3, 20, 0),
+          end: DateTime(2026, 7, 4, 10, 0),
+          serviceDate: accountingDay,
+          absence: 'Nessuna',
+          orderPublic: 'Pernotto',
+          externalService: false,
+        );
+
+        final summary = useCase.execute(
+          shifts: [morningShift, overnightShift],
+          selectedMonth: DateTime(2026, 7),
+          profile: CanonicalShiftScenarios.defaultProfile(),
+          department: Department.repartoMobile,
+        );
+
+        expect(overnightShift.serviceDate, accountingDay);
+        expect(overnightShift.workedHours, closeTo(14, 0.01));
+        expect(overnightShift.overtimeHours, closeTo(8, 0.01));
+        expect(summary.workedDays, 2);
+        expect(summary.totalOvertimeHours, closeTo(8, 0.01));
+      },
+    );
 
     test('filters shifts outside selected month', () {
       final summary = useCase.execute(

@@ -397,7 +397,7 @@ Copertura funzionale:
 
 Suite automatica:
 
-**156 / 156 PASS**
+**160 / 160 PASS**
 
 Flutter Analyze:
 
@@ -457,3 +457,75 @@ Qualsiasi modifica al motore di calcolo deve rispettare quattro condizioni obbli
 4. preservare la coerenza tra Preview, Dashboard, Cedolino e Summary.
 
 Questo documento rappresenta la baseline architetturale ufficiale della Release Candidate **DutyPay 1.0.9**.
+---
+
+# Handoff Release 1.0.13+43
+
+Stato:
+
+- release pubblicata su iOS e Android;
+- flutter analyze PASS;
+- 160/160 test PASS;
+- AAB Android generato e pubblicato;
+- archivio iOS 1.0.13 build 43 generato e caricato.
+
+## Basket Straordinari
+
+Corretto il calcolo del riepilogo mensile nei giorni con servizi multipli.
+
+Il Basket Straordinari non deve più usare come ore effettive la trasformazione
+cumulativa giornaliera quando il singolo turno non possiede straordinario
+proprio.
+
+Regola protetta:
+
+- ore legacy manuali: prioritarie;
+- turni moderni: usare le ore straordinarie proprie del turno;
+- servizi accessori separati non devono diventare straordinario per il solo
+  fatto di condividere la stessa data servizio.
+
+Regression case ufficiale:
+
+- OP notturno: 8h;
+- pranzo: 0h;
+- cena: 0h;
+- totale basket: 8h.
+
+## Turni cross-midnight
+
+Scenario validato:
+
+- data servizio 04/07;
+- inizio reale 03/07 ore 20:00;
+- fine 04/07 ore 10:00;
+- durata 14h;
+- straordinario 8h.
+
+Il raggruppamento mensile e giornaliero deve usare `serviceDate`.
+
+## Break
+
+La validazione dei codici stanza personalizzati deve restare coerente con il
+generatore automatico.
+
+Formati validi:
+
+- MAZ123;
+- BRL-12;
+- BRK-ABCDE.
+
+Vincoli:
+
+- lunghezza da 3 a 12 caratteri;
+- lettere e numeri;
+- massimo un trattino;
+- errori di validazione mostrati all'utente;
+- errori Firestore registrati tramite logging tecnico.
+
+## Baseline corrente
+
+- DutyPay 1.0.13;
+- build 43;
+- suite automatica 160/160 PASS;
+- Flutter Analyze pulito;
+- iOS e Android pubblicati.
