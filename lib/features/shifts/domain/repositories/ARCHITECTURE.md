@@ -456,3 +456,30 @@ Validazione:
 * **Flutter Analyze: 0 warning / 0 errori**
 
 L'architettura è considerata stabile e costituisce la baseline tecnica per le future evoluzioni del progetto.
+## Preview Engine
+
+La preview della modifica turno non implementa alcuna logica di calcolo dedicata.
+
+Per garantire la completa coerenza con il motore applicativo viene costruito un contesto temporaneo della giornata.
+
+Schema:
+
+Turni giornata
+
+↓
+
+sostituzione del turno in modifica
+
+↓
+
+BuildDailyShiftResultUseCase
+
+↓
+
+Preview UI
+
+Questo garantisce che:
+
+- preview e salvataggio producano gli stessi risultati;
+- eventuali modifiche future al motore vengano automaticamente riflesse nella preview;
+- non esistano duplicazioni della logica di calcolo.

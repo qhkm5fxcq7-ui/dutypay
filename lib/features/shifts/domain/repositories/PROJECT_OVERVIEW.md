@@ -270,3 +270,39 @@ Validazione tecnica:
 - archivio e upload iOS 1.0.13 (43): PASS;
 - pubblicazione Android: completata;
 - pubblicazione iOS: completata.
+## Stato corrente del progetto
+
+Ultimo aggiornamento: 16 luglio 2026
+
+### Release corrente
+
+- Versione: 1.0.15
+- Build: 45
+- Android: AAB generato e caricato su Google Play Console
+- iOS: archive e IPA generati; build caricata su App Store Connect
+
+### Validazione tecnica
+
+- `flutter analyze` → PASS
+- `flutter test` → 164/164 PASS
+- `flutter build appbundle --release` → PASS
+- `flutter build ipa --release` → PASS
+
+### Architettura di calcolo
+
+DutyPay utilizza una pipeline centralizzata basata sul principio:
+
+**Single Source of Truth**
+
+La catena principale è:
+
+```text
+BuildShiftMoneyComponentsUseCase
+        ↓
+BuildDailyShiftResultUseCase
+        ↓
+BuildMonthlyAccessorySummaryUseCase
+        ↓
+PayslipProjectionService
+        ↓
+UI

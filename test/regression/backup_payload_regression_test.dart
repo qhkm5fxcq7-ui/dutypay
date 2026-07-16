@@ -61,8 +61,7 @@ void main() {
         'compensativeBasketMovements': [compensativeMovement.toJson()],
       };
 
-      final restored =
-          jsonDecode(jsonEncode(payload)) as Map<String, dynamic>;
+      final restored = jsonDecode(jsonEncode(payload)) as Map<String, dynamic>;
 
       final restoredShift = Shift.fromJson(
         (restored['shifts'] as List).first as Map<String, dynamic>,
@@ -74,16 +73,13 @@ void main() {
         (restored['basketPayments'] as List).first as Map<String, dynamic>,
       );
       final restoredRfiPayment = RfiBasketPayment.fromJson(
-        (restored['rfiBasketPayments'] as List).first
-            as Map<String, dynamic>,
+        (restored['rfiBasketPayments'] as List).first as Map<String, dynamic>,
       );
-      final restoredOvertimeAdjustment =
-          OvertimeBasketAdjustment.fromJson(
+      final restoredOvertimeAdjustment = OvertimeBasketAdjustment.fromJson(
         (restored['overtimeBasketAdjustments'] as List).first
             as Map<String, dynamic>,
       );
-      final restoredCompensativeMovement =
-          CompensativeBasketMovement.fromJson(
+      final restoredCompensativeMovement = CompensativeBasketMovement.fromJson(
         (restored['compensativeBasketMovements'] as List).first
             as Map<String, dynamic>,
       );

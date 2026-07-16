@@ -5,7 +5,8 @@ import 'package:dutypay/features/shifts/presentation/models/shift.dart';
 import 'package:dutypay/features/shifts/presentation/models/user_pay_profile.dart';
 
 void main() {
-  test('orario in deroga: 5h ordinarie su 7h lavorate genera 2h straordinario', () {
+  test('orario in deroga: 5h ordinarie su 7h lavorate genera 2h straordinario',
+      () {
     final shift = Shift(
       description: 'Turno con orario in deroga',
       start: DateTime(2026, 5, 19, 7),

@@ -195,7 +195,8 @@ Conguagli fiscali e previdenziali
 ''';
 
   group('PayslipParserService with real fixtures', () {
-    test('RM March 2026 fixture extracts summary and accessory rows correctly', () {
+    test('RM March 2026 fixture extracts summary and accessory rows correctly',
+        () {
       final parsed = parser.parsePayslipText(
         filePath: '/tmp/rm_marzo_2026_fixture.pdf',
         rawText: rmMarchRealText,
@@ -301,7 +302,9 @@ Conguagli fiscali e previdenziali
       expect(profile.overtimeNightAndHolidayRate, closeTo(17.42, 0.01));
     });
 
-    test('Polfer March 2026 fixture extracts operational accessory rows correctly', () {
+    test(
+        'Polfer March 2026 fixture extracts operational accessory rows correctly',
+        () {
       final parsed = parser.parsePayslipText(
         filePath: '/tmp/polfer_marzo_2026_fixture.pdf',
         rawText: polferMarchRealText,

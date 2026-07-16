@@ -7,7 +7,8 @@ import 'package:dutypay/features/shifts/application/usecases/build_compensative_
 void main() {
   group('Compensative basket integration flow', () {
     test('earned, recovered, adjustments and restore keep same summary', () {
-      const summaryUseCase = BuildCompensativeBasketSummaryFromMovementsUseCase();
+      const summaryUseCase =
+          BuildCompensativeBasketSummaryFromMovementsUseCase();
 
       final movements = [
         CompensativeBasketMovement(
@@ -56,8 +57,7 @@ void main() {
             movements.map((item) => item.toJson()).toList(),
       };
 
-      final restored =
-          jsonDecode(jsonEncode(payload)) as Map<String, dynamic>;
+      final restored = jsonDecode(jsonEncode(payload)) as Map<String, dynamic>;
 
       final restoredMovements =
           (restored['compensativeBasketMovements'] as List)

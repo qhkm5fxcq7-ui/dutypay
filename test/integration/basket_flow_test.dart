@@ -88,8 +88,7 @@ void main() {
         'overtimeBasketAdjustments': [adjustment.toJson()],
       };
 
-      final restored =
-          jsonDecode(jsonEncode(payload)) as Map<String, dynamic>;
+      final restored = jsonDecode(jsonEncode(payload)) as Map<String, dynamic>;
 
       final restoredPayments = (restored['basketPayments'] as List)
           .cast<Map<String, dynamic>>()

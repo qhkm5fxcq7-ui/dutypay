@@ -31,21 +31,19 @@ class BuildShiftComputationUseCase {
 
     switch (department) {
       case Department.repartoMobile:
-  return _buildRepartoMobileViewData(
-    shift: shift,
-    profile: profile,
-    result: calculation,
-  );
+        return _buildRepartoMobileViewData(
+          shift: shift,
+          profile: profile,
+          result: calculation,
+        );
 
-case Department.questura:
-case Department.polstrada:
-  return _buildQuesturaViewData(
-    shift: shift,
-    profile: profile,
-    result: calculation,
-  );
-
-
+      case Department.questura:
+      case Department.polstrada:
+        return _buildQuesturaViewData(
+          shift: shift,
+          profile: profile,
+          result: calculation,
+        );
 
       case Department.polfer:
         return _buildPolferViewData(
@@ -89,36 +87,36 @@ case Department.polstrada:
   }
 
   ShiftComputationViewData _buildQuesturaViewData({
-  required Shift shift,
-  required UserPayProfile profile,
-  required ShiftCalculationResult result,
-}) {
-  final breakdown = _appendTransitionalAccessoryItems(
-    breakdown: [...result.breakdown],
-    shift: shift,
-    profile: profile,
-  );
+    required Shift shift,
+    required UserPayProfile profile,
+    required ShiftCalculationResult result,
+  }) {
+    final breakdown = _appendTransitionalAccessoryItems(
+      breakdown: [...result.breakdown],
+      shift: shift,
+      profile: profile,
+    );
 
-  final totalAmount = _sumBreakdown(breakdown);
+    final totalAmount = _sumBreakdown(breakdown);
 
-  final extraAmount = breakdown
-      .where(
-        (item) =>
-            item['category'] != 'order_public' &&
-            item['isBasketItem'] != true,
-      )
-      .fold<double>(
-        0.0,
-        (sum, item) => sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
-      );
+    final extraAmount = breakdown
+        .where(
+          (item) =>
+              item['category'] != 'order_public' &&
+              item['isBasketItem'] != true,
+        )
+        .fold<double>(
+          0.0,
+          (sum, item) => sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
+        );
 
-  return ShiftComputationViewData(
-    overtimeHours: result.overtimeHours,
-    totalAmount: totalAmount,
-    extraAmount: extraAmount,
-    breakdown: breakdown,
-  );
-}
+    return ShiftComputationViewData(
+      overtimeHours: result.overtimeHours,
+      totalAmount: totalAmount,
+      extraAmount: extraAmount,
+      breakdown: breakdown,
+    );
+  }
 
   // Source of truth:
   // - primary overtime and breakdown logic must come from DepartmentPolicy
@@ -147,7 +145,6 @@ case Department.polstrada:
           0.0,
           (sum, item) => sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
         );
-        
 
     return ShiftComputationViewData(
       overtimeHours: result.overtimeHours,
@@ -203,7 +200,7 @@ case Department.polstrada:
       });
     }
 
-            if (comfortCdgAmount > 0) {
+    if (comfortCdgAmount > 0) {
       breakdown.add({
         'label': 'Genere di conforto CDG',
         'amount': 0.0,
@@ -242,20 +239,20 @@ case Department.polstrada:
     }
 
     if (shift.hasCompensazione) {
-  breakdown.add({
-    'label': 'Compensazione',
-    'amount': 12.0,
-    'category': 'compensazione',
-  });
-}
+      breakdown.add({
+        'label': 'Compensazione',
+        'amount': 12.0,
+        'category': 'compensazione',
+      });
+    }
 
-if (shift.hasReperibilita) {
-  breakdown.add({
-    'label': 'Reperibilità',
-    'amount': 17.5,
-    'category': 'reperibilita',
-  });
-}
+    if (shift.hasReperibilita) {
+      breakdown.add({
+        'label': 'Reperibilità',
+        'amount': 17.5,
+        'category': 'reperibilita',
+      });
+    }
 
     return breakdown;
   }

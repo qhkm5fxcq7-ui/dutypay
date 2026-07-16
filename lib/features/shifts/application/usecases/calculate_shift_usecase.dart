@@ -1,6 +1,7 @@
 import '../../presentation/models/department.dart' as presentation_department;
 import '../../presentation/models/shift.dart' as presentation_shift;
-import '../../presentation/models/user_pay_profile.dart' as presentation_profile;
+import '../../presentation/models/user_pay_profile.dart'
+    as presentation_profile;
 
 import '../../domain/entities/department.dart' as domain_department;
 import '../../domain/entities/shift.dart' as domain_shift;
@@ -31,14 +32,14 @@ class CalculateShiftUseCase {
         end: shift.end,
         serviceDate: shift.serviceDate,
         questuraMode: _mapQuesturaMode(shift.questuraMode),
-questuraPreset: _mapQuesturaPreset(shift.questuraPreset),
-questuraOfficeProfile:
-    _mapQuesturaOfficeProfile(shift.questuraOfficeProfile),
-questuraOfficeOrdinaryHours: shift.questuraOfficeOrdinaryHours,
-programmedOvertimeEnabled: shift.programmedOvertimeEnabled,
-programmedOvertimeStart: shift.programmedOvertimeStart,
-programmedOvertimeEnd: shift.programmedOvertimeEnd,
-programmedOvertimeNote: shift.programmedOvertimeNote,
+        questuraPreset: _mapQuesturaPreset(shift.questuraPreset),
+        questuraOfficeProfile:
+            _mapQuesturaOfficeProfile(shift.questuraOfficeProfile),
+        questuraOfficeOrdinaryHours: shift.questuraOfficeOrdinaryHours,
+        programmedOvertimeEnabled: shift.programmedOvertimeEnabled,
+        programmedOvertimeStart: shift.programmedOvertimeStart,
+        programmedOvertimeEnd: shift.programmedOvertimeEnd,
+        programmedOvertimeNote: shift.programmedOvertimeNote,
         polferTerritoryControlType: _mapPolferTerritoryControlType(
           shift.polferTerritoryControlType,
         ),
@@ -50,12 +51,9 @@ programmedOvertimeNote: shift.programmedOvertimeNote,
         polferScaloReducedNightHours: shift.polferScaloReducedNightHours,
         polferScaloFullDayHours: shift.polferScaloFullDayHours,
         polferScaloFullNightHours: shift.polferScaloFullNightHours,
-        ordinaryHoursOverrideEnabled:
-    shift.ordinaryHoursOverrideEnabled,
-ordinaryHoursOverride:
-    shift.ordinaryHoursOverride,
-ordinaryHoursOverrideNote:
-    shift.ordinaryHoursOverrideNote,
+        ordinaryHoursOverrideEnabled: shift.ordinaryHoursOverrideEnabled,
+        ordinaryHoursOverride: shift.ordinaryHoursOverride,
+        ordinaryHoursOverrideNote: shift.ordinaryHoursOverrideNote,
       ),
       domain_profile.UserPayProfile(
         overtimeDayRate: profile.overtimeDayRate,
@@ -67,22 +65,22 @@ ordinaryHoursOverrideNote:
   }
 
   domain_department.Department _mapDepartment(
-  presentation_department.Department department,
-) {
-  switch (department) {
-    case presentation_department.Department.repartoMobile:
-      return domain_department.Department.repartoMobile;
+    presentation_department.Department department,
+  ) {
+    switch (department) {
+      case presentation_department.Department.repartoMobile:
+        return domain_department.Department.repartoMobile;
 
-    case presentation_department.Department.polfer:
-      return domain_department.Department.polfer;
+      case presentation_department.Department.polfer:
+        return domain_department.Department.polfer;
 
-    case presentation_department.Department.questura:
-      return domain_department.Department.questura;
+      case presentation_department.Department.questura:
+        return domain_department.Department.questura;
 
-    case presentation_department.Department.polstrada:
-  return domain_department.Department.polstrada;  
+      case presentation_department.Department.polstrada:
+        return domain_department.Department.polstrada;
+    }
   }
-}
 
   domain_shift.PolferTerritoryControlType _mapPolferTerritoryControlType(
     presentation_shift.PolferTerritoryControlType value,
@@ -109,52 +107,53 @@ ordinaryHoursOverrideNote:
         return domain_shift.PolferScaloMode.intera;
     }
   }
+
   domain_shift.QuesturaMode _mapQuesturaMode(
-  presentation_shift.QuesturaMode value,
-) {
-  switch (value) {
-    case presentation_shift.QuesturaMode.uffici:
-      return domain_shift.QuesturaMode.uffici;
-    case presentation_shift.QuesturaMode.volanti:
-      return domain_shift.QuesturaMode.volanti;
+    presentation_shift.QuesturaMode value,
+  ) {
+    switch (value) {
+      case presentation_shift.QuesturaMode.uffici:
+        return domain_shift.QuesturaMode.uffici;
+      case presentation_shift.QuesturaMode.volanti:
+        return domain_shift.QuesturaMode.volanti;
+    }
   }
-}
 
-domain_shift.QuesturaPreset _mapQuesturaPreset(
-  presentation_shift.QuesturaPreset value,
-) {
-  switch (value) {
-    case presentation_shift.QuesturaPreset.none:
-      return domain_shift.QuesturaPreset.none;
-    case presentation_shift.QuesturaPreset.mattina:
-      return domain_shift.QuesturaPreset.mattina;
-    case presentation_shift.QuesturaPreset.pomeriggio:
-      return domain_shift.QuesturaPreset.pomeriggio;
-    case presentation_shift.QuesturaPreset.sera:
-      return domain_shift.QuesturaPreset.sera;
-    case presentation_shift.QuesturaPreset.notte:
-      return domain_shift.QuesturaPreset.notte;
-    case presentation_shift.QuesturaPreset.smontante:
-      return domain_shift.QuesturaPreset.smontante;
-    case presentation_shift.QuesturaPreset.riposo:
-      return domain_shift.QuesturaPreset.riposo;
-    case presentation_shift.QuesturaPreset.aggiornamento:
-      return domain_shift.QuesturaPreset.aggiornamento;
+  domain_shift.QuesturaPreset _mapQuesturaPreset(
+    presentation_shift.QuesturaPreset value,
+  ) {
+    switch (value) {
+      case presentation_shift.QuesturaPreset.none:
+        return domain_shift.QuesturaPreset.none;
+      case presentation_shift.QuesturaPreset.mattina:
+        return domain_shift.QuesturaPreset.mattina;
+      case presentation_shift.QuesturaPreset.pomeriggio:
+        return domain_shift.QuesturaPreset.pomeriggio;
+      case presentation_shift.QuesturaPreset.sera:
+        return domain_shift.QuesturaPreset.sera;
+      case presentation_shift.QuesturaPreset.notte:
+        return domain_shift.QuesturaPreset.notte;
+      case presentation_shift.QuesturaPreset.smontante:
+        return domain_shift.QuesturaPreset.smontante;
+      case presentation_shift.QuesturaPreset.riposo:
+        return domain_shift.QuesturaPreset.riposo;
+      case presentation_shift.QuesturaPreset.aggiornamento:
+        return domain_shift.QuesturaPreset.aggiornamento;
+    }
   }
-}
 
-domain_shift.QuesturaOfficeProfile _mapQuesturaOfficeProfile(
-  presentation_shift.QuesturaOfficeProfile value,
-) {
-  switch (value) {
-    case presentation_shift.QuesturaOfficeProfile.sixHours:
-      return domain_shift.QuesturaOfficeProfile.sixHours;
-    case presentation_shift.QuesturaOfficeProfile.settimanaCorta:
-      return domain_shift.QuesturaOfficeProfile.settimanaCorta;
-    case presentation_shift.QuesturaOfficeProfile.settimanaLunga:
-      return domain_shift.QuesturaOfficeProfile.settimanaLunga;
-    case presentation_shift.QuesturaOfficeProfile.custom:
-      return domain_shift.QuesturaOfficeProfile.custom;
+  domain_shift.QuesturaOfficeProfile _mapQuesturaOfficeProfile(
+    presentation_shift.QuesturaOfficeProfile value,
+  ) {
+    switch (value) {
+      case presentation_shift.QuesturaOfficeProfile.sixHours:
+        return domain_shift.QuesturaOfficeProfile.sixHours;
+      case presentation_shift.QuesturaOfficeProfile.settimanaCorta:
+        return domain_shift.QuesturaOfficeProfile.settimanaCorta;
+      case presentation_shift.QuesturaOfficeProfile.settimanaLunga:
+        return domain_shift.QuesturaOfficeProfile.settimanaLunga;
+      case presentation_shift.QuesturaOfficeProfile.custom:
+        return domain_shift.QuesturaOfficeProfile.custom;
+    }
   }
-}
 }

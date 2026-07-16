@@ -67,7 +67,8 @@ class EstimatedSalaryCard extends StatelessWidget {
                     _buildBadge(
                       label: 'ORA',
                       textColor: const Color(0xFF4ADE80),
-                      backgroundColor: const Color(0xFF22C55E).withValues(alpha: 0.12),
+                      backgroundColor:
+                          const Color(0xFF22C55E).withValues(alpha: 0.12),
                     ),
                   ],
                 ),

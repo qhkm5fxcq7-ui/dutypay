@@ -39,7 +39,8 @@ void main() {
       expect(result.rfiBasketGross, 0);
     });
 
-    test('RM OP in sede mixed overtime -> overtime and non-overtime separated', () {
+    test('RM OP in sede mixed overtime -> overtime and non-overtime separated',
+        () {
       final shift = CanonicalShiftScenarios.rmOpInSedeMixedOvertime();
       final profile = CanonicalShiftScenarios.defaultProfile();
 

@@ -50,8 +50,6 @@ class PayslipParserService {
       rawText: text,
     );
 
-
-
     return parsed;
   }
 
@@ -192,11 +190,9 @@ class PayslipParserService {
     final fixedEntries = _extractFixedEntries(flatText);
     final accessoryBlock = _extractAccessoryBlock(flatText);
 
+    final accessoryEntries = _extractAccessoryEntries(accessoryBlock);
 
-final accessoryEntries = _extractAccessoryEntries(accessoryBlock);
-
-
-final deductionEntries = _extractDeductionEntries(lines, flatText);
+    final deductionEntries = _extractDeductionEntries(lines, flatText);
 
     final cleanedInquadramento = _cleanInlineText(inquadramento);
     final cleanedQualifica = _cleanInlineText(qualifica);
@@ -244,13 +240,11 @@ final deductionEntries = _extractDeductionEntries(lines, flatText);
       throw Exception('Nessun cedolino disponibile per costruire il profilo.');
     }
 
-    final standardPayslips = payslips
-        .where((item) => !item.isSupplementaryPayslip)
-        .toList();
+    final standardPayslips =
+        payslips.where((item) => !item.isSupplementaryPayslip).toList();
 
-    final effectiveSource = standardPayslips.isNotEmpty
-        ? standardPayslips
-        : payslips;
+    final effectiveSource =
+        standardPayslips.isNotEmpty ? standardPayslips : payslips;
 
     final baseSalary = _average(
       effectiveSource.map((item) => item.detectedBaseSalary).toList(),
@@ -284,10 +278,10 @@ final deductionEntries = _extractDeductionEntries(lines, flatText);
           ? defaultProfile.rank
           : latest.detectedGradeLabel,
       overtimeDayRate: _deriveOvertimeDayRate(effectiveSource, defaultProfile),
-overtimeNightOrHolidayRate:
-    _deriveOvertimeNightOrHolidayRate(effectiveSource, defaultProfile),
-overtimeNightAndHolidayRate:
-    _deriveOvertimeNightAndHolidayRate(effectiveSource, defaultProfile),
+      overtimeNightOrHolidayRate:
+          _deriveOvertimeNightOrHolidayRate(effectiveSource, defaultProfile),
+      overtimeNightAndHolidayRate:
+          _deriveOvertimeNightAndHolidayRate(effectiveSource, defaultProfile),
       orderPublicInSede: defaultProfile.orderPublicInSede,
       orderPublicFuoriSede: defaultProfile.orderPublicFuoriSede,
       orderPublicPernotto: defaultProfile.orderPublicPernotto,
@@ -306,9 +300,8 @@ overtimeNightAndHolidayRate:
       historicalHoursAvg: null,
       historicalMonths: effectiveSource.length,
       recurringDeductionsTotal: recurringDeductionsAverage,
-      effectiveTaxRate: taxRateAverage > 0
-          ? taxRateAverage
-          : defaultProfile.effectiveTaxRate,
+      effectiveTaxRate:
+          taxRateAverage > 0 ? taxRateAverage : defaultProfile.effectiveTaxRate,
       sourcePayslips: effectiveSource,
       annualProductionBonus: defaultProfile.annualProductionBonus,
       genereDiConfortoRate: defaultProfile.genereDiConfortoRate,
@@ -316,7 +309,7 @@ overtimeNightAndHolidayRate:
     );
   }
 
-    List<PayslipEntry> _extractFixedEntries(String flatText) {
+  List<PayslipEntry> _extractFixedEntries(String flatText) {
     final results = <PayslipEntry>[];
 
     final patterns = <_FixedPattern>[
@@ -408,87 +401,87 @@ overtimeNightAndHolidayRate:
     return _dedupeEntries(results);
   }
 
-      String _extractAccessoryBlock(String text) {
-  final markerRegex = RegExp(
-    r'Assegni\s*accesso\s*ri|Assegni\s*accessori|Assegniaccessori',
-    caseSensitive: false,
-  );
-
-  final matches = markerRegex.allMatches(text).toList();
-  if (matches.isEmpty) {
-    return '';
-  }
-
-  // Usa l'ULTIMA occorrenza, che è quella del dettaglio e non del riepilogo.
-  final markerMatch = matches.last;
-  final start = markerMatch.end;
-
-  final endMatch = RegExp(
-    r'Ritenute',
-    caseSensitive: false,
-  ).firstMatch(text.substring(start));
-
-  final end = endMatch != null ? start + endMatch.start : text.length;
-
-  return text.substring(start, end).trim();
-}
-
-    List<PayslipEntry> _extractAccessoryEntries(String flatText) {
-  final results = <PayslipEntry>[];
-
-  final normalized = flatText
-      .replaceAll('\n', ' ')
-      .replaceAll(RegExp(r'\s+'), ' ')
-      .replaceAllMapped(
-        RegExp(r'([A-Z0-9]{3,6}/)\s+([A-Z0-9]{2,4})', caseSensitive: false),
-        (m) => '${m.group(1)}${m.group(2)}',
-      )
-      .replaceAll(
-        RegExp(r'Assegni\s*accesso\s*ri', caseSensitive: false),
-        'Assegniaccessori',
-      )
-      .replaceAll(
-        RegExp(r'Assegni\s*accessori', caseSensitive: false),
-        'Assegniaccessori',
-      )
-      .trim();
-
-  final entryRegex = RegExp(
-    r'(A01B/[0-9]{4}|[A-Z0-9]{3,6}/[A-Z0-9]{2,4})\s*' // codice
-    r'(.+?)\s*-\s*Qta\.\s*([0-9.,]+)\s*' // descrizione + quantità
-    r'-\s*Imp\.\s*([0-9.,]+)\s*' // importo unitario
-    r'-\s*Rif\.\s*([0-9]{2}/[0-9]{4})\s*' // riferimento
-    r'([0-9]{1,3}(?:\.[0-9]{3})*,[0-9]{2})', // importo totale
-    caseSensitive: false,
-    dotAll: true,
-  );
-
-  for (final match in entryRegex.allMatches(normalized)) {
-    final code = (match.group(1) ?? '').trim();
-    final rawDescription = (match.group(2) ?? '').trim();
-    final quantity = _parseLooseNumber(match.group(3) ?? '');
-    final unitAmount = _parseLooseNumber(match.group(4) ?? '');
-    final reference = (match.group(5) ?? '').trim();
-    final totalAmount = _parseEuro(match.group(6) ?? '');
-
-    if (code.isEmpty || rawDescription.isEmpty) continue;
-    if (quantity <= 0 || unitAmount <= 0 || totalAmount <= 0) continue;
-
-    results.add(
-      PayslipEntry(
-        code: code,
-        description: _normalizeAccessoryDescription(rawDescription),
-        amount: totalAmount,
-        quantity: quantity,
-        unitAmount: unitAmount,
-        reference: reference,
-        sectionType: PayslipSectionType.accessoryCompensation,
-      ),
+  String _extractAccessoryBlock(String text) {
+    final markerRegex = RegExp(
+      r'Assegni\s*accesso\s*ri|Assegni\s*accessori|Assegniaccessori',
+      caseSensitive: false,
     );
+
+    final matches = markerRegex.allMatches(text).toList();
+    if (matches.isEmpty) {
+      return '';
+    }
+
+    // Usa l'ULTIMA occorrenza, che è quella del dettaglio e non del riepilogo.
+    final markerMatch = matches.last;
+    final start = markerMatch.end;
+
+    final endMatch = RegExp(
+      r'Ritenute',
+      caseSensitive: false,
+    ).firstMatch(text.substring(start));
+
+    final end = endMatch != null ? start + endMatch.start : text.length;
+
+    return text.substring(start, end).trim();
   }
 
-  return _dedupeEntries(results);
-}
+  List<PayslipEntry> _extractAccessoryEntries(String flatText) {
+    final results = <PayslipEntry>[];
+
+    final normalized = flatText
+        .replaceAll('\n', ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .replaceAllMapped(
+          RegExp(r'([A-Z0-9]{3,6}/)\s+([A-Z0-9]{2,4})', caseSensitive: false),
+          (m) => '${m.group(1)}${m.group(2)}',
+        )
+        .replaceAll(
+          RegExp(r'Assegni\s*accesso\s*ri', caseSensitive: false),
+          'Assegniaccessori',
+        )
+        .replaceAll(
+          RegExp(r'Assegni\s*accessori', caseSensitive: false),
+          'Assegniaccessori',
+        )
+        .trim();
+
+    final entryRegex = RegExp(
+      r'(A01B/[0-9]{4}|[A-Z0-9]{3,6}/[A-Z0-9]{2,4})\s*' // codice
+      r'(.+?)\s*-\s*Qta\.\s*([0-9.,]+)\s*' // descrizione + quantità
+      r'-\s*Imp\.\s*([0-9.,]+)\s*' // importo unitario
+      r'-\s*Rif\.\s*([0-9]{2}/[0-9]{4})\s*' // riferimento
+      r'([0-9]{1,3}(?:\.[0-9]{3})*,[0-9]{2})', // importo totale
+      caseSensitive: false,
+      dotAll: true,
+    );
+
+    for (final match in entryRegex.allMatches(normalized)) {
+      final code = (match.group(1) ?? '').trim();
+      final rawDescription = (match.group(2) ?? '').trim();
+      final quantity = _parseLooseNumber(match.group(3) ?? '');
+      final unitAmount = _parseLooseNumber(match.group(4) ?? '');
+      final reference = (match.group(5) ?? '').trim();
+      final totalAmount = _parseEuro(match.group(6) ?? '');
+
+      if (code.isEmpty || rawDescription.isEmpty) continue;
+      if (quantity <= 0 || unitAmount <= 0 || totalAmount <= 0) continue;
+
+      results.add(
+        PayslipEntry(
+          code: code,
+          description: _normalizeAccessoryDescription(rawDescription),
+          amount: totalAmount,
+          quantity: quantity,
+          unitAmount: unitAmount,
+          reference: reference,
+          sectionType: PayslipSectionType.accessoryCompensation,
+        ),
+      );
+    }
+
+    return _dedupeEntries(results);
+  }
 
   List<PayslipEntry> _extractDeductionEntries(
     List<String> lines,
@@ -599,8 +592,7 @@ overtimeNightAndHolidayRate:
       "INDENNITA'SERVIZIOFESTIVO": "INDENNITA' SERVIZIO FESTIVO",
       "INDENNITA'SERVIZIONOTTURNO": "INDENNITA' SERVIZIO NOTTURNO",
       "INDENNITA'DICOMPENSAZIONE": "INDENNITA' DI COMPENSAZIONE",
-      "INDENNITA'PRESENZASERVIZIESTERNI":
-          "INDENNITA' PRESENZA SERVIZI ESTERNI",
+      "INDENNITA'PRESENZASERVIZIESTERNI": "INDENNITA' PRESENZA SERVIZI ESTERNI",
       "INDENNITA'PERFESTIVITA'PARTICOLARI":
           "INDENNITA' PER FESTIVITA' PARTICOLARI",
       "INDENNITA'CONTROLLODELTERRITORIOSERALE":
@@ -608,10 +600,8 @@ overtimeNightAndHolidayRate:
       "INDENNITA'CONTROLLODELTERRITORIONOTTURNO":
           "INDENNITA' CONTROLLO DEL TERRITORIO NOTTURNO",
       'STRAORDINARIODIURNO': 'STRAORDINARIO DIURNO',
-      'STRAORDINARIONOTTURNOOFESTIVO':
-          'STRAORDINARIO NOTTURNO O FESTIVO',
-      'STRAORDINARIONOTTURNOEFESTIVO':
-          'STRAORDINARIO NOTTURNO E FESTIVO',
+      'STRAORDINARIONOTTURNOOFESTIVO': 'STRAORDINARIO NOTTURNO O FESTIVO',
+      'STRAORDINARIONOTTURNOEFESTIVO': 'STRAORDINARIO NOTTURNO E FESTIVO',
       'STR.FERIALEREPARTIMOBILIENTROLIMITEMAXIND.':
           'STR. FERIALE REPARTI MOBILI ENTRO LIMITE MAX IND.',
       'STR.NOTTOFESTREP.MOBILIENTROLIMITEMAXIND.':
@@ -910,93 +900,93 @@ overtimeNightAndHolidayRate:
 
     return double.tryParse(value) ?? 0;
   }
+
   double _deriveOvertimeDayRate(
-  List<PayslipParsedData> payslips,
-  UserPayProfile defaultProfile,
-) {
-  final values = <double>[];
+    List<PayslipParsedData> payslips,
+    UserPayProfile defaultProfile,
+  ) {
+    final values = <double>[];
 
-  for (final payslip in payslips) {
-    for (final entry in payslip.operationalAccessoryEntries) {
-      final desc = entry.normalizedDescription;
+    for (final payslip in payslips) {
+      for (final entry in payslip.operationalAccessoryEntries) {
+        final desc = entry.normalizedDescription;
 
-      final isDayOvertime =
-          desc.contains('STRAORDINARIO DIURNO') ||
-          desc.contains('STR ORE SUPERO DIURNO') ||
-          desc.contains('STR. FERIALE REPARTI MOBILI');
+        final isDayOvertime = desc.contains('STRAORDINARIO DIURNO') ||
+            desc.contains('STR ORE SUPERO DIURNO') ||
+            desc.contains('STR. FERIALE REPARTI MOBILI');
 
-      if (!isDayOvertime) continue;
+        if (!isDayOvertime) continue;
 
-      final qty = entry.quantity ?? 0;
-      final unit = entry.unitAmount ?? 0;
+        final qty = entry.quantity ?? 0;
+        final unit = entry.unitAmount ?? 0;
 
-      if (qty > 0 && unit > 0) {
-        values.add(unit);
+        if (qty > 0 && unit > 0) {
+          values.add(unit);
+        }
       }
     }
+
+    if (values.isEmpty) return defaultProfile.overtimeDayRate;
+    return _average(values);
   }
 
-  if (values.isEmpty) return defaultProfile.overtimeDayRate;
-  return _average(values);
-}
+  double _deriveOvertimeNightOrHolidayRate(
+    List<PayslipParsedData> payslips,
+    UserPayProfile defaultProfile,
+  ) {
+    final values = <double>[];
 
-double _deriveOvertimeNightOrHolidayRate(
-  List<PayslipParsedData> payslips,
-  UserPayProfile defaultProfile,
-) {
-  final values = <double>[];
+    for (final payslip in payslips) {
+      for (final entry in payslip.operationalAccessoryEntries) {
+        final desc = entry.normalizedDescription;
 
-  for (final payslip in payslips) {
-    for (final entry in payslip.operationalAccessoryEntries) {
-      final desc = entry.normalizedDescription;
+        final isNightOrHoliday =
+            desc.contains('STRAORDINARIO NOTTURNO O FESTIVO') ||
+                desc.contains('STR. NOTT O FEST REP. MOBILI');
 
-      final isNightOrHoliday =
-          desc.contains('STRAORDINARIO NOTTURNO O FESTIVO') ||
-          desc.contains('STR. NOTT O FEST REP. MOBILI');
+        if (!isNightOrHoliday) continue;
 
-      if (!isNightOrHoliday) continue;
+        final qty = entry.quantity ?? 0;
+        final unit = entry.unitAmount ?? 0;
 
-      final qty = entry.quantity ?? 0;
-      final unit = entry.unitAmount ?? 0;
-
-      if (qty > 0 && unit > 0) {
-        values.add(unit);
+        if (qty > 0 && unit > 0) {
+          values.add(unit);
+        }
       }
     }
+
+    if (values.isEmpty) return defaultProfile.overtimeNightOrHolidayRate;
+    return _average(values);
   }
 
-  if (values.isEmpty) return defaultProfile.overtimeNightOrHolidayRate;
-  return _average(values);
-}
+  double _deriveOvertimeNightAndHolidayRate(
+    List<PayslipParsedData> payslips,
+    UserPayProfile defaultProfile,
+  ) {
+    final values = <double>[];
 
-double _deriveOvertimeNightAndHolidayRate(
-  List<PayslipParsedData> payslips,
-  UserPayProfile defaultProfile,
-) {
-  final values = <double>[];
+    for (final payslip in payslips) {
+      for (final entry in payslip.operationalAccessoryEntries) {
+        final desc = entry.normalizedDescription;
 
-  for (final payslip in payslips) {
-    for (final entry in payslip.operationalAccessoryEntries) {
-      final desc = entry.normalizedDescription;
+        final isNightAndHoliday =
+            desc.contains('STRAORDINARIO NOTTURNO E FESTIVO') ||
+                desc.contains('STR. NOTT FEST REP. MOBILI');
 
-      final isNightAndHoliday =
-          desc.contains('STRAORDINARIO NOTTURNO E FESTIVO') ||
-          desc.contains('STR. NOTT FEST REP. MOBILI');
+        if (!isNightAndHoliday) continue;
 
-      if (!isNightAndHoliday) continue;
+        final qty = entry.quantity ?? 0;
+        final unit = entry.unitAmount ?? 0;
 
-      final qty = entry.quantity ?? 0;
-      final unit = entry.unitAmount ?? 0;
-
-      if (qty > 0 && unit > 0) {
-        values.add(unit);
+        if (qty > 0 && unit > 0) {
+          values.add(unit);
+        }
       }
     }
-  }
 
-  if (values.isEmpty) return defaultProfile.overtimeNightAndHolidayRate;
-  return _average(values);
-}
+    if (values.isEmpty) return defaultProfile.overtimeNightAndHolidayRate;
+    return _average(values);
+  }
 
   double _average(List<double> values) {
     if (values.isEmpty) return 0;

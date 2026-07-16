@@ -53,9 +53,8 @@ class BuildCompensativeBasketMovementsUseCase {
               month: month,
               type: CompensativeBasketMovementType.recovered,
               hours: recoveredHours,
-              note: shift.note.isNotEmpty
-                  ? shift.note
-                  : 'Recupero compensativo',
+              note:
+                  shift.note.isNotEmpty ? shift.note : 'Recupero compensativo',
               createdAt: shift.serviceDate,
             ),
           );

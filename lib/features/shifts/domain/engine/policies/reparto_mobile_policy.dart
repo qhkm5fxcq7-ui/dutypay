@@ -22,20 +22,15 @@ class RepartoMobilePolicy implements DepartmentPolicy {
       shift.end,
     );
 
-    final ordinaryThreshold =
-    shift.ordinaryHoursOverrideEnabled
+    final ordinaryThreshold = shift.ordinaryHoursOverrideEnabled
         ? shift.ordinaryHoursOverride
         : standardHours;
 
-final ordinaryHours =
-    workedHours > ordinaryThreshold
-        ? ordinaryThreshold
-        : workedHours;
+    final ordinaryHours =
+        workedHours > ordinaryThreshold ? ordinaryThreshold : workedHours;
 
-final overtimeHours =
-    workedHours > ordinaryThreshold
-        ? workedHours - ordinaryThreshold
-        : 0.0;
+    final overtimeHours =
+        workedHours > ordinaryThreshold ? workedHours - ordinaryThreshold : 0.0;
 
     final ordinaryRangeEnd = shift.start.add(
       Duration(minutes: (ordinaryHours * 60).round()),
@@ -71,8 +66,7 @@ final overtimeHours =
       }
     }
 
-    final overtimeDayAmount =
-        overtimeDayHours * profile.overtimeDayRate;
+    final overtimeDayAmount = overtimeDayHours * profile.overtimeDayRate;
 
     final overtimeNightAmount =
         overtimeNightHours * profile.overtimeNightOrHolidayRate;
@@ -86,8 +80,7 @@ final overtimeHours =
     // RM rule:
     // ordinary night and overtime night are distinct dimensions.
     // Do NOT subtract overtime night from ordinary night.
-    final ordinaryNightAmount =
-        nightOrdinaryHours * fallbackNightAllowance;
+    final ordinaryNightAmount = nightOrdinaryHours * fallbackNightAllowance;
 
     final breakdown = <Map<String, dynamic>>[];
 

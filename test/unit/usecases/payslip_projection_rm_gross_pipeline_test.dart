@@ -50,7 +50,8 @@ Totale 0,00
     final profile = parser.buildDynamicProfile([parsed]);
 
     return UserPayProfile(
-      monthlyOvertimePayableHoursLimit: profile.monthlyOvertimePayableHoursLimit,
+      monthlyOvertimePayableHoursLimit:
+          profile.monthlyOvertimePayableHoursLimit,
       rank: profile.rank,
       overtimeDayRate: 13.50,
       overtimeNightOrHolidayRate: 18.00,
@@ -107,7 +108,9 @@ Totale 0,00
   }
 
   group('Payslip RM gross pipeline', () {
-    test('accessories enter as gross and are netted only at final projection stage', () {
+    test(
+        'accessories enter as gross and are netted only at final projection stage',
+        () {
       final profile = buildProfile();
       final shifts = buildShifts();
 
@@ -125,7 +128,8 @@ Totale 0,00
       expect(result.accessoriesNetEstimated, greaterThanOrEqualTo(0));
 
       expect(
-        result.accessoriesGrossUsedForEstimate >= result.accessoriesNetEstimated,
+        result.accessoriesGrossUsedForEstimate >=
+            result.accessoriesNetEstimated,
         isTrue,
       );
 

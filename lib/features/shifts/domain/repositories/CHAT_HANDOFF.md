@@ -436,3 +436,30 @@ Entrambi:
 Stato:
 
 ✅ VALIDATO
+## Stato corrente
+
+Release stabile:
+
+1.0.15 (45)
+
+Validazioni completate:
+
+- flutter analyze → PASS
+- flutter test → 164 PASS
+- flutter build appbundle → PASS
+- flutter build ipa → PASS
+
+Pubblicazione:
+
+Android:
+upload Google Play completato.
+
+iOS:
+IPA generata e caricata su App Store Connect.
+
+Ultime correzioni:
+
+- preview modifica turno con contesto giornaliero;
+- ripristino toggle Servizio esterno Reparto Mobile.
+
+Entrambe protette da regression test dedicati.

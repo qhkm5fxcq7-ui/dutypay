@@ -66,25 +66,25 @@ class DepartmentSelectionPage extends StatelessWidget {
                     },
                   ),
                   const SizedBox(height: 14),
-_DepartmentCard(
-  title: Department.questura.label,
-  subtitle:
-      'Volanti, uffici, straordinario e basket ore Questura.',
-  selected: initialDepartment == Department.questura,
-  onTap: () async {
-    await onSelected(Department.questura);
-  },
-),
-const SizedBox(height: 14),
-_DepartmentCard(
-  title: Department.polstrada.label,
-  subtitle:
-      'Turni Stradale, autostradale e logica simile Volanti.',
-  selected: initialDepartment == Department.polstrada,
-  onTap: () async {
-    await onSelected(Department.polstrada);
-  },
-),
+                  _DepartmentCard(
+                    title: Department.questura.label,
+                    subtitle:
+                        'Volanti, uffici, straordinario e basket ore Questura.',
+                    selected: initialDepartment == Department.questura,
+                    onTap: () async {
+                      await onSelected(Department.questura);
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  _DepartmentCard(
+                    title: Department.polstrada.label,
+                    subtitle:
+                        'Turni Stradale, autostradale e logica simile Volanti.',
+                    selected: initialDepartment == Department.polstrada,
+                    onTap: () async {
+                      await onSelected(Department.polstrada);
+                    },
+                  ),
                 ],
               ),
             ),
@@ -120,9 +120,7 @@ class _DepartmentCard extends StatelessWidget {
           color: const Color(0xFF121922),
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: selected
-                ? const Color(0xFF5CE1A8)
-                : const Color(0xFF253140),
+            color: selected ? const Color(0xFF5CE1A8) : const Color(0xFF253140),
             width: 1.2,
           ),
           boxShadow: [

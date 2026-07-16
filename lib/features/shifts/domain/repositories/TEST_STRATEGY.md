@@ -311,3 +311,30 @@ Verifica qualità:
 * flutter test → PASS
 
 La suite di regressione protegge l'intero motore di calcolo e tutti i moduli principali dell'applicazione.
+## Regression Pack — Release 1.0.15
+
+Nuovi regression test introdotti.
+
+### quick_add_shift_daily_context_regression_test.dart
+
+Verifica che la preview della modifica turno utilizzi il contesto giornaliero completo.
+
+Protegge da regressioni nella ricostruzione del contesto.
+
+---
+
+### quick_add_shift_rm_external_service_regression_test.dart
+
+Verifica che il toggle "Servizio esterno" del Reparto Mobile:
+
+- sia visibile;
+- possa essere modificato;
+- venga salvato correttamente.
+
+Protegge da regressioni della UI.
+
+---
+
+Stato suite:
+
+164 test PASS.

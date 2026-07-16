@@ -48,7 +48,6 @@ class _ImportZuppometroPageState extends State<ImportZuppometroPage> {
               'IInseriscili per ottenere subito una stima più precisa.',
             ),
             const SizedBox(height: 24),
-
             TextField(
               controller: _avgController,
               keyboardType: TextInputType.number,
@@ -56,9 +55,7 @@ class _ImportZuppometroPageState extends State<ImportZuppometroPage> {
                 labelText: 'Extra mensili medi (netto)',
               ),
             ),
-
             const SizedBox(height: 16),
-
             TextField(
               controller: _hoursController,
               keyboardType: TextInputType.number,
@@ -66,9 +63,7 @@ class _ImportZuppometroPageState extends State<ImportZuppometroPage> {
                 labelText: 'Ore straordinario medie',
               ),
             ),
-
             const SizedBox(height: 16),
-
             TextField(
               controller: _monthsController,
               keyboardType: TextInputType.number,
@@ -76,9 +71,7 @@ class _ImportZuppometroPageState extends State<ImportZuppometroPage> {
                 labelText: 'Mesi considerati',
               ),
             ),
-
             const Spacer(),
-
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(

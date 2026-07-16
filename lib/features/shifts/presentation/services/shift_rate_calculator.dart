@@ -48,13 +48,14 @@ class ShiftDerivedRates {
       indennitaFestivaPerTurno: _readDouble(map['festivo'], 8.0),
       ordinePubblicoInSedePerTurno: _readDouble(map['ordine_pubblico'], 6.0),
       servizioEsternoPerTurno: _readDouble(map['esterno'], 6.0),
-      isStraordinarioReal:
-          _readBool(map['is_straordinario_real'], map.containsKey('straordinario')),
+      isStraordinarioReal: _readBool(
+          map['is_straordinario_real'], map.containsKey('straordinario')),
       isNotturnoReal:
           _readBool(map['is_notturno_real'], map.containsKey('notturno')),
       isFestivoReal:
           _readBool(map['is_festivo_real'], map.containsKey('festivo')),
-      isOPReal: _readBool(map['is_op_real'], map.containsKey('ordine_pubblico')),
+      isOPReal:
+          _readBool(map['is_op_real'], map.containsKey('ordine_pubblico')),
       isEsternoReal:
           _readBool(map['is_esterno_real'], map.containsKey('esterno')),
     );
@@ -125,13 +126,11 @@ class ShiftRateCalculator {
     final t = _norm(e.description);
     final code = e.code.toUpperCase().trim();
 
-    final positive =
-        code.contains('ST01') ||
+    final positive = code.contains('ST01') ||
         t.contains('STRAORDINARIODIURNO') ||
         t.contains('STRORESUPERODIURNO');
 
-    final excluded =
-        t.contains('COMPENSAZIONE') ||
+    final excluded = t.contains('COMPENSAZIONE') ||
         t.contains('SERVIZIONOTTURNO') ||
         t.contains('SERVIZIOFESTIVO');
 
@@ -142,14 +141,11 @@ class ShiftRateCalculator {
     final t = _norm(e.description);
     final code = e.code.toUpperCase().trim();
 
-    final positive =
-        code == 'AA06/E1BL' ||
+    final positive = code == 'AA06/E1BL' ||
         t.contains('INDENNITASERVIZIONOTTURNO') ||
         t.contains('SERVIZIONOTTURNO');
 
-    final excluded =
-        t.contains('COMPENSAZIONE') ||
-        t.contains('STRAORD');
+    final excluded = t.contains('COMPENSAZIONE') || t.contains('STRAORD');
 
     return positive && !excluded;
   }
@@ -158,13 +154,11 @@ class ShiftRateCalculator {
     final t = _norm(e.description);
     final code = e.code.toUpperCase().trim();
 
-    final positive =
-        code == 'AA06/E1BJ' ||
+    final positive = code == 'AA06/E1BJ' ||
         t.contains('INDENNITASERVIZIOFESTIVO') ||
         t.contains('SERVIZIOFESTIVO');
 
-    final excluded =
-        t.contains('FESTIVITAPARTICOLARI') ||
+    final excluded = t.contains('FESTIVITAPARTICOLARI') ||
         t.contains('COMPENSAZIONE') ||
         t.contains('STRAORD') ||
         t.contains('NOTT');
@@ -176,12 +170,9 @@ class ShiftRateCalculator {
     final t = _norm(e.description);
     final code = e.code.toUpperCase().trim();
 
-    final positive =
-        code == 'B003/0001' ||
-        t.contains('ORDPUBBLINSEDE');
+    final positive = code == 'B003/0001' || t.contains('ORDPUBBLINSEDE');
 
-    final excluded =
-        t.contains('FSEDE') ||
+    final excluded = t.contains('FSEDE') ||
         t.contains('FUORISEDE') ||
         t.contains('1TURNO') ||
         t.contains('INTERA') ||
@@ -195,13 +186,11 @@ class ShiftRateCalculator {
     final t = _norm(e.description);
     final code = e.code.toUpperCase().trim();
 
-    final positive =
-        code == 'AA06/E1BW' ||
+    final positive = code == 'AA06/E1BW' ||
         t.contains('INDENNITAPRESENZASERVIZIESTERNI') ||
         t.contains('SERVIZIESTERNI');
 
-    final excluded =
-        t.contains('COMPENSAZIONE') ||
+    final excluded = t.contains('COMPENSAZIONE') ||
         t.contains('STRAORD') ||
         t.contains('NOTT') ||
         t.contains('FEST');

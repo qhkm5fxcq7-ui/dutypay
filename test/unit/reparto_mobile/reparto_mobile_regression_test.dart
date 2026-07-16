@@ -14,9 +14,7 @@ void main() {
     List<Map<String, dynamic>> breakdown,
     String category,
   ) {
-    return breakdown
-        .where((item) => item['category'] == category)
-        .fold<double>(
+    return breakdown.where((item) => item['category'] == category).fold<double>(
           0.0,
           (sum, item) => sum + ((item['hours'] as num?)?.toDouble() ?? 0.0),
         );
@@ -88,8 +86,7 @@ void main() {
       expect(result.totalAmount, greaterThan(0));
 
       final hasOvertime = result.breakdown.any(
-        (item) =>
-            (item['category'] as String?)?.startsWith('overtime') == true,
+        (item) => (item['category'] as String?)?.startsWith('overtime') == true,
       );
       expect(hasOvertime, isTrue);
     });
@@ -115,7 +112,9 @@ void main() {
       expect(hasOvertimeEntry, isTrue);
     });
 
-    test('RM 17:00 -> 23:00 riconosce 1h notturna ordinaria senza straordinario', () {
+    test(
+        'RM 17:00 -> 23:00 riconosce 1h notturna ordinaria senza straordinario',
+        () {
       final shift = CanonicalShiftScenarios.rmEveningSixHoursWithOrdinaryNight(
         serviceDate: DateTime(2026, 4, 10),
       );
@@ -147,7 +146,8 @@ void main() {
       );
     });
 
-        test('RM 17:00 -> 01:00 separa notturno ordinario e notturno straordinario', () {
+    test('RM 17:00 -> 01:00 separa notturno ordinario e notturno straordinario',
+        () {
       final shift =
           CanonicalShiftScenarios.rmEveningWithOrdinaryAndOvertimeNight(
         serviceDate: DateTime(2026, 4, 10),

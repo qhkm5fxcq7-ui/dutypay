@@ -102,8 +102,8 @@ class QuesturaPolicy implements DepartmentPolicy {
           realOvertime.nightHours + programmedOvertime.nightHours,
       overtimeHolidayDayHours:
           realOvertime.holidayDayHours + programmedOvertime.holidayDayHours,
-      overtimeNightHolidayHours: realOvertime.nightHolidayHours +
-          programmedOvertime.nightHolidayHours,
+      overtimeNightHolidayHours:
+          realOvertime.nightHolidayHours + programmedOvertime.nightHolidayHours,
       totalAmount: totalAmount,
       extraAmount: totalAmount,
       breakdown: breakdown,
@@ -125,7 +125,8 @@ class QuesturaPolicy implements DepartmentPolicy {
       return workedHours > 6.0 ? 6.0 : workedHours;
     }
 
-    final effectiveOrdinaryEnd = scheduledEnd.isBefore(end) ? scheduledEnd : end;
+    final effectiveOrdinaryEnd =
+        scheduledEnd.isBefore(end) ? scheduledEnd : end;
 
     if (!effectiveOrdinaryEnd.isAfter(start)) return 0.0;
 

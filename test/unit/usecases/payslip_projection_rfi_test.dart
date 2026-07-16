@@ -9,7 +9,8 @@ void main() {
   const service = PayslipProjectionService();
 
   group('PayslipProjectionService - RFI basket', () {
-    test('RFI matured but not paid does NOT increase estimated payslip total', () {
+    test('RFI matured but not paid does NOT increase estimated payslip total',
+        () {
       final profile = CanonicalShiftScenarios.defaultProfile();
 
       final baseline = service.projectPayslip(
@@ -32,7 +33,8 @@ void main() {
 
       expect(withMaturedOnly.rfiMaturedGrossForMonth, greaterThan(0));
       expect(withMaturedOnly.manualRfiBasketPaidGrossForMonth, 0);
-      expect(withMaturedOnly.currentRfiBasketResidualGrossEstimate, greaterThan(0));
+      expect(withMaturedOnly.currentRfiBasketResidualGrossEstimate,
+          greaterThan(0));
 
       // Regola chiave:
       // il maturato va nel basket ma NON deve entrare nel cedolino stimato

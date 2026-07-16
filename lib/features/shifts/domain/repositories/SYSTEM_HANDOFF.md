@@ -529,3 +529,16 @@ Vincoli:
 - suite automatica 160/160 PASS;
 - Flutter Analyze pulito;
 - iOS e Android pubblicati.
+## Stato del motore
+
+Il motore di calcolo è stato ulteriormente consolidato nella release 1.0.15.
+
+La preview della modifica turno utilizza ora la medesima pipeline del calcolo definitivo.
+
+Sono stati eliminati gli ultimi punti nei quali la UI costruiva risultati indipendenti dal motore.
+
+Il principio Single Source of Truth è stato ulteriormente rafforzato.
+
+Copertura automatica:
+
+164 test PASS.

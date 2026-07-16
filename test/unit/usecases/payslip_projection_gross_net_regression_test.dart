@@ -78,7 +78,8 @@ Totale 0,00
   }
 
   group('Payslip gross/net regression', () {
-    test('RM pipeline never taxes benefits and never nets inputs prematurely', () {
+    test('RM pipeline never taxes benefits and never nets inputs prematurely',
+        () {
       final profile = buildProfile();
 
       final result = service.projectPayslip(
@@ -93,7 +94,8 @@ Totale 0,00
       expect(result.accessoriesNetEstimated, greaterThanOrEqualTo(0));
 
       expect(
-        result.accessoriesGrossUsedForEstimate >= result.accessoriesNetEstimated,
+        result.accessoriesGrossUsedForEstimate >=
+            result.accessoriesNetEstimated,
         isTrue,
       );
 
@@ -116,7 +118,8 @@ Totale 0,00
       expect(result.accessoriesNetEstimated, greaterThanOrEqualTo(0));
 
       expect(
-        result.accessoriesGrossUsedForEstimate >= result.accessoriesNetEstimated,
+        result.accessoriesGrossUsedForEstimate >=
+            result.accessoriesNetEstimated,
         isTrue,
       );
     });

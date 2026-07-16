@@ -583,3 +583,38 @@ Verifica manuale:
 Stato:
 
 RISOLTO
+
+---
+
+## BASKET-014 — Maturazione ritardata del mese corrente
+
+Versione risoluzione: 1.0.14+44
+
+Problema:
+
+Le ore eccedenti la soglia mensile configurata dall'utente entravano nel
+basket solo quando il mese diventava mese di riferimento delle competenze
+accessorie.
+
+Soluzione:
+
+La maturazione del basket è stata separata dal ritardo del cedolino.
+
+Regola:
+
+- il basket include immediatamente l'eccedenza del mese corrente;
+- il cedolino continua a rispettare il ritardo delle accessorie;
+- la soglia è quella configurata dal singolo utente tramite
+  `monthlyOvertimePayableHoursLimit`.
+
+Test:
+
+- 55h configurate, 60h maturate → 5h basket;
+- 40h configurate, 46h maturate → 6h basket;
+- nessuna anticipazione delle accessorie nel cedolino;
+- suite completa 162/162 PASS;
+- verifica manuale su app PASS.
+
+Stato:
+
+RISOLTO

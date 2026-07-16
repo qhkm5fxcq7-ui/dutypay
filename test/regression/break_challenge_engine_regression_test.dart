@@ -136,7 +136,9 @@ void main() {
         expect(b.cameraShake, closeTo(a.cameraShake, 0.0001));
         expect(b.runners.length, a.runners.length);
 
-        for (var runnerIndex = 0; runnerIndex < a.runners.length; runnerIndex++) {
+        for (var runnerIndex = 0;
+            runnerIndex < a.runners.length;
+            runnerIndex++) {
           final ar = a.runners[runnerIndex];
           final br = b.runners[runnerIndex];
 

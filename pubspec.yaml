@@ -2,8 +2,7 @@ name: dutypay
 description: "DutyPay app"
 publish_to: 'none'
 
-version: 1.0.13+43
-
+version: 1.0.15+45
 environment:
   sdk: ^3.3.0
 

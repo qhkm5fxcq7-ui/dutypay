@@ -106,7 +106,9 @@ void main() {
       expect(result.rfiBasketAmount, greaterThan(0));
     });
 
-    test('scalo manuale include lo straordinario programmato nelle ore distribuibili', () {
+    test(
+        'scalo manuale include lo straordinario programmato nelle ore distribuibili',
+        () {
       final day = DateTime(2026, 5, 20);
 
       final shift = Shift(

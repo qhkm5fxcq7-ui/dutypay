@@ -39,9 +39,9 @@ class Shift {
   final DateTime end;
   final DateTime serviceDate;
   final QuesturaMode questuraMode;
-final QuesturaPreset questuraPreset;
-final QuesturaOfficeProfile questuraOfficeProfile;
-final double questuraOfficeOrdinaryHours;
+  final QuesturaPreset questuraPreset;
+  final QuesturaOfficeProfile questuraOfficeProfile;
+  final double questuraOfficeOrdinaryHours;
 
   final PolferTerritoryControlType polferTerritoryControlType;
   final PolferScaloMode polferScaloMode;
@@ -54,9 +54,9 @@ final double questuraOfficeOrdinaryHours;
   final double ordinaryHoursOverride;
   final String ordinaryHoursOverrideNote;
   final bool programmedOvertimeEnabled;
-final DateTime? programmedOvertimeStart;
-final DateTime? programmedOvertimeEnd;
-final String programmedOvertimeNote;
+  final DateTime? programmedOvertimeStart;
+  final DateTime? programmedOvertimeEnd;
+  final String programmedOvertimeNote;
 
   const Shift({
     required this.description,
@@ -64,10 +64,9 @@ final String programmedOvertimeNote;
     required this.end,
     required this.serviceDate,
     this.questuraMode = QuesturaMode.uffici,
-this.questuraPreset = QuesturaPreset.none,
-this.questuraOfficeProfile =
-    QuesturaOfficeProfile.sixHours,
-this.questuraOfficeOrdinaryHours = 6.0,
+    this.questuraPreset = QuesturaPreset.none,
+    this.questuraOfficeProfile = QuesturaOfficeProfile.sixHours,
+    this.questuraOfficeOrdinaryHours = 6.0,
     this.polferTerritoryControlType = PolferTerritoryControlType.none,
     this.polferScaloMode = PolferScaloMode.none,
     this.polferScaloManualOverride = false,
@@ -79,8 +78,8 @@ this.questuraOfficeOrdinaryHours = 6.0,
     this.ordinaryHoursOverride = 0.0,
     this.ordinaryHoursOverrideNote = '',
     this.programmedOvertimeEnabled = false,
-this.programmedOvertimeStart,
-this.programmedOvertimeEnd,
-this.programmedOvertimeNote = '',
+    this.programmedOvertimeStart,
+    this.programmedOvertimeEnd,
+    this.programmedOvertimeNote = '',
   });
 }

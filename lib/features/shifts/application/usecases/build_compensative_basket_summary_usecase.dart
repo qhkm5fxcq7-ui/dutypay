@@ -12,20 +12,17 @@ class BuildCompensativeBasketSummaryUseCase {
 
     for (final shift in shifts) {
       final isCompensative =
-          shift.overtimeDestination ==
-          OvertimeDestination.compensative;
+          shift.overtimeDestination == OvertimeDestination.compensative;
 
       if (isCompensative) {
-        final compensativeHours =
-            shift.compensativeOvertimeHours > 0
-                ? shift.compensativeOvertimeHours
-                : shift.workedHours;
+        final compensativeHours = shift.compensativeOvertimeHours > 0
+            ? shift.compensativeOvertimeHours
+            : shift.workedHours;
 
         earnedHours += compensativeHours;
       }
 
-      final isRecovery =
-          shift.absence == 'Recupero compensativo';
+      final isRecovery = shift.absence == 'Recupero compensativo';
 
       if (isRecovery) {
         recoveredHours += shift.workedHours;

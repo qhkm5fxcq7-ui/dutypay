@@ -482,7 +482,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
                                   ),
                                 )
                               : const Icon(Icons.arrow_forward_rounded),
-                          label: Text(_isSaving ? 'Salvataggio...' : 'Continua'),
+                          label:
+                              Text(_isSaving ? 'Salvataggio...' : 'Continua'),
                         ),
                       ),
                     ],
@@ -528,9 +529,9 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
   String get rfiBasketPaymentsStorageKey =>
       'dutypay_rfi_basket_payments_$_storageScope';
   String get overtimeBasketAdjustmentsStorageKey =>
-    'dutypay_overtime_basket_adjustments_$_storageScope';
+      'dutypay_overtime_basket_adjustments_$_storageScope';
   String get compensativeBasketMovementsStorageKey =>
-    'dutypay_compensative_basket_movements_$_storageScope';
+      'dutypay_compensative_basket_movements_$_storageScope';
   String get monthNotesStorageKey => 'dutypay_month_notes_$_storageScope';
 
   bool get _isRepartoMobileScope =>
@@ -546,15 +547,15 @@ class _DutyPayHomePageState extends State<DutyPayHomePage> {
       const BuildMonthlySummaryUseCase();
 
   final BuildCompensativeBasketMovementsUseCase
-    _buildCompensativeBasketMovementsUseCase =
-        const BuildCompensativeBasketMovementsUseCase();
+      _buildCompensativeBasketMovementsUseCase =
+      const BuildCompensativeBasketMovementsUseCase();
 
-final BuildCompensativeBasketSummaryFromMovementsUseCase
-    _buildCompensativeBasketSummaryFromMovementsUseCase =
-        const BuildCompensativeBasketSummaryFromMovementsUseCase();
+  final BuildCompensativeBasketSummaryFromMovementsUseCase
+      _buildCompensativeBasketSummaryFromMovementsUseCase =
+      const BuildCompensativeBasketSummaryFromMovementsUseCase();
   final ManageCompensativeBasketAdjustmentsUseCase
-    _manageCompensativeBasketAdjustmentsUseCase =
-        const ManageCompensativeBasketAdjustmentsUseCase();
+      _manageCompensativeBasketAdjustmentsUseCase =
+      const ManageCompensativeBasketAdjustmentsUseCase();
   final List<Shift> shifts = [];
   final List<BasketPayment> basketPayments = [];
   final List<RfiBasketPayment> rfiBasketPayments = [];
@@ -572,56 +573,56 @@ final BuildCompensativeBasketSummaryFromMovementsUseCase
   String searchQuery = '';
 
   Future<void> _confirmAndClearAllData() async {
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Cancella tutti i dati'),
-      content: const Text(
-        'Questa operazione elimina turni, profilo, basket, note e dati salvati del reparto attivo. Vuoi continuare?',
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cancella tutti i dati'),
+        content: const Text(
+          'Questa operazione elimina turni, profilo, basket, note e dati salvati del reparto attivo. Vuoi continuare?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annulla'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Cancella'),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: const Text('Annulla'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(context, true),
-          child: const Text('Cancella'),
-        ),
-      ],
-    ),
-  );
+    );
 
-  if (confirmed != true) return;
+    if (confirmed != true) return;
 
-  final prefs = await SharedPreferences.getInstance();
+    final prefs = await SharedPreferences.getInstance();
 
-  await prefs.remove(shiftsStorageKey);
-  await prefs.remove(payProfileStorageKey);
-  await prefs.remove(basketPaymentsStorageKey);
-  await prefs.remove(rfiBasketPaymentsStorageKey);
-  await prefs.remove(overtimeBasketAdjustmentsStorageKey);
-  await prefs.remove(compensativeBasketMovementsStorageKey);
-  await prefs.remove(monthNotesStorageKey);
+    await prefs.remove(shiftsStorageKey);
+    await prefs.remove(payProfileStorageKey);
+    await prefs.remove(basketPaymentsStorageKey);
+    await prefs.remove(rfiBasketPaymentsStorageKey);
+    await prefs.remove(overtimeBasketAdjustmentsStorageKey);
+    await prefs.remove(compensativeBasketMovementsStorageKey);
+    await prefs.remove(monthNotesStorageKey);
 
-  setState(() {
-    shifts.clear();
-    basketPayments.clear();
-    rfiBasketPayments.clear();
-    overtimeBasketAdjustments.clear();
-    manualCompensativeBasketMovements.clear();
-    payProfile = UserPayProfile.defaultProfile();
-    searchQuery = '';
-  });
+    setState(() {
+      shifts.clear();
+      basketPayments.clear();
+      rfiBasketPayments.clear();
+      overtimeBasketAdjustments.clear();
+      manualCompensativeBasketMovements.clear();
+      payProfile = UserPayProfile.defaultProfile();
+      searchQuery = '';
+    });
 
-  if (!mounted) return;
+    if (!mounted) return;
 
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(
-      content: Text('Dati del reparto cancellati'),
-    ),
-  );
-}
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Dati del reparto cancellati'),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -700,7 +701,8 @@ final BuildCompensativeBasketSummaryFromMovementsUseCase
     return null;
   }
 
-  Future<void> _runHotfix1011LegacyBasketCleanup(SharedPreferences prefs) async {
+  Future<void> _runHotfix1011LegacyBasketCleanup(
+      SharedPreferences prefs) async {
     const hotfixKey = 'dutypay_hotfix_1011_legacy_basket_cleanup_done';
 
     if (prefs.getBool(hotfixKey) == true) {
@@ -752,16 +754,16 @@ final BuildCompensativeBasketSummaryFromMovementsUseCase
     final loadedRfiBasketPayments =
         _loadRfiBasketPayments(rawRfiBasketPayments);
     final rawOvertimeBasketAdjustments =
-    prefs.getString(overtimeBasketAdjustmentsStorageKey);
+        prefs.getString(overtimeBasketAdjustmentsStorageKey);
 
-final loadedOvertimeBasketAdjustments =
-    _loadOvertimeBasketAdjustments(rawOvertimeBasketAdjustments);
+    final loadedOvertimeBasketAdjustments =
+        _loadOvertimeBasketAdjustments(rawOvertimeBasketAdjustments);
 
     final rawCompensativeMovements =
-    prefs.getString(compensativeBasketMovementsStorageKey);
+        prefs.getString(compensativeBasketMovementsStorageKey);
 
-final loadedCompensativeMovements =
-    _loadCompensativeBasketMovements(rawCompensativeMovements);
+    final loadedCompensativeMovements =
+        _loadCompensativeBasketMovements(rawCompensativeMovements);
 
     if (!mounted) return;
 
@@ -775,12 +777,12 @@ final loadedCompensativeMovements =
       rfiBasketPayments
         ..clear()
         ..addAll(loadedRfiBasketPayments);
-        overtimeBasketAdjustments
-  ..clear()
-  ..addAll(loadedOvertimeBasketAdjustments);
-        manualCompensativeBasketMovements
-  ..clear()
-  ..addAll(loadedCompensativeMovements);
+      overtimeBasketAdjustments
+        ..clear()
+        ..addAll(loadedOvertimeBasketAdjustments);
+      manualCompensativeBasketMovements
+        ..clear()
+        ..addAll(loadedCompensativeMovements);
       payProfile = loadedProfile;
       isLoading = false;
     });
@@ -888,46 +890,46 @@ final loadedCompensativeMovements =
     return [];
   }
 
-List<OvertimeBasketAdjustment> _loadOvertimeBasketAdjustments(String? raw) {
-  if (raw == null || raw.trim().isEmpty) return [];
+  List<OvertimeBasketAdjustment> _loadOvertimeBasketAdjustments(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return [];
 
-  try {
-    final decoded = jsonDecode(raw);
-    if (decoded is List) {
-      return decoded
-          .whereType<Map>()
-          .map(
-            (item) => OvertimeBasketAdjustment.fromJson(
-              Map<String, dynamic>.from(item),
-            ),
-          )
-          .toList()
-        ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
-    }
-  } catch (_) {}
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is List) {
+        return decoded
+            .whereType<Map>()
+            .map(
+              (item) => OvertimeBasketAdjustment.fromJson(
+                Map<String, dynamic>.from(item),
+              ),
+            )
+            .toList()
+          ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+      }
+    } catch (_) {}
 
-  return [];
-}
+    return [];
+  }
 
   List<CompensativeBasketMovement> _loadCompensativeBasketMovements(
-  String? raw,
-) {
-  if (raw == null || raw.trim().isEmpty) {
-    return [];
-  }
+    String? raw,
+  ) {
+    if (raw == null || raw.trim().isEmpty) {
+      return [];
+    }
 
-  try {
-    final decoded = jsonDecode(raw);
-    if (decoded is! List) return [];
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return [];
 
-    return decoded
-        .whereType<Map<String, dynamic>>()
-        .map(CompensativeBasketMovement.fromJson)
-        .toList();
-  } catch (_) {
-    return [];
+      return decoded
+          .whereType<Map<String, dynamic>>()
+          .map(CompensativeBasketMovement.fromJson)
+          .toList();
+    } catch (_) {
+      return [];
+    }
   }
-}
 
   Future<void> _saveShiftsToPrefs(
     SharedPreferences prefs,
@@ -958,22 +960,23 @@ List<OvertimeBasketAdjustment> _loadOvertimeBasketAdjustments(String? raw) {
   }
 
   Future<void> _saveOvertimeBasketAdjustments() async {
-  final prefs = await SharedPreferences.getInstance();
-  final raw = jsonEncode(
-    overtimeBasketAdjustments.map((e) => e.toJson()).toList(),
-  );
-  await prefs.setString(overtimeBasketAdjustmentsStorageKey, raw);
-}
+    final prefs = await SharedPreferences.getInstance();
+    final raw = jsonEncode(
+      overtimeBasketAdjustments.map((e) => e.toJson()).toList(),
+    );
+    await prefs.setString(overtimeBasketAdjustmentsStorageKey, raw);
+  }
 
   Future<void> _saveCompensativeBasketMovements() async {
-  final prefs = await SharedPreferences.getInstance();
-  final raw = jsonEncode(
-    manualCompensativeBasketMovements.map((e) => e.toJson()).toList(),
-  );
-  await prefs.setString(compensativeBasketMovementsStorageKey, raw);
-}
+    final prefs = await SharedPreferences.getInstance();
+    final raw = jsonEncode(
+      manualCompensativeBasketMovements.map((e) => e.toJson()).toList(),
+    );
+    await prefs.setString(compensativeBasketMovementsStorageKey, raw);
+  }
 
-  Future<void> deleteBasketPayment(DateTime paymentMonth, double hoursPaid, String note) async {
+  Future<void> deleteBasketPayment(
+      DateTime paymentMonth, double hoursPaid, String note) async {
     setState(() {
       basketPayments.removeWhere(
         (item) =>
@@ -1061,606 +1064,602 @@ List<OvertimeBasketAdjustment> _loadOvertimeBasketAdjustments(String? raw) {
   }
 
   Future<void> addShift(Shift shift) async {
-  setState(() {
-    shifts.add(shift);
-    selectedMonth = DateTime(shift.serviceDate.year, shift.serviceDate.month);
-    selectedDay = _normalizeDate(shift.serviceDate);
-    shifts.sort((a, b) => b.start.compareTo(a.start));
-  });
+    setState(() {
+      shifts.add(shift);
+      selectedMonth = DateTime(shift.serviceDate.year, shift.serviceDate.month);
+      selectedDay = _normalizeDate(shift.serviceDate);
+      shifts.sort((a, b) => b.start.compareTo(a.start));
+    });
 
-  await saveShifts();
-}
-
-Future<void> updateShift(int index, Shift shift) async {
-  setState(() {
-    shifts[index] = shift;
-    selectedMonth = DateTime(shift.serviceDate.year, shift.serviceDate.month);
-    selectedDay = _normalizeDate(shift.serviceDate);
-    shifts.sort((a, b) => b.start.compareTo(a.start));
-  });
-
-  await saveShifts();
-}
-
-Future<void> removeShift(int index) async {
-  setState(() {
-    shifts.removeAt(index);
-  });
-
-  await saveShifts();
-}
-
-DateTime _normalizeDate(DateTime date) {
-  return DateTime(date.year, date.month, date.day);
-}
-
-bool _isSameDay(DateTime a, DateTime b) {
-  return a.year == b.year && a.month == b.month && a.day == b.day;
-}
-
-bool _isSameMonth(DateTime a, DateTime b) {
-  return a.year == b.year && a.month == b.month;
-}
-
-int _daysInMonth(DateTime month) {
-  return DateTime(month.year, month.month + 1, 0).day;
-}
-
-String _buildSearchText(Shift shift) {
-  return [
-    shift.description,
-    shift.effectiveOrderPublicLabel,
-    shift.absence,
-    shift.note,
-    shift.manualExtraLabel,
-  ].join(' ').toLowerCase();
-}
-
-DailyShiftComputation _buildSingleShiftComputation(Shift shift) {
-  final data = _buildShiftComputationUseCase.execute(
-    shift: shift,
-    profile: payProfile,
-    department: widget.activeDepartment,
-  );
-
-  return DailyShiftComputation(
-    overtimeHours: data.overtimeHours,
-    totalAmount: data.totalAmount,
-    extraAmount: data.extraAmount,
-    breakdown: data.breakdown,
-  );
-}
-
-DailyShiftResult _buildDailyShiftResult(List<Shift> dayShifts) {
-  return _buildDailyShiftResultUseCase.execute(
-    shifts: dayShifts,
-    profile: payProfile,
-    department: widget.activeDepartment,
-  );
-}
-
-DailyShiftResult _buildDailyShiftResultForDate(DateTime date) {
-  final dayShifts = filteredShifts
-      .where((shift) => _isSameDay(shift.serviceDate, date))
-      .toList();
-
-  return _buildDailyShiftResult(dayShifts);
-}
-
-double _totalPayableFromDailyResult(DailyShiftResult result) {
-  return result.computations.values.fold<double>(
-    0.0,
-    (sum, computation) => sum + computation.totalAmount,
-  );
-}
-
-double _salaryOnlyAmount(Shift shift) {
-  final computation = _buildSingleShiftComputation(shift);
-  return computation.extraAmount;
-}
-
-List<Shift> get filteredShifts {
-  return shifts.where((shift) {
-    return shift.serviceDate.year == selectedMonth.year &&
-        shift.serviceDate.month == selectedMonth.month;
-  }).toList();
-}
-
-List<Shift> get yearlySearchResults {
-  final query = searchQuery.trim().toLowerCase();
-  if (query.isEmpty) return [];
-
-  final now = DateTime.now();
-
-  final annualBase = shifts.where((shift) {
-    return shift.serviceDate.year == now.year;
-  }).toList();
-
-  final results = annualBase.where((shift) {
-    return _buildSearchText(shift).contains(query);
-  }).toList()
-    ..sort((a, b) => b.serviceDate.compareTo(a.serviceDate));
-
-  return results;
-}
-
-MonthlySummary get monthlySummary {
-  return _buildMonthlySummaryUseCase.execute(
-    shifts: shifts,
-    selectedMonth: selectedMonth,
-    profile: payProfile,
-    department: widget.activeDepartment,
-  );
-}
-
-List<Shift> get selectedDayShifts {
-  return filteredShifts
-      .where((shift) => _isSameDay(shift.serviceDate, selectedDay))
-      .toList()
-    ..sort((a, b) => a.start.compareTo(b.start));
-}
-
-double get _netEstimateMultiplier {
-  final raw = payProfile.straordinarioNetMultiplier;
-
-  if (raw.isNaN || !raw.isFinite || raw <= 0 || raw > 1) {
-    return 0.67;
+    await saveShifts();
   }
 
-  return raw;
-}
+  Future<void> updateShift(int index, Shift shift) async {
+    setState(() {
+      shifts[index] = shift;
+      selectedMonth = DateTime(shift.serviceDate.year, shift.serviceDate.month);
+      selectedDay = _normalizeDate(shift.serviceDate);
+      shifts.sort((a, b) => b.start.compareTo(a.start));
+    });
 
-double get selectedDayGross {
-  return _totalPayableFromDailyResult(
-    _buildDailyShiftResultForDate(selectedDay),
-  );
-}
+    await saveShifts();
+  }
 
-double get selectedDayNet => selectedDayGross * _netEstimateMultiplier;
+  Future<void> removeShift(int index) async {
+    setState(() {
+      shifts.removeAt(index);
+    });
 
-double get totalMonthGross => monthlySummary.totalAmount;
+    await saveShifts();
+  }
 
-double get totalMonthNet => totalMonthGross * _netEstimateMultiplier;
+  DateTime _normalizeDate(DateTime date) {
+    return DateTime(date.year, date.month, date.day);
+  }
 
-double get weekTotalGross => monthlySummary.weekTotal;
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
 
-double get averagePerWorkedDayGross =>
-    monthlySummary.averagePerDay;
+  bool _isSameMonth(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month;
+  }
 
-double get monthlyOvertimeHours => monthlySummary.totalOvertimeHours;
+  int _daysInMonth(DateTime month) {
+    return DateTime(month.year, month.month + 1, 0).day;
+  }
 
-int get workedDaysCount => monthlySummary.workedDays;
-double get averagePerWorkedDay => monthlySummary.averagePerDay;
-double get projectedExtraFuture => monthlySummary.projectedExtraFuture;
-double get monthlyRfiBasketAmount => monthlySummary.rfiBasketAmount;
+  String _buildSearchText(Shift shift) {
+    return [
+      shift.description,
+      shift.effectiveOrderPublicLabel,
+      shift.absence,
+      shift.note,
+      shift.manualExtraLabel,
+    ].join(' ').toLowerCase();
+  }
 
-List<CompensativeBasketMovement>
-    get compensativeBasketMovements {
-  final automaticMovements =
-      _buildCompensativeBasketMovementsUseCase.execute(
-    shifts: shifts,
-  );
+  DailyShiftComputation _buildSingleShiftComputation(Shift shift) {
+    final data = _buildShiftComputationUseCase.execute(
+      shift: shift,
+      profile: payProfile,
+      department: widget.activeDepartment,
+    );
 
-  return [
-    ...automaticMovements,
-    ...manualCompensativeBasketMovements,
-  ]..sort((a, b) => a.createdAt.compareTo(b.createdAt));
-}
+    return DailyShiftComputation(
+      overtimeHours: data.overtimeHours,
+      totalAmount: data.totalAmount,
+      extraAmount: data.extraAmount,
+      breakdown: data.breakdown,
+    );
+  }
 
-double get compensativeBasketEarnedHours {
-  final summary =
-      _buildCompensativeBasketSummaryFromMovementsUseCase.execute(
-    movements: compensativeBasketMovements,
-  );
+  DailyShiftResult _buildDailyShiftResult(List<Shift> dayShifts) {
+    return _buildDailyShiftResultUseCase.execute(
+      shifts: dayShifts,
+      profile: payProfile,
+      department: widget.activeDepartment,
+    );
+  }
 
-  return summary.earnedHours;
-}
+  DailyShiftResult _buildDailyShiftResultForDate(DateTime date) {
+    final dayShifts = filteredShifts
+        .where((shift) => _isSameDay(shift.serviceDate, date))
+        .toList();
 
-double get compensativeBasketRecoveredHours {
-  final summary =
-      _buildCompensativeBasketSummaryFromMovementsUseCase.execute(
-    movements: compensativeBasketMovements,
-  );
+    return _buildDailyShiftResult(dayShifts);
+  }
 
-  return summary.recoveredHours;
-}
+  double _totalPayableFromDailyResult(DailyShiftResult result) {
+    return result.computations.values.fold<double>(
+      0.0,
+      (sum, computation) => sum + computation.totalAmount,
+    );
+  }
 
-double get compensativeBasketResidualHours {
-  final summary =
-      _buildCompensativeBasketSummaryFromMovementsUseCase.execute(
-    movements: compensativeBasketMovements,
-  );
+  double _salaryOnlyAmount(Shift shift) {
+    final computation = _buildSingleShiftComputation(shift);
+    return computation.extraAmount;
+  }
 
-  return summary.residualHours;
-}
+  List<Shift> get filteredShifts {
+    return shifts.where((shift) {
+      return shift.serviceDate.year == selectedMonth.year &&
+          shift.serviceDate.month == selectedMonth.month;
+    }).toList();
+  }
 
-int get monthlyTicketPastoCount {
-  return filteredShifts.where((shift) => shift.ticketPasto).length;
-}
+  List<Shift> get yearlySearchResults {
+    final query = searchQuery.trim().toLowerCase();
+    if (query.isEmpty) return [];
 
-int get monthlyGenereDiConfortoCount {
-  return filteredShifts.where((shift) => shift.genereDiConforto).length;
-}
+    final now = DateTime.now();
 
-double get monthlyTicketPastoTotal {
-  return filteredShifts.fold<double>(
-    0.0,
-    (sum, shift) =>
-        sum + (shift.ticketPasto ? payProfile.ticketPastoRate : 0.0),
-  );
-}
+    final annualBase = shifts.where((shift) {
+      return shift.serviceDate.year == now.year;
+    }).toList();
 
-double get monthlyGenereDiConfortoTotal {
-  return filteredShifts.fold<double>(
-    0.0,
-    (sum, shift) =>
-        sum +
-        (shift.genereDiConforto ? payProfile.genereDiConfortoRate : 0.0),
-  );
-}
+    final results = annualBase.where((shift) {
+      return _buildSearchText(shift).contains(query);
+    }).toList()
+      ..sort((a, b) => b.serviceDate.compareTo(a.serviceDate));
 
-double _dailyTotal(DateTime date) {
-  return _totalPayableFromDailyResult(
-    _buildDailyShiftResultForDate(date),
-  );
-}
+    return results;
+  }
 
-bool _hasTicketInDate(DateTime date) {
-  return filteredShifts.any(
-    (shift) => _isSameDay(shift.serviceDate, date) && shift.ticketPasto,
-  );
-}
+  MonthlySummary get monthlySummary {
+    return _buildMonthlySummaryUseCase.execute(
+      shifts: shifts,
+      selectedMonth: selectedMonth,
+      profile: payProfile,
+      department: widget.activeDepartment,
+    );
+  }
 
-bool _hasConfortoInDate(DateTime date) {
-  return filteredShifts.any(
-    (shift) => _isSameDay(shift.serviceDate, date) && shift.genereDiConforto,
-  );
-}
+  List<Shift> get selectedDayShifts {
+    return filteredShifts
+        .where((shift) => _isSameDay(shift.serviceDate, selectedDay))
+        .toList()
+      ..sort((a, b) => a.start.compareTo(b.start));
+  }
 
-bool _hasConfortoCdgInDate(DateTime date) {
-  return filteredShifts.any(
-    (shift) =>
-        _isSameDay(shift.serviceDate, date) && shift.genereDiConfortoCdg,
-  );
-}
+  double get _netEstimateMultiplier {
+    final raw = payProfile.straordinarioNetMultiplier;
 
-bool _hasWorkedShiftInDate(DateTime date) {
-  return filteredShifts.any(
-    (shift) => _isSameDay(shift.serviceDate, date) && !shift.hasAbsence,
-  );
-}
+    if (raw.isNaN || !raw.isFinite || raw <= 0 || raw > 1) {
+      return 0.67;
+    }
 
-String? _absenceBadgeForDate(DateTime date) {
-  final dayShifts = filteredShifts
-      .where((shift) => _isSameDay(shift.serviceDate, date))
-      .toList();
+    return raw;
+  }
 
-  if (dayShifts.isEmpty) return null;
+  double get selectedDayGross {
+    return _totalPayableFromDailyResult(
+      _buildDailyShiftResultForDate(selectedDay),
+    );
+  }
 
-  bool hasCongedoOrdinario = false;
-  bool hasMalattia = false;
-  bool hasRiposo = false;
-  bool hasFestivo = false;
-  bool hasGenericAbsence = false;
+  double get selectedDayNet => selectedDayGross * _netEstimateMultiplier;
 
-  for (final shift in dayShifts) {
-    final rawAbsence = shift.absence.trim();
-    final absence = rawAbsence.toLowerCase();
+  double get totalMonthGross => monthlySummary.totalAmount;
 
-    if (rawAbsence.isEmpty || absence == 'nessuna') continue;
+  double get totalMonthNet => totalMonthGross * _netEstimateMultiplier;
 
-    if (absence == 'ferie' ||
-        absence == 'congedo ordinario' ||
-        absence == 'c.o.' ||
-        absence == 'c.o') {
-      hasCongedoOrdinario = true;
-    } else if (absence == 'malattia' ||
-        absence == 'c.s.' ||
-        absence == 'c.s' ||
-        absence == 'mal') {
-      hasMalattia = true;
-    } else if (absence == 'riposo' || absence == 'rip') {
-      hasRiposo = true;
-    } else if (absence == 'festivo' ||
-        absence == 'festa' ||
-        absence == 'fest') {
-      hasFestivo = true;
-    } else {
-      hasGenericAbsence = true;
+  double get weekTotalGross => monthlySummary.weekTotal;
+
+  double get averagePerWorkedDayGross => monthlySummary.averagePerDay;
+
+  double get monthlyOvertimeHours => monthlySummary.totalOvertimeHours;
+
+  int get workedDaysCount => monthlySummary.workedDays;
+  double get averagePerWorkedDay => monthlySummary.averagePerDay;
+  double get projectedExtraFuture => monthlySummary.projectedExtraFuture;
+  double get monthlyRfiBasketAmount => monthlySummary.rfiBasketAmount;
+
+  List<CompensativeBasketMovement> get compensativeBasketMovements {
+    final automaticMovements = _buildCompensativeBasketMovementsUseCase.execute(
+      shifts: shifts,
+    );
+
+    return [
+      ...automaticMovements,
+      ...manualCompensativeBasketMovements,
+    ]..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+  }
+
+  double get compensativeBasketEarnedHours {
+    final summary = _buildCompensativeBasketSummaryFromMovementsUseCase.execute(
+      movements: compensativeBasketMovements,
+    );
+
+    return summary.earnedHours;
+  }
+
+  double get compensativeBasketRecoveredHours {
+    final summary = _buildCompensativeBasketSummaryFromMovementsUseCase.execute(
+      movements: compensativeBasketMovements,
+    );
+
+    return summary.recoveredHours;
+  }
+
+  double get compensativeBasketResidualHours {
+    final summary = _buildCompensativeBasketSummaryFromMovementsUseCase.execute(
+      movements: compensativeBasketMovements,
+    );
+
+    return summary.residualHours;
+  }
+
+  int get monthlyTicketPastoCount {
+    return filteredShifts.where((shift) => shift.ticketPasto).length;
+  }
+
+  int get monthlyGenereDiConfortoCount {
+    return filteredShifts.where((shift) => shift.genereDiConforto).length;
+  }
+
+  double get monthlyTicketPastoTotal {
+    return filteredShifts.fold<double>(
+      0.0,
+      (sum, shift) =>
+          sum + (shift.ticketPasto ? payProfile.ticketPastoRate : 0.0),
+    );
+  }
+
+  double get monthlyGenereDiConfortoTotal {
+    return filteredShifts.fold<double>(
+      0.0,
+      (sum, shift) =>
+          sum +
+          (shift.genereDiConforto ? payProfile.genereDiConfortoRate : 0.0),
+    );
+  }
+
+  double _dailyTotal(DateTime date) {
+    return _totalPayableFromDailyResult(
+      _buildDailyShiftResultForDate(date),
+    );
+  }
+
+  bool _hasTicketInDate(DateTime date) {
+    return filteredShifts.any(
+      (shift) => _isSameDay(shift.serviceDate, date) && shift.ticketPasto,
+    );
+  }
+
+  bool _hasConfortoInDate(DateTime date) {
+    return filteredShifts.any(
+      (shift) => _isSameDay(shift.serviceDate, date) && shift.genereDiConforto,
+    );
+  }
+
+  bool _hasConfortoCdgInDate(DateTime date) {
+    return filteredShifts.any(
+      (shift) =>
+          _isSameDay(shift.serviceDate, date) && shift.genereDiConfortoCdg,
+    );
+  }
+
+  bool _hasWorkedShiftInDate(DateTime date) {
+    return filteredShifts.any(
+      (shift) => _isSameDay(shift.serviceDate, date) && !shift.hasAbsence,
+    );
+  }
+
+  String? _absenceBadgeForDate(DateTime date) {
+    final dayShifts = filteredShifts
+        .where((shift) => _isSameDay(shift.serviceDate, date))
+        .toList();
+
+    if (dayShifts.isEmpty) return null;
+
+    bool hasCongedoOrdinario = false;
+    bool hasMalattia = false;
+    bool hasRiposo = false;
+    bool hasFestivo = false;
+    bool hasGenericAbsence = false;
+
+    for (final shift in dayShifts) {
+      final rawAbsence = shift.absence.trim();
+      final absence = rawAbsence.toLowerCase();
+
+      if (rawAbsence.isEmpty || absence == 'nessuna') continue;
+
+      if (absence == 'ferie' ||
+          absence == 'congedo ordinario' ||
+          absence == 'c.o.' ||
+          absence == 'c.o') {
+        hasCongedoOrdinario = true;
+      } else if (absence == 'malattia' ||
+          absence == 'c.s.' ||
+          absence == 'c.s' ||
+          absence == 'mal') {
+        hasMalattia = true;
+      } else if (absence == 'riposo' || absence == 'rip') {
+        hasRiposo = true;
+      } else if (absence == 'festivo' ||
+          absence == 'festa' ||
+          absence == 'fest') {
+        hasFestivo = true;
+      } else {
+        hasGenericAbsence = true;
+      }
+    }
+
+    if (hasCongedoOrdinario) return 'C.O.';
+    if (hasMalattia) return 'C.S.';
+    if (hasRiposo) return 'RIP';
+    if (hasFestivo) return 'FEST';
+    if (hasGenericAbsence) return 'ASS.';
+
+    return null;
+  }
+
+  String? _extractSpmnLabelFromShift(Shift shift) {
+    if (shift.hasAbsence) return null;
+
+    final code = shift.spmnPresetCode.trim().toLowerCase();
+
+    switch (code) {
+      case 'sera':
+        return 'SERA';
+
+      case 'pomeriggio':
+        return 'POM';
+
+      case 'mattina':
+        return 'MAT';
+
+      case 'notte':
+        return 'NOTTE';
+
+      case 'riposo':
+        return 'RIP';
+
+      case 'aggiornamento':
+        return 'AGG';
+
+      case 'smontante':
+        return 'SM';
+
+      default:
+        return null;
     }
   }
 
-  if (hasCongedoOrdinario) return 'C.O.';
-  if (hasMalattia) return 'C.S.';
-  if (hasRiposo) return 'RIP';
-  if (hasFestivo) return 'FEST';
-  if (hasGenericAbsence) return 'ASS.';
+  String? _nextSpmnLabel(String current) {
+    switch (current) {
+      case 'SERA':
+        return 'POM';
+      case 'POM':
+        return 'MAT';
+      case 'MAT':
+        return 'NOTTE';
+      case 'NOTTE':
+        return 'RIP';
+      case 'RIP':
+        return 'SERA';
+      case 'AGG':
+        return 'SERA';
+      default:
+        return null;
+    }
+  }
 
-  return null;
-}
+  String _resolvePredictedSpmnLabelForDate({
+    required String baseNextLabel,
+    required int daysAfterAnchor,
+    required DateTime targetDate,
+  }) {
+    String current = baseNextLabel;
 
-String? _extractSpmnLabelFromShift(Shift shift) {
-  if (shift.hasAbsence) return null;
+    for (int i = 0; i < daysAfterAnchor; i++) {
+      current = _nextSpmnLabel(current) ?? current;
+    }
 
-  final code = shift.spmnPresetCode.trim().toLowerCase();
-
-  switch (code) {
-    case 'sera':
-      return 'SERA';
-
-    case 'pomeriggio':
-      return 'POM';
-
-    case 'mattina':
-      return 'MAT';
-
-    case 'notte':
-      return 'NOTTE';
-
-    case 'riposo':
-      return 'RIP';
-
-    case 'aggiornamento':
+    if (current == 'RIP' && targetDate.weekday == DateTime.tuesday) {
       return 'AGG';
+    }
 
-    case 'smontante':
-      return 'SM';
+    return current;
+  }
 
-    default:
+  Map<String, String> _buildPredictedSpmnCalendarMap() {
+    if (widget.activeDepartment != Department.polfer &&
+        widget.activeDepartment != Department.questura &&
+        widget.activeDepartment != Department.polstrada) {
+      return {};
+    }
+    if (shifts.isEmpty) return {};
+
+    final spmnSource = shifts
+        .where(
+          (shift) =>
+              !shift.hasAbsence && _extractSpmnLabelFromShift(shift) != null,
+        )
+        .toList()
+      ..sort((a, b) => a.serviceDate.compareTo(b.serviceDate));
+
+    if (spmnSource.isEmpty) return {};
+
+    final anchorShift = spmnSource.last;
+    final anchorLabel = _extractSpmnLabelFromShift(anchorShift);
+    if (anchorLabel == null) return {};
+
+    final nextLabel = _nextSpmnLabel(anchorLabel);
+    if (nextLabel == null) return {};
+
+    final predictionMap = <String, String>{};
+    final anchorDate = _normalizeDate(anchorShift.serviceDate);
+
+    for (int offset = 1; offset <= 70; offset++) {
+      final targetDate = anchorDate.add(Duration(days: offset));
+      final key = _calendarKey(targetDate);
+
+      final dayHasAnyRecord = shifts.any(
+        (shift) => _isSameDay(shift.serviceDate, targetDate),
+      );
+
+      if (dayHasAnyRecord) continue;
+
+      predictionMap[key] = _resolvePredictedSpmnLabelForDate(
+        baseNextLabel: nextLabel,
+        daysAfterAnchor: offset - 1,
+        targetDate: targetDate,
+      );
+    }
+
+    return predictionMap;
+  }
+
+  String _calendarKey(DateTime date) {
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  String? _nextSpmnPresetCode(String currentCode, DateTime nextServiceDate) {
+    switch (currentCode) {
+      case 'sera':
+        return 'pomeriggio';
+      case 'pomeriggio':
+        return 'mattina';
+      case 'mattina':
+        return 'notte';
+      case 'notte':
+        return 'riposo';
+      case 'riposo':
+        return nextServiceDate.weekday == DateTime.tuesday
+            ? 'aggiornamento'
+            : 'sera';
+      case 'aggiornamento':
+        return 'sera';
+      default:
+        return null;
+    }
+  }
+
+  String? _suggestedSpmnPresetCodeForDate(DateTime targetDate) {
+    if (widget.activeDepartment != Department.polfer &&
+        widget.activeDepartment != Department.questura &&
+        widget.activeDepartment != Department.polstrada) {
       return null;
-  }
-}
+    }
 
-String? _nextSpmnLabel(String current) {
-  switch (current) {
-    case 'SERA':
-      return 'POM';
-    case 'POM':
-      return 'MAT';
-    case 'MAT':
-      return 'NOTTE';
-    case 'NOTTE':
-      return 'RIP';
-    case 'RIP':
-      return 'SERA';
-    case 'AGG':
-      return 'SERA';
-    default:
-      return null;
-  }
-}
+    final normalizedTarget = _normalizeDate(targetDate);
 
-String _resolvePredictedSpmnLabelForDate({
-  required String baseNextLabel,
-  required int daysAfterAnchor,
-  required DateTime targetDate,
-}) {
-  String current = baseNextLabel;
+    final previousSpmnShifts = shifts.where((shift) {
+      final code = shift.spmnPresetCode.trim().toLowerCase();
+      return code.isNotEmpty && shift.serviceDate.isBefore(normalizedTarget);
+    }).toList()
+      ..sort((a, b) => a.serviceDate.compareTo(b.serviceDate));
 
-  for (int i = 0; i < daysAfterAnchor; i++) {
-    current = _nextSpmnLabel(current) ?? current;
+    if (previousSpmnShifts.isEmpty) return null;
+
+    final anchor = previousSpmnShifts.last;
+    String? currentCode = anchor.spmnPresetCode.trim().toLowerCase();
+
+    if (currentCode.isEmpty) return null;
+
+    DateTime cursor = _normalizeDate(anchor.serviceDate);
+
+    while (cursor.isBefore(normalizedTarget)) {
+      final nextDay = cursor.add(const Duration(days: 1));
+      currentCode = _nextSpmnPresetCode(currentCode!, nextDay);
+      if (currentCode == null || currentCode.isEmpty) return null;
+      cursor = nextDay;
+    }
+
+    return currentCode;
   }
 
-  if (current == 'RIP' && targetDate.weekday == DateTime.tuesday) {
-    return 'AGG';
+  List<MonthCalendarDayData> get calendarDays {
+    final firstDayOfMonth =
+        DateTime(selectedMonth.year, selectedMonth.month, 1);
+    final startWeekday = firstDayOfMonth.weekday;
+    final gridStart =
+        firstDayOfMonth.subtract(Duration(days: startWeekday - 1));
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    final predictedSpmnMap = _buildPredictedSpmnCalendarMap();
+
+    return List.generate(42, (index) {
+      final date = gridStart.add(Duration(days: index));
+      final isInCurrentMonth = date.month == selectedMonth.month;
+      final dayKey = _calendarKey(date);
+
+      return MonthCalendarDayData(
+        date: date,
+        isInCurrentMonth: isInCurrentMonth,
+        amount: isInCurrentMonth ? _dailyTotal(date) : 0.0,
+        isSelected: _isSameDay(date, selectedDay),
+        isToday: _isSameDay(date, today),
+        absenceBadge: isInCurrentMonth ? _absenceBadgeForDate(date) : null,
+        hasTicket: _hasTicketInDate(date),
+        hasConforto: _hasConfortoInDate(date),
+        hasConfortoCdg: _hasConfortoCdgInDate(date),
+        predictedSpmnLabel: isInCurrentMonth ? predictedSpmnMap[dayKey] : null,
+        hasWorkedShift: isInCurrentMonth ? _hasWorkedShiftInDate(date) : false,
+      );
+    });
   }
 
-  return current;
-}
+  PayslipProjectionResult get payslipProjection {
+    return _projectionService.projectPayslip(
+      payslipMonth: selectedPayslipMonth,
+      allShifts: shifts,
+      payProfile: payProfile,
+      department: widget.activeDepartment,
+      basketPayments: basketPayments,
+      overtimeBasketAdjustments: overtimeBasketAdjustments,
+      rfiBasketPayments: rfiBasketPayments,
+    );
+  }
 
-Map<String, String> _buildPredictedSpmnCalendarMap() {
-  if (widget.activeDepartment != Department.polfer &&
-    widget.activeDepartment != Department.questura &&
-    widget.activeDepartment != Department.polstrada) {
-  return {};
-}
-  if (shifts.isEmpty) return {};
+  PrecisionStatus get payslipPrecisionStatus {
+    return _projectionService.calculatePrecision(allShifts: shifts);
+  }
 
-  final spmnSource = shifts
-      .where(
-        (shift) =>
-            !shift.hasAbsence && _extractSpmnLabelFromShift(shift) != null,
-      )
-      .toList()
-    ..sort((a, b) => a.serviceDate.compareTo(b.serviceDate));
+  _MonthlyLiveProjection _buildMonthlyLiveProjection({
+    required DateTime month,
+    required double fixedBaseNet,
+  }) {
+    final monthShifts = shifts.where((shift) {
+      return shift.serviceDate.year == month.year &&
+          shift.serviceDate.month == month.month;
+    }).toList();
 
-  if (spmnSource.isEmpty) return {};
-
-  final anchorShift = spmnSource.last;
-  final anchorLabel = _extractSpmnLabelFromShift(anchorShift);
-  if (anchorLabel == null) return {};
-
-  final nextLabel = _nextSpmnLabel(anchorLabel);
-  if (nextLabel == null) return {};
-
-  final predictionMap = <String, String>{};
-  final anchorDate = _normalizeDate(anchorShift.serviceDate);
-
-  for (int offset = 1; offset <= 70; offset++) {
-    final targetDate = anchorDate.add(Duration(days: offset));
-    final key = _calendarKey(targetDate);
-
-    final dayHasAnyRecord = shifts.any(
-      (shift) => _isSameDay(shift.serviceDate, targetDate),
+    final extraGross = monthShifts.fold<double>(
+      0.0,
+      (sum, shift) => sum + _salaryOnlyAmount(shift),
     );
 
-    if (dayHasAnyRecord) continue;
+    final effectiveTaxRate =
+        payProfile.effectiveTaxRate.isFinite && payProfile.effectiveTaxRate >= 0
+            ? payProfile.effectiveTaxRate.clamp(0.0, 0.45)
+            : 0.2625;
 
-    predictionMap[key] = _resolvePredictedSpmnLabelForDate(
-      baseNextLabel: nextLabel,
-      daysAfterAnchor: offset - 1,
-      targetDate: targetDate,
+    final extraNet = extraGross * (1 - effectiveTaxRate);
+    final taxes = extraGross - extraNet;
+
+    final uniqueWorkedDays = <String>{};
+    for (final shift in monthShifts) {
+      if (shift.hasAbsence) continue;
+      final day = shift.serviceDate;
+      final key =
+          '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
+      uniqueWorkedDays.add(key);
+    }
+
+    final workedDays = uniqueWorkedDays.length;
+    final totalDays = _daysInMonth(month);
+    final avgPerDay = workedDays > 0 ? extraNet / workedDays : 0.0;
+
+    final now = DateTime.now();
+    final currentMonth = DateTime(now.year, now.month);
+    final isCurrentMonth = _isSameMonth(month, currentMonth);
+
+    final remainingDays = isCurrentMonth
+        ? ((totalDays - now.day) > 0 ? (totalDays - now.day) : 0)
+        : 0;
+
+    final projectedTotal = isCurrentMonth && workedDays > 0
+        ? fixedBaseNet + extraNet + (avgPerDay * remainingDays)
+        : fixedBaseNet + extraNet;
+
+    return _MonthlyLiveProjection(
+      baseNet: fixedBaseNet,
+      extraGross: extraGross,
+      extraNet: extraNet,
+      taxes: taxes,
+      workedDays: workedDays,
+      totalDays: totalDays,
+      avgPerDay: avgPerDay,
+      projectedTotal: projectedTotal,
+      isCurrentMonth: isCurrentMonth,
     );
   }
-
-  return predictionMap;
-}
-
-String _calendarKey(DateTime date) {
-  return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-}
-
-String? _nextSpmnPresetCode(String currentCode, DateTime nextServiceDate) {
-  switch (currentCode) {
-    case 'sera':
-      return 'pomeriggio';
-    case 'pomeriggio':
-      return 'mattina';
-    case 'mattina':
-      return 'notte';
-    case 'notte':
-      return 'riposo';
-    case 'riposo':
-      return nextServiceDate.weekday == DateTime.tuesday
-          ? 'aggiornamento'
-          : 'sera';
-    case 'aggiornamento':
-      return 'sera';
-    default:
-      return null;
-  }
-}
-
-String? _suggestedSpmnPresetCodeForDate(DateTime targetDate) {
-  if (widget.activeDepartment != Department.polfer &&
-    widget.activeDepartment != Department.questura &&
-    widget.activeDepartment != Department.polstrada) {
-  return null;
-}
-
-  final normalizedTarget = _normalizeDate(targetDate);
-
-  final previousSpmnShifts = shifts.where((shift) {
-    final code = shift.spmnPresetCode.trim().toLowerCase();
-    return code.isNotEmpty && shift.serviceDate.isBefore(normalizedTarget);
-  }).toList()
-    ..sort((a, b) => a.serviceDate.compareTo(b.serviceDate));
-
-  if (previousSpmnShifts.isEmpty) return null;
-
-  final anchor = previousSpmnShifts.last;
-  String? currentCode = anchor.spmnPresetCode.trim().toLowerCase();
-
-  if (currentCode.isEmpty) return null;
-
-  DateTime cursor = _normalizeDate(anchor.serviceDate);
-
-  while (cursor.isBefore(normalizedTarget)) {
-    final nextDay = cursor.add(const Duration(days: 1));
-    currentCode = _nextSpmnPresetCode(currentCode!, nextDay);
-    if (currentCode == null || currentCode.isEmpty) return null;
-    cursor = nextDay;
-  }
-
-  return currentCode;
-}
-
-List<MonthCalendarDayData> get calendarDays {
-  final firstDayOfMonth = DateTime(selectedMonth.year, selectedMonth.month, 1);
-  final startWeekday = firstDayOfMonth.weekday;
-  final gridStart = firstDayOfMonth.subtract(Duration(days: startWeekday - 1));
-
-  final now = DateTime.now();
-  final today = DateTime(now.year, now.month, now.day);
-
-  final predictedSpmnMap = _buildPredictedSpmnCalendarMap();
-
-  return List.generate(42, (index) {
-    final date = gridStart.add(Duration(days: index));
-    final isInCurrentMonth = date.month == selectedMonth.month;
-    final dayKey = _calendarKey(date);
-
-    return MonthCalendarDayData(
-      date: date,
-      isInCurrentMonth: isInCurrentMonth,
-      amount: isInCurrentMonth ? _dailyTotal(date) : 0.0,
-      isSelected: _isSameDay(date, selectedDay),
-      isToday: _isSameDay(date, today),
-      absenceBadge: isInCurrentMonth ? _absenceBadgeForDate(date) : null,
-      hasTicket: _hasTicketInDate(date),
-      hasConforto: _hasConfortoInDate(date),
-      hasConfortoCdg: _hasConfortoCdgInDate(date),
-      predictedSpmnLabel: isInCurrentMonth ? predictedSpmnMap[dayKey] : null,
-      hasWorkedShift: isInCurrentMonth ? _hasWorkedShiftInDate(date) : false,
-    );
-  });
-}
-
-PayslipProjectionResult get payslipProjection {
-  return _projectionService.projectPayslip(
-    payslipMonth: selectedPayslipMonth,
-    allShifts: shifts,
-    payProfile: payProfile,
-    department: widget.activeDepartment,
-    basketPayments: basketPayments,
-    overtimeBasketAdjustments: overtimeBasketAdjustments,
-    rfiBasketPayments: rfiBasketPayments,
-  );
-}
-
-PrecisionStatus get payslipPrecisionStatus {
-  return _projectionService.calculatePrecision(allShifts: shifts);
-}
-
-_MonthlyLiveProjection _buildMonthlyLiveProjection({
-  required DateTime month,
-  required double fixedBaseNet,
-}) {
-  final monthShifts = shifts.where((shift) {
-    return shift.serviceDate.year == month.year &&
-        shift.serviceDate.month == month.month;
-  }).toList();
-
-  final extraGross = monthShifts.fold<double>(
-    0.0,
-    (sum, shift) => sum + _salaryOnlyAmount(shift),
-  );
-
-  final effectiveTaxRate =
-      payProfile.effectiveTaxRate.isFinite && payProfile.effectiveTaxRate >= 0
-          ? payProfile.effectiveTaxRate.clamp(0.0, 0.45)
-          : 0.2625;
-
-  final extraNet = extraGross * (1 - effectiveTaxRate);
-  final taxes = extraGross - extraNet;
-
-  final uniqueWorkedDays = <String>{};
-  for (final shift in monthShifts) {
-    if (shift.hasAbsence) continue;
-    final day = shift.serviceDate;
-    final key =
-        '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
-    uniqueWorkedDays.add(key);
-  }
-
-  final workedDays = uniqueWorkedDays.length;
-  final totalDays = _daysInMonth(month);
-  final avgPerDay = workedDays > 0 ? extraNet / workedDays : 0.0;
-
-  final now = DateTime.now();
-  final currentMonth = DateTime(now.year, now.month);
-  final isCurrentMonth = _isSameMonth(month, currentMonth);
-
-  final remainingDays = isCurrentMonth
-      ? ((totalDays - now.day) > 0 ? (totalDays - now.day) : 0)
-      : 0;
-
-  final projectedTotal = isCurrentMonth && workedDays > 0
-      ? fixedBaseNet + extraNet + (avgPerDay * remainingDays)
-      : fixedBaseNet + extraNet;
-
-  return _MonthlyLiveProjection(
-    baseNet: fixedBaseNet,
-    extraGross: extraGross,
-    extraNet: extraNet,
-    taxes: taxes,
-    workedDays: workedDays,
-    totalDays: totalDays,
-    avgPerDay: avgPerDay,
-    projectedTotal: projectedTotal,
-    isCurrentMonth: isCurrentMonth,
-  );
-}
 
   void _goToPreviousMonth() {
     setState(() {
@@ -1696,6 +1695,7 @@ _MonthlyLiveProjection _buildMonthlyLiveProjection({
           initialDate: selectedDay,
           activeDepartment: widget.activeDepartment,
           initialSuggestedSpmnPresetCode: suggestedPresetCode,
+          existingShifts: List<Shift>.of(shifts),
         ),
       ),
     );
@@ -1708,7 +1708,8 @@ _MonthlyLiveProjection _buildMonthlyLiveProjection({
         shifts.sort((a, b) => b.start.compareTo(a.start));
         if (newShift.isNotEmpty) {
           final first = newShift.first;
-          selectedMonth = DateTime(first.serviceDate.year, first.serviceDate.month);
+          selectedMonth =
+              DateTime(first.serviceDate.year, first.serviceDate.month);
           selectedDay = _normalizeDate(first.serviceDate);
         }
       });
@@ -1725,6 +1726,7 @@ _MonthlyLiveProjection _buildMonthlyLiveProjection({
           rates: payProfile,
           initialShift: shifts[index],
           activeDepartment: widget.activeDepartment,
+          existingShifts: List<Shift>.of(shifts),
         ),
       ),
     );
@@ -1862,7 +1864,8 @@ _MonthlyLiveProjection _buildMonthlyLiveProjection({
 
     return 'Servizio: $serviceDay/$serviceMonth/$serviceYear • Start: $startDay/$startMonth/$startYear • $startHour:$startMinute';
   }
-    String _formatShiftTime(DateTime value) {
+
+  String _formatShiftTime(DateTime value) {
     final hh = value.hour.toString().padLeft(2, '0');
     final mm = value.minute.toString().padLeft(2, '0');
     return '$hh:$mm';
@@ -2083,7 +2086,7 @@ _MonthlyLiveProjection _buildMonthlyLiveProjection({
       ),
     );
   }
-  
+
   Widget _buildBreakdownRow(String label, double amount) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -2114,250 +2117,253 @@ _MonthlyLiveProjection _buildMonthlyLiveProjection({
   }
 
   Future<void> _openCompensativeBasketAdjustmentDialog() async {
-  final hoursController = TextEditingController();
-  final noteController = TextEditingController();
+    final hoursController = TextEditingController();
+    final noteController = TextEditingController();
 
-  bool isPositive = true;
+    bool isPositive = true;
 
-  await showDialog(
-    context: context,
-    builder: (dialogContext) {
-      return StatefulBuilder(
-        builder: (context, setModalState) {
-          return AlertDialog(
-            title: const Text(
-              'Correzione basket compensativo',
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: hoursController,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  decoration: const InputDecoration(
-                    labelText: 'Ore',
-                    hintText: 'Es. 2.0',
-                  ),
+    await showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return AlertDialog(
+              title: const Text(
+                'Correzione basket compensativo',
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
                 ),
-                const SizedBox(height: 14),
-                DropdownButtonFormField<bool>(
-                  initialValue: isPositive,
-                  decoration: const InputDecoration(
-                    labelText: 'Tipo correzione',
-                  ),
-                  items: const [
-                    DropdownMenuItem(
-                      value: true,
-                      child: Text('Aggiungi ore'),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: hoursController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
                     ),
-                    DropdownMenuItem(
-                      value: false,
-                      child: Text('Sottrai ore'),
+                    decoration: const InputDecoration(
+                      labelText: 'Ore',
+                      hintText: 'Es. 2.0',
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  DropdownButtonFormField<bool>(
+                    initialValue: isPositive,
+                    decoration: const InputDecoration(
+                      labelText: 'Tipo correzione',
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                        value: true,
+                        child: Text('Aggiungi ore'),
+                      ),
+                      DropdownMenuItem(
+                        value: false,
+                        child: Text('Sottrai ore'),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      if (value == null) return;
+
+                      setModalState(() {
+                        isPositive = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: noteController,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: 'Motivo della correzione',
+                      hintText: 'Nota obbligatoria',
+                    ),
+                  ),
+                  if (overtimeBasketAdjustments.isNotEmpty) ...[
+                    const SizedBox(height: 18),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Correzioni salvate',
+                        style: TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 220),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children:
+                              overtimeBasketAdjustments.reversed.map((item) {
+                            final sign = item.hours >= 0 ? '+' : '';
+                            final monthLabel =
+                                '${item.month.month.toString().padLeft(2, '0')}/${item.month.year}';
+
+                            return ListTile(
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                              title: Text(
+                                  '$sign${item.hours.toStringAsFixed(1)}h · $monthLabel'),
+                              subtitle: Text(item.note.isEmpty
+                                  ? 'Nessuna nota'
+                                  : item.note),
+                              trailing: IconButton(
+                                tooltip: 'Elimina correzione',
+                                icon: const Icon(Icons.delete_outline_rounded),
+                                onPressed: () async {
+                                  await _deleteOvertimeBasketAdjustment(
+                                      item.id);
+                                  setModalState(() {});
+                                },
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
                     ),
                   ],
-                  onChanged: (value) {
-                    if (value == null) return;
-
-                    setModalState(() {
-                      isPositive = value;
-                    });
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(dialogContext);
                   },
+                  child: const Text('Annulla'),
                 ),
-                const SizedBox(height: 14),
-                TextField(
-                  controller: noteController,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Motivo della correzione',
-                    hintText: 'Nota obbligatoria',
-                  ),
+                FilledButton(
+                  onPressed: () async {
+                    final parsedHours = double.tryParse(
+                          hoursController.text.replaceAll(',', '.'),
+                        ) ??
+                        0.0;
+
+                    final note = noteController.text.trim();
+
+                    if (parsedHours <= 0 || note.isEmpty) {
+                      return;
+                    }
+
+                    await _addCompensativeBasketAdjustment(
+                      hours: parsedHours,
+                      isPositive: isPositive,
+                      note: note,
+                      movementDate: DateTime.now(),
+                    );
+
+                    if (!dialogContext.mounted) return;
+
+                    Navigator.pop(dialogContext);
+                  },
+                  child: const Text('Salva'),
                 ),
-                if (overtimeBasketAdjustments.isNotEmpty) ...[
-                  const SizedBox(height: 18),
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Correzioni salvate',
-                      style: TextStyle(fontWeight: FontWeight.w800),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _openOvertimeBasketAdjustmentDialog() async {
+    final hoursController = TextEditingController();
+    final noteController = TextEditingController();
+
+    bool isPositive = false;
+
+    await showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return AlertDialog(
+              title: const Text(
+                'Correzione basket straordinari',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: hoursController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: const InputDecoration(
+                      labelText: 'Ore',
+                      hintText: 'Es. 34.0',
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 220),
-                    child: SingleChildScrollView(
-                      child: Column(
-                        children: overtimeBasketAdjustments.reversed.map((item) {
-                          final sign = item.hours >= 0 ? '+' : '';
-                          final monthLabel =
-                              '${item.month.month.toString().padLeft(2, '0')}/${item.month.year}';
-
-                          return ListTile(
-                            dense: true,
-                            contentPadding: EdgeInsets.zero,
-                            title: Text('$sign${item.hours.toStringAsFixed(1)}h · $monthLabel'),
-                            subtitle: Text(item.note.isEmpty ? 'Nessuna nota' : item.note),
-                            trailing: IconButton(
-                              tooltip: 'Elimina correzione',
-                              icon: const Icon(Icons.delete_outline_rounded),
-                              onPressed: () async {
-                                await _deleteOvertimeBasketAdjustment(item.id);
-                                setModalState(() {});
-                              },
-                            ),
-                          );
-                        }).toList(),
+                  const SizedBox(height: 14),
+                  DropdownButtonFormField<bool>(
+                    initialValue: isPositive,
+                    decoration: const InputDecoration(
+                      labelText: 'Tipo correzione',
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                        value: true,
+                        child: Text('Aggiungi ore'),
                       ),
+                      DropdownMenuItem(
+                        value: false,
+                        child: Text('Sottrai ore'),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setModalState(() {
+                        isPositive = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: noteController,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: 'Motivo della correzione',
+                      hintText: 'Nota obbligatoria',
                     ),
                   ),
                 ],
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(dialogContext);
-                },
-                child: const Text('Annulla'),
               ),
-              FilledButton(
-                onPressed: () async {
-                  final parsedHours =
-                      double.tryParse(
-                        hoursController.text.replaceAll(',', '.'),
-                      ) ??
-                      0.0;
-
-                  final note = noteController.text.trim();
-
-                  if (parsedHours <= 0 || note.isEmpty) {
-                    return;
-                  }
-
-                  await _addCompensativeBasketAdjustment(
-                    hours: parsedHours,
-                    isPositive: isPositive,
-                    note: note,
-                    movementDate: DateTime.now(),
-                  );
-
-                  if (!dialogContext.mounted) return;
-
-                  Navigator.pop(dialogContext);
-                },
-                child: const Text('Salva'),
-              ),
-            ],
-          );
-        },
-      );
-    },
-  );
-}
-
-Future<void> _openOvertimeBasketAdjustmentDialog() async {
-  final hoursController = TextEditingController();
-  final noteController = TextEditingController();
-
-  bool isPositive = false;
-
-  await showDialog(
-    context: context,
-    builder: (dialogContext) {
-      return StatefulBuilder(
-        builder: (context, setModalState) {
-          return AlertDialog(
-            title: const Text(
-              'Correzione basket straordinari',
-              style: TextStyle(fontWeight: FontWeight.w800),
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: hoursController,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  decoration: const InputDecoration(
-                    labelText: 'Ore',
-                    hintText: 'Es. 34.0',
-                  ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Annulla'),
                 ),
-                const SizedBox(height: 14),
-                DropdownButtonFormField<bool>(
-                  initialValue: isPositive,
-                  decoration: const InputDecoration(
-                    labelText: 'Tipo correzione',
-                  ),
-                  items: const [
-                    DropdownMenuItem(
-                      value: true,
-                      child: Text('Aggiungi ore'),
-                    ),
-                    DropdownMenuItem(
-                      value: false,
-                      child: Text('Sottrai ore'),
-                    ),
-                  ],
-                  onChanged: (value) {
-                    if (value == null) return;
-                    setModalState(() {
-                      isPositive = value;
-                    });
+                FilledButton(
+                  onPressed: () async {
+                    final parsedHours = double.tryParse(
+                          hoursController.text.replaceAll(',', '.'),
+                        ) ??
+                        0.0;
+
+                    final note = noteController.text.trim();
+
+                    if (parsedHours <= 0 || note.isEmpty) return;
+
+                    await _addOvertimeBasketAdjustment(
+                      hours: parsedHours,
+                      isPositive: isPositive,
+                      note: note,
+                      movementDate: DateTime.now(),
+                    );
+
+                    if (!dialogContext.mounted) return;
+                    Navigator.pop(dialogContext);
                   },
-                ),
-                const SizedBox(height: 14),
-                TextField(
-                  controller: noteController,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Motivo della correzione',
-                    hintText: 'Nota obbligatoria',
-                  ),
+                  child: const Text('Salva'),
                 ),
               ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Annulla'),
-              ),
-              FilledButton(
-                onPressed: () async {
-                  final parsedHours = double.tryParse(
-                        hoursController.text.replaceAll(',', '.'),
-                      ) ??
-                      0.0;
-
-                  final note = noteController.text.trim();
-
-                  if (parsedHours <= 0 || note.isEmpty) return;
-
-                  await _addOvertimeBasketAdjustment(
-                    hours: parsedHours,
-                    isPositive: isPositive,
-                    note: note,
-                    movementDate: DateTime.now(),
-                  );
-
-                  if (!dialogContext.mounted) return;
-                  Navigator.pop(dialogContext);
-                },
-                child: const Text('Salva'),
-              ),
-            ],
-          );
-        },
-      );
-    },
-  );
-}
+            );
+          },
+        );
+      },
+    );
+  }
 
   Widget _buildShiftCard(
     Shift shift, {
@@ -2455,7 +2461,8 @@ Future<void> _openOvertimeBasketAdjustmentDialog() async {
                   onPressed: confirmDelete,
                   tooltip: 'Elimina turno',
                   style: IconButton.styleFrom(
-                    backgroundColor: DutyPayPalette.danger.withValues(alpha: 0.10),
+                    backgroundColor:
+                        DutyPayPalette.danger.withValues(alpha: 0.10),
                     side: BorderSide(
                       color: DutyPayPalette.danger.withValues(alpha: 0.28),
                     ),
@@ -2493,7 +2500,7 @@ Future<void> _openOvertimeBasketAdjustmentDialog() async {
               ],
             ),
             const SizedBox(height: 10),
-                        Text(
+            Text(
               _buildShiftTimeRangeLabel(shift),
               style: const TextStyle(
                 fontSize: 13.2,
@@ -2563,7 +2570,7 @@ Future<void> _openOvertimeBasketAdjustmentDialog() async {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                                        const Text(
+                    const Text(
                       'Dettaglio servizio',
                       style: TextStyle(
                         fontSize: 13,
@@ -2583,7 +2590,8 @@ Future<void> _openOvertimeBasketAdjustmentDialog() async {
                     const SizedBox(height: 10),
                     ...breakdown.map((item) {
                       final label = item['label'] as String;
-                      final amount = (item['amount'] as num?)?.toDouble() ?? 0.0;
+                      final amount =
+                          (item['amount'] as num?)?.toDouble() ?? 0.0;
                       return _buildBreakdownRow(label, amount);
                     }),
                   ],
@@ -2599,311 +2607,313 @@ Future<void> _openOvertimeBasketAdjustmentDialog() async {
   }
 
   Future<void> _addCompensativeBasketAdjustment({
-  required double hours,
-  required bool isPositive,
-  required String note,
-  required DateTime movementDate,
-}) async {
-  final updated =
-      _manageCompensativeBasketAdjustmentsUseCase.addAdjustment(
-    movements: manualCompensativeBasketMovements,
-    hours: hours,
-    isPositive: isPositive,
-    note: note,
-    movementDate: movementDate,
-  );
+    required double hours,
+    required bool isPositive,
+    required String note,
+    required DateTime movementDate,
+  }) async {
+    final updated = _manageCompensativeBasketAdjustmentsUseCase.addAdjustment(
+      movements: manualCompensativeBasketMovements,
+      hours: hours,
+      isPositive: isPositive,
+      note: note,
+      movementDate: movementDate,
+    );
 
-  if (updated.length == manualCompensativeBasketMovements.length) {
-    return;
+    if (updated.length == manualCompensativeBasketMovements.length) {
+      return;
+    }
+
+    setState(() {
+      manualCompensativeBasketMovements
+        ..clear()
+        ..addAll(updated);
+    });
+
+    await _saveCompensativeBasketMovements();
   }
 
-  setState(() {
-    manualCompensativeBasketMovements
-      ..clear()
-      ..addAll(updated);
-  });
+  Future<void> _addOvertimeBasketAdjustment({
+    required double hours,
+    required bool isPositive,
+    required String note,
+    required DateTime movementDate,
+  }) async {
+    final trimmedNote = note.trim();
+    if (hours <= 0 || trimmedNote.isEmpty) return;
 
-  await _saveCompensativeBasketMovements();
-}
+    final signedHours = isPositive ? hours : -hours;
 
-Future<void> _addOvertimeBasketAdjustment({
-  required double hours,
-  required bool isPositive,
-  required String note,
-  required DateTime movementDate,
-}) async {
-  final trimmedNote = note.trim();
-  if (hours <= 0 || trimmedNote.isEmpty) return;
+    final adjustment = OvertimeBasketAdjustment(
+      id: 'overtime_adjustment_${movementDate.toIso8601String()}_${overtimeBasketAdjustments.length}',
+      month: DateTime(movementDate.year, movementDate.month),
+      hours: signedHours,
+      note: trimmedNote,
+      createdAt: movementDate,
+    );
 
-  final signedHours = isPositive ? hours : -hours;
+    setState(() {
+      overtimeBasketAdjustments.add(adjustment);
+      overtimeBasketAdjustments
+          .sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    });
 
-  final adjustment = OvertimeBasketAdjustment(
-    id: 'overtime_adjustment_${movementDate.toIso8601String()}_${overtimeBasketAdjustments.length}',
-    month: DateTime(movementDate.year, movementDate.month),
-    hours: signedHours,
-    note: trimmedNote,
-    createdAt: movementDate,
-  );
+    await _saveOvertimeBasketAdjustments();
+  }
 
-  setState(() {
-    overtimeBasketAdjustments.add(adjustment);
-    overtimeBasketAdjustments.sort((a, b) => a.createdAt.compareTo(b.createdAt));
-  });
+  Future<void> _deleteOvertimeBasketAdjustment(String adjustmentId) async {
+    setState(() {
+      overtimeBasketAdjustments.removeWhere((item) => item.id == adjustmentId);
+    });
 
-  await _saveOvertimeBasketAdjustments();
-}
+    await _saveOvertimeBasketAdjustments();
+  }
 
-Future<void> _deleteOvertimeBasketAdjustment(String adjustmentId) async {
-  setState(() {
-    overtimeBasketAdjustments.removeWhere((item) => item.id == adjustmentId);
-  });
+  Future<void> _deleteCompensativeBasketAdjustment(String movementId) async {
+    final updated =
+        _manageCompensativeBasketAdjustmentsUseCase.deleteAdjustment(
+      movements: manualCompensativeBasketMovements,
+      movementId: movementId,
+    );
 
-  await _saveOvertimeBasketAdjustments();
-}
+    setState(() {
+      manualCompensativeBasketMovements
+        ..clear()
+        ..addAll(updated);
+    });
 
-Future<void> _deleteCompensativeBasketAdjustment(String movementId) async {
-  final updated =
-      _manageCompensativeBasketAdjustmentsUseCase.deleteAdjustment(
-    movements: manualCompensativeBasketMovements,
-    movementId: movementId,
-  );
-
-  setState(() {
-    manualCompensativeBasketMovements
-      ..clear()
-      ..addAll(updated);
-  });
-
-  await _saveCompensativeBasketMovements();
-}
+    await _saveCompensativeBasketMovements();
+  }
 
   Widget _buildTurnsHeader() {
-  return Container(
-    padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-    decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(30),
-      gradient: const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          Color(0xFF1A2030),
-          Color(0xFF111723),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(30),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF1A2030),
+            Color(0xFF111723),
+          ],
+        ),
+        border: Border.all(
+          color: const Color(0xFF2B364C),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.24),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
+          ),
         ],
       ),
-      border: Border.all(
-        color: const Color(0xFF2B364C),
-        width: 1.2,
-      ),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.24),
-          blurRadius: 24,
-          offset: const Offset(0, 12),
-        ),
-      ],
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Bentornato, ${widget.userName}',
-          style: const TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.w900,
-            letterSpacing: -0.8,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Reparto attivo: ${_activeDepartmentLabel()}',
-          style: const TextStyle(
-            fontSize: 14.5,
-            color: DutyPayPalette.info,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'Inserisci i turni, controlla il calendario e capisci subito quanto stai accumulando.',
-          style: TextStyle(
-            fontSize: 14.5,
-            color: DutyPayPalette.textSecondary,
-            height: 1.5,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 18),
-        Row(
-          children: [
-            Expanded(
-              child: _statTile(
-                label: 'Oggi',
-                value: _formatCurrency(selectedDayGross),
-                valueColor: DutyPayPalette.primary,
-                icon: Icons.today_rounded,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _statTile(
-                label: 'Settimana',
-                value: _formatCurrency(weekTotalGross),
-                valueColor: DutyPayPalette.info,
-                icon: Icons.date_range_rounded,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: _statTile(
-                label: 'Giorni lavorati',
-                value: workedDaysCount.toString(),
-                icon: Icons.calendar_month_rounded,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _statTile(
-                label: 'Media giornaliera',
-                value: _formatCurrency(averagePerWorkedDayGross),
-                valueColor: DutyPayPalette.warning,
-                icon: Icons.analytics_outlined,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        Container(
-  padding: const EdgeInsets.all(14),
-  decoration: BoxDecoration(
-    color: DutyPayPalette.primary.withValues(alpha: 0.09),
-    borderRadius: BorderRadius.circular(18),
-    border: Border.all(
-      color: DutyPayPalette.primary.withValues(alpha: 0.22),
-    ),
-  ),
-  child: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const Text(
-        'Netto stimato',
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w700,
-          color: DutyPayPalette.primary,
-        ),
-      ),
-      const SizedBox(height: 12),
-      Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: _statTile(
-              label: 'Giornaliero',
-              value: _formatCurrency(selectedDayNet),
-              valueColor: DutyPayPalette.primary,
-              icon: Icons.today_rounded,
+          Text(
+            'Bentornato, ${widget.userName}',
+            style: const TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.8,
             ),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _statTile(
-              label: 'Mensile',
-              value: _formatCurrency(totalMonthNet),
-              valueColor: DutyPayPalette.primary,
-              icon: Icons.account_balance_wallet_rounded,
+          const SizedBox(height: 8),
+          Text(
+            'Reparto attivo: ${_activeDepartmentLabel()}',
+            style: const TextStyle(
+              fontSize: 14.5,
+              color: DutyPayPalette.info,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Inserisci i turni, controlla il calendario e capisci subito quanto stai accumulando.',
+            style: TextStyle(
+              fontSize: 14.5,
+              color: DutyPayPalette.textSecondary,
+              height: 1.5,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: _statTile(
+                  label: 'Oggi',
+                  value: _formatCurrency(selectedDayGross),
+                  valueColor: DutyPayPalette.primary,
+                  icon: Icons.today_rounded,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _statTile(
+                  label: 'Settimana',
+                  value: _formatCurrency(weekTotalGross),
+                  valueColor: DutyPayPalette.info,
+                  icon: Icons.date_range_rounded,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _statTile(
+                  label: 'Giorni lavorati',
+                  value: workedDaysCount.toString(),
+                  icon: Icons.calendar_month_rounded,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _statTile(
+                  label: 'Media giornaliera',
+                  value: _formatCurrency(averagePerWorkedDayGross),
+                  valueColor: DutyPayPalette.warning,
+                  icon: Icons.analytics_outlined,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: DutyPayPalette.primary.withValues(alpha: 0.09),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: DutyPayPalette.primary.withValues(alpha: 0.22),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Netto stimato',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: DutyPayPalette.primary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _statTile(
+                        label: 'Giornaliero',
+                        value: _formatCurrency(selectedDayNet),
+                        valueColor: DutyPayPalette.primary,
+                        icon: Icons.today_rounded,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _statTile(
+                        label: 'Mensile',
+                        value: _formatCurrency(totalMonthNet),
+                        valueColor: DutyPayPalette.primary,
+                        icon: Icons.account_balance_wallet_rounded,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    try {
+                      await DataBackupService.exportData(
+                        departmentId: _storageScope,
+                        shifts: shifts,
+                        profile: payProfile,
+                        basketPayments: basketPayments,
+                        rfiBasketPayments: rfiBasketPayments,
+                        overtimeBasketAdjustments: overtimeBasketAdjustments,
+                        compensativeBasketMovements:
+                            manualCompensativeBasketMovements,
+                      );
+
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Backup esportato con successo'),
+                        ),
+                      );
+                    } catch (e) {
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Errore export: $e')),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.download_rounded),
+                  label: const Text('Esporta dati'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    try {
+                      await DataBackupService.importData(
+                        shiftsStorageKey: shiftsStorageKey,
+                        payProfileStorageKey: payProfileStorageKey,
+                        basketPaymentsStorageKey: basketPaymentsStorageKey,
+                        rfiBasketPaymentsStorageKey:
+                            rfiBasketPaymentsStorageKey,
+                        overtimeBasketAdjustmentsStorageKey:
+                            overtimeBasketAdjustmentsStorageKey,
+                        compensativeBasketMovementsStorageKey:
+                            compensativeBasketMovementsStorageKey,
+                      );
+                      await loadData();
+
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Backup importato con successo'),
+                        ),
+                      );
+                    } catch (e) {
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Errore import: $e')),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.upload_file_rounded),
+                  label: const Text('Importa dati'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _confirmAndClearAllData,
+              icon: const Icon(Icons.delete_outline_rounded),
+              label: const Text('Cancella tutti i dati'),
             ),
           ),
         ],
       ),
-    ],
-  ),
-),
-        const SizedBox(height: 14),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () async {
-                  try {
-                    await DataBackupService.exportData(
-  departmentId: _storageScope,
-  shifts: shifts,
-  profile: payProfile,
-  basketPayments: basketPayments,
-  rfiBasketPayments: rfiBasketPayments,
-  overtimeBasketAdjustments: overtimeBasketAdjustments,
-  compensativeBasketMovements: manualCompensativeBasketMovements,
-);
-
-                    if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Backup esportato con successo'),
-                      ),
-                    );
-                  } catch (e) {
-                    if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Errore export: $e')),
-                    );
-                  }
-                },
-                icon: const Icon(Icons.download_rounded),
-                label: const Text('Esporta dati'),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () async {
-                  try {
-                    await DataBackupService.importData(
-  shiftsStorageKey: shiftsStorageKey,
-  payProfileStorageKey: payProfileStorageKey,
-  basketPaymentsStorageKey: basketPaymentsStorageKey,
-  rfiBasketPaymentsStorageKey: rfiBasketPaymentsStorageKey,
-  overtimeBasketAdjustmentsStorageKey:
-      overtimeBasketAdjustmentsStorageKey,
-  compensativeBasketMovementsStorageKey:
-      compensativeBasketMovementsStorageKey,
-);
-                    await loadData();
-
-                    if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Backup importato con successo'),
-                      ),
-                    );
-                  } catch (e) {
-                    if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Errore import: $e')),
-                    );
-                  }
-                },
-                icon: const Icon(Icons.upload_file_rounded),
-                label: const Text('Importa dati'),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-SizedBox(
-  width: double.infinity,
-  child: OutlinedButton.icon(
-    onPressed: _confirmAndClearAllData,
-    icon: const Icon(Icons.delete_outline_rounded),
-    label: const Text('Cancella tutti i dati'),
-  ),
-),
-      ],
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildCalendarHeader() {
     return Row(
@@ -2957,7 +2967,7 @@ SizedBox(
     );
   }
 
-    Widget _buildSelectedDaySection() {
+  Widget _buildSelectedDaySection() {
     final dayResult = _buildDailyShiftResultForDate(selectedDay);
     final dayComputations = dayResult.computations;
     final selectedDayTotal = _totalPayableFromDailyResult(dayResult);
@@ -3107,99 +3117,103 @@ SizedBox(
                 ),
               ),
               if (searchQuery.trim().isNotEmpty) ...[
-  const SizedBox(height: 14),
-  Container(
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: DutyPayPalette.card,
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: DutyPayPalette.cardBorder),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Risultati ricerca ${DateTime.now().year}',
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        const SizedBox(height: 12),
-        if (yearlySearchResults.isEmpty)
-          const Text(
-            'Nessun risultato trovato nell’anno in corso.',
-            style: TextStyle(
-              color: DutyPayPalette.textSecondary,
-              fontSize: 13.5,
-              fontWeight: FontWeight.w600,
-            ),
-          )
-        else
-          ...yearlySearchResults.map(
-            (shift) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: InkWell(
-                onTap: () {
-                  setState(() {
-                    selectedMonth = DateTime(
-                      shift.serviceDate.year,
-                      shift.serviceDate.month,
-                    );
-                    selectedDay = _normalizeDate(shift.serviceDate);
-                  });
-                },
-                borderRadius: BorderRadius.circular(14),
-                child: Container(
-                  padding: const EdgeInsets.all(12),
+                const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: DutyPayPalette.surface,
-                    borderRadius: BorderRadius.circular(14),
+                    color: DutyPayPalette.card,
+                    borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: DutyPayPalette.cardBorder),
                   ),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              shift.description.isEmpty
-                                  ? 'Turno senza descrizione'
-                                  : shift.description,
-                              style: const TextStyle(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _formatShiftDate(shift),
-                              style: const TextStyle(
-                                fontSize: 12.5,
-                                color: DutyPayPalette.textSecondary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
+                      Text(
+                        'Risultati ricerca ${DateTime.now().year}',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
-                      const SizedBox(width: 10),
-                      const Icon(
-                        Icons.arrow_forward_ios_rounded,
-                        size: 14,
-                        color: DutyPayPalette.textSecondary,
-                      ),
+                      const SizedBox(height: 12),
+                      if (yearlySearchResults.isEmpty)
+                        const Text(
+                          'Nessun risultato trovato nell’anno in corso.',
+                          style: TextStyle(
+                            color: DutyPayPalette.textSecondary,
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        )
+                      else
+                        ...yearlySearchResults.map(
+                          (shift) => Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: InkWell(
+                              onTap: () {
+                                setState(() {
+                                  selectedMonth = DateTime(
+                                    shift.serviceDate.year,
+                                    shift.serviceDate.month,
+                                  );
+                                  selectedDay =
+                                      _normalizeDate(shift.serviceDate);
+                                });
+                              },
+                              borderRadius: BorderRadius.circular(14),
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: DutyPayPalette.surface,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                      color: DutyPayPalette.cardBorder),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            shift.description.isEmpty
+                                                ? 'Turno senza descrizione'
+                                                : shift.description,
+                                            style: const TextStyle(
+                                              fontSize: 13.5,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            _formatShiftDate(shift),
+                                            style: const TextStyle(
+                                              fontSize: 12.5,
+                                              color:
+                                                  DutyPayPalette.textSecondary,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    const Icon(
+                                      Icons.arrow_forward_ios_rounded,
+                                      size: 14,
+                                      color: DutyPayPalette.textSecondary,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
-              ),
-            ),
-          ),
-      ],
-    ),
-  ),
-],
+              ],
               const SizedBox(height: 18),
               _buildCalendarHeader(),
               const SizedBox(height: 12),
@@ -3267,27 +3281,25 @@ SizedBox(
     );
 
     return PayslipPage(
-  projection: projection,
-  selectedMonth: selectedPayslipMonth,
-  onOpenCalibration: openCalibratePayslips,
-  basketPayments: basketPayments,
-  onDeleteBasketPayment: deleteBasketPayment,
-  onAddBasketPayment: addBasketPayment,
-  onAddOvertimeBasketAdjustment: _openOvertimeBasketAdjustmentDialog,
-  onAddRfiBasketPayment:
-      widget.activeDepartment == Department.polfer
+      projection: projection,
+      selectedMonth: selectedPayslipMonth,
+      onOpenCalibration: openCalibratePayslips,
+      basketPayments: basketPayments,
+      onDeleteBasketPayment: deleteBasketPayment,
+      onAddBasketPayment: addBasketPayment,
+      onAddOvertimeBasketAdjustment: _openOvertimeBasketAdjustmentDialog,
+      onAddRfiBasketPayment: widget.activeDepartment == Department.polfer
           ? addRfiBasketPayment
           : null,
-  precision: payslipPrecisionStatus,
-  compensativeBasketEarnedHours: compensativeBasketEarnedHours,
-  compensativeBasketRecoveredHours: compensativeBasketRecoveredHours,
-  compensativeBasketResidualHours: compensativeBasketResidualHours,
-  compensativeBasketMovements: compensativeBasketMovements,
-  onAddCompensativeBasketAdjustment:
-      _openCompensativeBasketAdjustmentDialog,
-  onDeleteCompensativeBasketAdjustment:
-      _deleteCompensativeBasketAdjustment,
-);
+      precision: payslipPrecisionStatus,
+      compensativeBasketEarnedHours: compensativeBasketEarnedHours,
+      compensativeBasketRecoveredHours: compensativeBasketRecoveredHours,
+      compensativeBasketResidualHours: compensativeBasketResidualHours,
+      compensativeBasketMovements: compensativeBasketMovements,
+      onAddCompensativeBasketAdjustment:
+          _openCompensativeBasketAdjustmentDialog,
+      onDeleteCompensativeBasketAdjustment: _deleteCompensativeBasketAdjustment,
+    );
   }
 
   @override

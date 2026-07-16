@@ -76,7 +76,8 @@ void main() {
       expect(restored.deviceId, participant.deviceId);
     });
 
-    test('BreakRoomStatus parser supports known values and falls back safely', () {
+    test('BreakRoomStatus parser supports known values and falls back safely',
+        () {
       expect(
         BreakRoomStatus.fromValue('waiting'),
         BreakRoomStatus.waiting,

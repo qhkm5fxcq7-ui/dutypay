@@ -65,7 +65,8 @@ void main() {
     });
 
     test('evening 17-23 has ordinary night but no overtime', () {
-      final shift = CanonicalShiftScenarios.rmEveningSixHoursWithOrdinaryNight();
+      final shift =
+          CanonicalShiftScenarios.rmEveningSixHoursWithOrdinaryNight();
 
       final result = useCase.execute(
         shifts: [shift],

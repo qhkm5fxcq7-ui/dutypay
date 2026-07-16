@@ -50,7 +50,8 @@ Totale 0,00
     final profile = parser.buildDynamicProfile([parsed]);
 
     return UserPayProfile(
-      monthlyOvertimePayableHoursLimit: profile.monthlyOvertimePayableHoursLimit,
+      monthlyOvertimePayableHoursLimit:
+          profile.monthlyOvertimePayableHoursLimit,
       rank: profile.rank,
       overtimeDayRate: 13.50,
       overtimeNightOrHolidayRate: 18.00,
@@ -99,11 +100,13 @@ Totale 0,00
   }
 
   group('Payslip Polfer gross pipeline', () {
-    test('ordinary accessories stay gross, benefits stay out, RFI stays separate', () {
+    test(
+        'ordinary accessories stay gross, benefits stay out, RFI stays separate',
+        () {
       final profile = buildProfile();
       final shifts = buildShifts();
 
-            final result = service.projectPayslip(
+      final result = service.projectPayslip(
         payslipMonth: DateTime(2026, 5, 1),
         allShifts: shifts,
         payProfile: profile,
@@ -117,7 +120,8 @@ Totale 0,00
       expect(result.accessoriesNetEstimated, greaterThanOrEqualTo(0));
 
       expect(
-        result.accessoriesGrossUsedForEstimate >= result.accessoriesNetEstimated,
+        result.accessoriesGrossUsedForEstimate >=
+            result.accessoriesNetEstimated,
         isTrue,
       );
 

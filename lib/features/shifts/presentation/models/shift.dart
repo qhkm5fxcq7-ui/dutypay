@@ -224,12 +224,12 @@ class Shift {
 
     final resolvedServiceDate = _normalizeDate(
       serviceDate ??
-    _deriveServiceDate(
-      resolvedStart,
-      resolvedEnd,
-      spmnPresetCode: spmnPresetCode,
-      questuraPreset: questuraPreset,
-    ),
+          _deriveServiceDate(
+            resolvedStart,
+            resolvedEnd,
+            spmnPresetCode: spmnPresetCode,
+            questuraPreset: questuraPreset,
+          ),
     );
 
     final resolvedOrderPublic = _normalizeOrderPublic(
@@ -421,13 +421,11 @@ class Shift {
       ticketPasto: ticketPasto ?? this.ticketPasto,
       hasCompensazione: hasCompensazione ?? this.hasCompensazione,
       hasReperibilita: hasReperibilita ?? this.hasReperibilita,
-      hasAutostradaService:
-    hasAutostradaService ?? this.hasAutostradaService,
+      hasAutostradaService: hasAutostradaService ?? this.hasAutostradaService,
       straordinarioDiurnoHours:
           straordinarioDiurnoHours ?? this.straordinarioDiurnoHours,
-      straordinarioNotturnoFestivoHours:
-          straordinarioNotturnoFestivoHours ??
-              this.straordinarioNotturnoFestivoHours,
+      straordinarioNotturnoFestivoHours: straordinarioNotturnoFestivoHours ??
+          this.straordinarioNotturnoFestivoHours,
       notturnoCount: notturnoCount ?? this.notturnoCount,
       festivoCount: festivoCount ?? this.festivoCount,
       servizioEsternoCount: servizioEsternoCount ?? this.servizioEsternoCount,
@@ -460,8 +458,8 @@ class Shift {
           compensativeOvertimeHours ?? this.compensativeOvertimeHours,
       compensativeOvertimeNote:
           compensativeOvertimeNote ?? this.compensativeOvertimeNote,
-          compensativeRecoveryHours:
-    compensativeRecoveryHours ?? this.compensativeRecoveryHours,
+      compensativeRecoveryHours:
+          compensativeRecoveryHours ?? this.compensativeRecoveryHours,
       programmedOvertimeEnabled:
           programmedOvertimeEnabled ?? this.programmedOvertimeEnabled,
       programmedOvertimeStart:
@@ -472,7 +470,8 @@ class Shift {
           programmedOvertimeNote ?? this.programmedOvertimeNote,
       ordinaryHoursOverrideEnabled:
           ordinaryHoursOverrideEnabled ?? this.ordinaryHoursOverrideEnabled,
-      ordinaryHoursOverride: ordinaryHoursOverride ?? this.ordinaryHoursOverride,
+      ordinaryHoursOverride:
+          ordinaryHoursOverride ?? this.ordinaryHoursOverride,
       ordinaryHoursOverrideNote:
           ordinaryHoursOverrideNote ?? this.ordinaryHoursOverrideNote,
     );
@@ -998,30 +997,30 @@ class Shift {
   }
 
   double getPolferTerritoryControlAmount([UserPayProfile? profile]) {
-  if (polferTerritoryControlType == PolferTerritoryControlType.none) {
-    return 0.0;
-  }
+    if (polferTerritoryControlType == PolferTerritoryControlType.none) {
+      return 0.0;
+    }
 
-  if (questuraMode == QuesturaMode.volanti) {
+    if (questuraMode == QuesturaMode.volanti) {
+      switch (polferTerritoryControlType) {
+        case PolferTerritoryControlType.serale:
+          return 5.0;
+        case PolferTerritoryControlType.notturno:
+          return 10.0;
+        case PolferTerritoryControlType.none:
+          return 0.0;
+      }
+    }
+
     switch (polferTerritoryControlType) {
       case PolferTerritoryControlType.serale:
-        return 5.0;
+        return 5.00;
       case PolferTerritoryControlType.notturno:
-        return 10.0;
+        return 10.00;
       case PolferTerritoryControlType.none:
         return 0.0;
     }
   }
-
-  switch (polferTerritoryControlType) {
-    case PolferTerritoryControlType.serale:
-      return 5.00;
-    case PolferTerritoryControlType.notturno:
-      return 10.00;
-    case PolferTerritoryControlType.none:
-      return 0.0;
-  }
-}
 
   String get polferTerritoryControlLabel {
     switch (polferTerritoryControlType) {
@@ -1304,7 +1303,8 @@ class Shift {
       }
 
       if (comfortCdgAmount > 0) {
-        items.add({'label': 'Genere di conforto CDG', 'amount': comfortCdgAmount});
+        items.add(
+            {'label': 'Genere di conforto CDG', 'amount': comfortCdgAmount});
       }
 
       if (comfortAmount > 0) {
@@ -1390,7 +1390,8 @@ class Shift {
     }
 
     if (festiveAmount > 0) {
-      items.add({'label': 'Indennità servizio festivo', 'amount': festiveAmount});
+      items.add(
+          {'label': 'Indennità servizio festivo', 'amount': festiveAmount});
     }
 
     if (specialHolidayAmount > 0) {
@@ -1408,7 +1409,10 @@ class Shift {
     }
 
     if (territoryControlAmount > 0) {
-      items.add({'label': polferTerritoryControlLabel, 'amount': territoryControlAmount});
+      items.add({
+        'label': polferTerritoryControlLabel,
+        'amount': territoryControlAmount
+      });
     }
 
     if (ordinaryNightShiftAmount > 0) {
@@ -1419,7 +1423,8 @@ class Shift {
     }
 
     if (comfortCdgAmount > 0) {
-      items.add({'label': 'Genere di conforto CDG', 'amount': comfortCdgAmount});
+      items
+          .add({'label': 'Genere di conforto CDG', 'amount': comfortCdgAmount});
     }
 
     if (comfortAmount > 0) {
@@ -1572,15 +1577,15 @@ class Shift {
     final parsedServiceDate = json['serviceDate'] != null
         ? _normalizeDate(DateTime.parse(json['serviceDate'] as String))
         : _normalizeDate(
-    _deriveServiceDate(
-      parsedStart,
-      parsedEnd,
-      spmnPresetCode: json['spmnPresetCode'] as String? ?? '',
-      questuraPreset: _parseQuesturaPreset(
-        json['questuraPreset']?.toString(),
-      ),
-    ),
-  );
+            _deriveServiceDate(
+              parsedStart,
+              parsedEnd,
+              spmnPresetCode: json['spmnPresetCode'] as String? ?? '',
+              questuraPreset: _parseQuesturaPreset(
+                json['questuraPreset']?.toString(),
+              ),
+            ),
+          );
 
     return Shift._internal(
       description: json['description'] as String? ?? '',
@@ -1594,8 +1599,8 @@ class Shift {
               json['opServiceType']?.toString(),
             ),
           ),
-      externalService:
-          json['externalService'] as bool? ?? (_toInt(json['servizioEsternoCount']) > 0),
+      externalService: json['externalService'] as bool? ??
+          (_toInt(json['servizioEsternoCount']) > 0),
       absence: json['absence'] as String? ?? 'Nessuna',
       manualExtraAmount: _toDouble(json['manualExtraAmount']),
       manualExtraLabel: json['manualExtraLabel'] as String? ?? '',
@@ -1606,8 +1611,7 @@ class Shift {
       ticketPasto: json['ticketPasto'] as bool? ?? false,
       hasCompensazione: json['hasCompensazione'] as bool? ?? false,
       hasReperibilita: json['hasReperibilita'] as bool? ?? false,
-      hasAutostradaService:
-    json['hasAutostradaService'] as bool? ?? false,
+      hasAutostradaService: json['hasAutostradaService'] as bool? ?? false,
       straordinarioDiurnoHours: _toDouble(json['straordinarioDiurnoHours']),
       straordinarioNotturnoFestivoHours:
           _toDouble(json['straordinarioNotturnoFestivoHours']),
@@ -1634,22 +1638,18 @@ class Shift {
       ),
       polferScaloManualOverride:
           json['polferScaloManualOverride'] as bool? ?? false,
-      polferScaloReducedDayHours:
-          _toDouble(json['polferScaloReducedDayHours']),
+      polferScaloReducedDayHours: _toDouble(json['polferScaloReducedDayHours']),
       polferScaloReducedNightHours:
           _toDouble(json['polferScaloReducedNightHours']),
       polferScaloFullDayHours: _toDouble(json['polferScaloFullDayHours']),
-      polferScaloFullNightHours:
-          _toDouble(json['polferScaloFullNightHours']),
+      polferScaloFullNightHours: _toDouble(json['polferScaloFullNightHours']),
       overtimeDestination: _parseOvertimeDestination(
         json['overtimeDestination']?.toString(),
       ),
-      compensativeOvertimeHours:
-          _toDouble(json['compensativeOvertimeHours']),
+      compensativeOvertimeHours: _toDouble(json['compensativeOvertimeHours']),
       compensativeOvertimeNote:
           json['compensativeOvertimeNote']?.toString() ?? '',
-      compensativeRecoveryHours:
-    _toDouble(json['compensativeRecoveryHours']),
+      compensativeRecoveryHours: _toDouble(json['compensativeRecoveryHours']),
       programmedOvertimeEnabled:
           json['programmedOvertimeEnabled'] as bool? ?? false,
       programmedOvertimeStart: json['programmedOvertimeStart'] != null
@@ -1658,8 +1658,7 @@ class Shift {
       programmedOvertimeEnd: json['programmedOvertimeEnd'] != null
           ? DateTime.parse(json['programmedOvertimeEnd'] as String)
           : null,
-      programmedOvertimeNote:
-          json['programmedOvertimeNote']?.toString() ?? '',
+      programmedOvertimeNote: json['programmedOvertimeNote']?.toString() ?? '',
       ordinaryHoursOverrideEnabled:
           json['ordinaryHoursOverrideEnabled'] as bool? ?? false,
       ordinaryHoursOverride: _toDouble(json['ordinaryHoursOverride']),
@@ -1689,31 +1688,31 @@ class Shift {
   }
 
   static DateTime _deriveServiceDate(
-  DateTime start,
-  DateTime end, {
-  String spmnPresetCode = '',
-  QuesturaPreset questuraPreset = QuesturaPreset.none,
-}) {
-  final normalizedStart = _normalizeDate(start);
-  final normalizedEnd = _normalizeDate(end);
+    DateTime start,
+    DateTime end, {
+    String spmnPresetCode = '',
+    QuesturaPreset questuraPreset = QuesturaPreset.none,
+  }) {
+    final normalizedStart = _normalizeDate(start);
+    final normalizedEnd = _normalizeDate(end);
 
-  final normalizedPreset = spmnPresetCode.trim().toLowerCase();
-  final isNightPreset =
-      normalizedPreset == 'notte' || questuraPreset == QuesturaPreset.notte;
+    final normalizedPreset = spmnPresetCode.trim().toLowerCase();
+    final isNightPreset =
+        normalizedPreset == 'notte' || questuraPreset == QuesturaPreset.notte;
 
-  if (isNightPreset && normalizedEnd.isAfter(normalizedStart)) {
-    return normalizedEnd;
+    if (isNightPreset && normalizedEnd.isAfter(normalizedStart)) {
+      return normalizedEnd;
+    }
+
+    final isNightShift =
+        start.hour >= 22 && normalizedEnd.isAfter(normalizedStart);
+
+    if (isNightShift) {
+      return normalizedEnd;
+    }
+
+    return normalizedStart;
   }
-
-  final isNightShift =
-      start.hour >= 22 && normalizedEnd.isAfter(normalizedStart);
-
-  if (isNightShift) {
-    return normalizedEnd;
-  }
-
-  return normalizedStart;
-}
 
   static OvertimeDestination _parseOvertimeDestination(String? value) {
     switch (value) {

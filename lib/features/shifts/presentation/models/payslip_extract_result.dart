@@ -63,8 +63,7 @@ class PayslipExtractResult {
       specialHolidayAllowance:
           specialHolidayAllowance ?? this.specialHolidayAllowance,
       orderPublicInSede: orderPublicInSede ?? this.orderPublicInSede,
-      orderPublicFuoriSede:
-          orderPublicFuoriSede ?? this.orderPublicFuoriSede,
+      orderPublicFuoriSede: orderPublicFuoriSede ?? this.orderPublicFuoriSede,
       orderPublicPernotto: orderPublicPernotto ?? this.orderPublicPernotto,
       externalServiceRate: externalServiceRate ?? this.externalServiceRate,
     );
@@ -88,24 +87,18 @@ class PayslipExtractResult {
   factory PayslipExtractResult.fromJson(Map<String, dynamic> json) {
     return PayslipExtractResult(
       rank: json['rank'] as String?,
-      overtimeDayRate:
-          (json['overtimeDayRate'] as num?)?.toDouble(),
+      overtimeDayRate: (json['overtimeDayRate'] as num?)?.toDouble(),
       overtimeNightOrHolidayRate:
           (json['overtimeNightOrHolidayRate'] as num?)?.toDouble(),
       overtimeNightAndHolidayRate:
           (json['overtimeNightAndHolidayRate'] as num?)?.toDouble(),
-      holidayAllowance:
-          (json['holidayAllowance'] as num?)?.toDouble(),
+      holidayAllowance: (json['holidayAllowance'] as num?)?.toDouble(),
       specialHolidayAllowance:
           (json['specialHolidayAllowance'] as num?)?.toDouble(),
-      orderPublicInSede:
-          (json['orderPublicInSede'] as num?)?.toDouble(),
-      orderPublicFuoriSede:
-          (json['orderPublicFuoriSede'] as num?)?.toDouble(),
-      orderPublicPernotto:
-          (json['orderPublicPernotto'] as num?)?.toDouble(),
-      externalServiceRate:
-          (json['externalServiceRate'] as num?)?.toDouble(),
+      orderPublicInSede: (json['orderPublicInSede'] as num?)?.toDouble(),
+      orderPublicFuoriSede: (json['orderPublicFuoriSede'] as num?)?.toDouble(),
+      orderPublicPernotto: (json['orderPublicPernotto'] as num?)?.toDouble(),
+      externalServiceRate: (json['externalServiceRate'] as num?)?.toDouble(),
     );
   }
 }

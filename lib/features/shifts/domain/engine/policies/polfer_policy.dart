@@ -36,8 +36,7 @@ class PolferPolicy implements DepartmentPolicy {
 
     final scheduledEnd = _resolvePolferScheduledEnd(shift);
 
-    final ordinaryHours =
-    shift.ordinaryHoursOverrideEnabled
+    final ordinaryHours = shift.ordinaryHoursOverrideEnabled
         ? shift.ordinaryHoursOverride.clamp(0.0, workedHours)
         : _calculateOrdinaryHours(
             start: shift.start,
@@ -46,10 +45,8 @@ class PolferPolicy implements DepartmentPolicy {
             workedHours: workedHours,
           );
 
-final overtimeHours =
-    workedHours > ordinaryHours
-        ? workedHours - ordinaryHours
-        : 0.0;
+    final overtimeHours =
+        workedHours > ordinaryHours ? workedHours - ordinaryHours : 0.0;
 
     final dayHours = TimeBandHelper.calculateBandHours(
       shift.start,
@@ -64,42 +61,42 @@ final overtimeHours =
     );
 
     final programmedDayHours = _calculateProgrammedBandHours(
-  shift,
-  dayBand: true,
-);
+      shift,
+      dayBand: true,
+    );
 
-final programmedNightHours = _calculateProgrammedBandHours(
-  shift,
-  dayBand: false,
-);
+    final programmedNightHours = _calculateProgrammedBandHours(
+      shift,
+      dayBand: false,
+    );
 
-final scaloDayHours = dayHours + programmedDayHours;
-final scaloNightHours = nightHours + programmedNightHours;
+    final scaloDayHours = dayHours + programmedDayHours;
+    final scaloNightHours = nightHours + programmedNightHours;
 
     final ordinaryNightHours = overtimeHours > 0
-    ? (nightHours - overtimeHours).clamp(0.0, nightHours)
-    : nightHours;
+        ? (nightHours - overtimeHours).clamp(0.0, nightHours)
+        : nightHours;
 
-final ordinaryNightAmount = ordinaryNightHours * fallbackNightAllowance;
+    final ordinaryNightAmount = ordinaryNightHours * fallbackNightAllowance;
 
     final territoryAmount = _calculateTerritoryAmount(shift);
 
     final scaloAmount = _calculateScaloAmount(
-  shift: shift,
-  dayHours: scaloDayHours,
-  nightHours: scaloNightHours,
-);
+      shift: shift,
+      dayHours: scaloDayHours,
+      nightHours: scaloNightHours,
+    );
 
     final breakdown = <Map<String, dynamic>>[];
 
     if (ordinaryNightAmount > 0) {
-  breakdown.add({
-    'label':
-        'Indennità servizio notturno (${ordinaryNightHours.toStringAsFixed(1)}h × €${fallbackNightAllowance.toStringAsFixed(2)} lordi)',
-    'amount': ordinaryNightAmount,
-    'category': 'ordinary_night',
-  });
-}
+      breakdown.add({
+        'label':
+            'Indennità servizio notturno (${ordinaryNightHours.toStringAsFixed(1)}h × €${fallbackNightAllowance.toStringAsFixed(2)} lordi)',
+        'amount': ordinaryNightAmount,
+        'category': 'ordinary_night',
+      });
+    }
 
     if (territoryAmount > 0) {
       breakdown.add({
@@ -124,12 +121,12 @@ final ordinaryNightAmount = ordinaryNightHours * fallbackNightAllowance;
       (sum, item) => sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
     );
 
-    final extraAmount = breakdown
-        .where((item) => item['isBasketItem'] != true)
-        .fold<double>(
-          0.0,
-          (sum, item) => sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
-        );
+    final extraAmount =
+        breakdown.where((item) => item['isBasketItem'] != true).fold<double>(
+              0.0,
+              (sum, item) =>
+                  sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
+            );
 
     return ShiftCalculationResult(
       workedHours: workedHours,
@@ -217,23 +214,23 @@ final ordinaryNightAmount = ordinaryNightHours * fallbackNightAllowance;
   }
 
   double _calculateProgrammedBandHours(
-  Shift shift, {
-  required bool dayBand,
-}) {
-  if (!shift.programmedOvertimeEnabled) return 0.0;
+    Shift shift, {
+    required bool dayBand,
+  }) {
+    if (!shift.programmedOvertimeEnabled) return 0.0;
 
-  final start = shift.programmedOvertimeStart;
-  final end = shift.programmedOvertimeEnd;
+    final start = shift.programmedOvertimeStart;
+    final end = shift.programmedOvertimeEnd;
 
-  if (start == null || end == null) return 0.0;
-  if (!end.isAfter(start)) return 0.0;
+    if (start == null || end == null) return 0.0;
+    if (!end.isAfter(start)) return 0.0;
 
-  return TimeBandHelper.calculateBandHours(
-    start,
-    end,
-    dayBand: dayBand,
-  );
-}
+    return TimeBandHelper.calculateBandHours(
+      start,
+      end,
+      dayBand: dayBand,
+    );
+  }
 
   double _calculateScaloAmount({
     required Shift shift,

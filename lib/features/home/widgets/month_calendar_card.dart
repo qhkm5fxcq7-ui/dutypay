@@ -33,17 +33,18 @@ class MonthCalendarDayData {
   bool get hasAmount => amount > 0;
 
   bool get hasAbsence {
-  final absence = (absenceBadge ?? '').trim();
-  if (absence.isNotEmpty) return true;
+    final absence = (absenceBadge ?? '').trim();
+    if (absence.isNotEmpty) return true;
 
-  final predicted = (predictedSpmnLabel ?? '').trim().toUpperCase();
-  return predicted == 'RIP' || predicted == 'RIPOSO';
-}
+    final predicted = (predictedSpmnLabel ?? '').trim().toUpperCase();
+    return predicted == 'RIP' || predicted == 'RIPOSO';
+  }
 
   bool get hasPredictedSpmn =>
       predictedSpmnLabel != null && predictedSpmnLabel!.trim().isNotEmpty;
 
-  bool get hasContent => hasAmount || hasAbsence || hasTicket || hasConforto || hasWorkedShift;
+  bool get hasContent =>
+      hasAmount || hasAbsence || hasTicket || hasConforto || hasWorkedShift;
 }
 
 class MonthCalendarCard extends StatelessWidget {
@@ -108,33 +109,33 @@ class MonthCalendarCard extends StatelessWidget {
   }
 
   String _normalizedAbsenceLabel(String? badge) {
-  final value = (badge ?? '').trim().toUpperCase();
+    final value = (badge ?? '').trim().toUpperCase();
 
-  switch (value) {
-    case 'FERIE':
-    case 'C.O':
-    case 'C.O.':
-      return 'C.O.';
-    case 'MAL':
-    case 'MALATTIA':
-    case 'C.S':
-    case 'C.S.':
-      return 'C.S.';
-    case 'RIP':
-    case 'RIPOSO':
-      return 'RIP';
-    case 'FEST':
-    case 'FESTIVO':
-    case 'FESTA':
-      return 'FEST';
-    case 'ALTRO':
-    case 'ASS':
-    case 'ASS.':
-      return 'ASS.';
-    default:
-      return value;
+    switch (value) {
+      case 'FERIE':
+      case 'C.O':
+      case 'C.O.':
+        return 'C.O.';
+      case 'MAL':
+      case 'MALATTIA':
+      case 'C.S':
+      case 'C.S.':
+        return 'C.S.';
+      case 'RIP':
+      case 'RIPOSO':
+        return 'RIP';
+      case 'FEST':
+      case 'FESTIVO':
+      case 'FESTA':
+        return 'FEST';
+      case 'ALTRO':
+      case 'ASS':
+      case 'ASS.':
+        return 'ASS.';
+      default:
+        return value;
+    }
   }
-}
 
   String _normalizedPredictedLabel(String? label) {
     final value = (label ?? '').trim().toUpperCase();
@@ -165,48 +166,48 @@ class MonthCalendarCard extends StatelessWidget {
   }
 
   _BadgeStyle? _badgeStyle(String? badge) {
-  final value = _normalizedAbsenceLabel(badge);
-  if (value.isEmpty) return null;
+    final value = _normalizedAbsenceLabel(badge);
+    if (value.isEmpty) return null;
 
-  switch (value) {
-    case 'C.O.':
-      return const _BadgeStyle(
-        background: Color(0xFF3A1717),
-        text: Color(0xFFFFB3B3),
-        border: Color(0xFFE35D5D),
-      );
-    case 'C.S.':
-      return const _BadgeStyle(
-        background: Color(0xFF311846),
-        text: Color(0xFFE8C7FF),
-        border: Color(0xFFB26AF8),
-      );
-    case 'RIP':
-      return const _BadgeStyle(
-        background: Color(0xFF1E2E16),
-        text: Color(0xFFDDF7A5),
-        border: Color(0xFF9ACF38),
-      );
-    case 'FEST':
-      return const _BadgeStyle(
-        background: Color(0xFF3A2A12),
-        text: Color(0xFFFFD98A),
-        border: Color(0xFFFFC14D),
-      );
-    case 'ASS.':
-      return const _BadgeStyle(
-        background: Color(0xFF2C2336),
-        text: Color(0xFFE3CFFF),
-        border: Color(0xFFA67BFF),
-      );
-    default:
-      return const _BadgeStyle(
-        background: Color(0xFF202834),
-        text: Color(0xFFD3DBE6),
-        border: Color(0xFF334152),
-      );
+    switch (value) {
+      case 'C.O.':
+        return const _BadgeStyle(
+          background: Color(0xFF3A1717),
+          text: Color(0xFFFFB3B3),
+          border: Color(0xFFE35D5D),
+        );
+      case 'C.S.':
+        return const _BadgeStyle(
+          background: Color(0xFF311846),
+          text: Color(0xFFE8C7FF),
+          border: Color(0xFFB26AF8),
+        );
+      case 'RIP':
+        return const _BadgeStyle(
+          background: Color(0xFF1E2E16),
+          text: Color(0xFFDDF7A5),
+          border: Color(0xFF9ACF38),
+        );
+      case 'FEST':
+        return const _BadgeStyle(
+          background: Color(0xFF3A2A12),
+          text: Color(0xFFFFD98A),
+          border: Color(0xFFFFC14D),
+        );
+      case 'ASS.':
+        return const _BadgeStyle(
+          background: Color(0xFF2C2336),
+          text: Color(0xFFE3CFFF),
+          border: Color(0xFFA67BFF),
+        );
+      default:
+        return const _BadgeStyle(
+          background: Color(0xFF202834),
+          text: Color(0xFFD3DBE6),
+          border: Color(0xFF334152),
+        );
+    }
   }
-}
 
   _BadgeStyle? _predictedBadgeStyle(String? label) {
     final value = _normalizedPredictedLabel(label);
@@ -280,9 +281,12 @@ class MonthCalendarCard extends StatelessWidget {
     if (!day.hasContent && day.hasPredictedSpmn) {
       return const Color(0xFF355066);
     }
-    if (day.hasAmount || day.hasTicket || day.hasConforto || day.hasWorkedShift) {
-  return const Color(0xFF2A5A47);
-}
+    if (day.hasAmount ||
+        day.hasTicket ||
+        day.hasConforto ||
+        day.hasWorkedShift) {
+      return const Color(0xFF2A5A47);
+    }
     return const Color(0xFF253140);
   }
 
@@ -489,15 +493,16 @@ class MonthCalendarCard extends StatelessWidget {
           ),
           itemBuilder: (context, index) {
             final day = days[index];
-            final effectiveAbsenceBadge =
-    day.absenceBadge ??
-    ((day.predictedSpmnLabel ?? '').trim().toUpperCase() == 'RIP' ||
-            (day.predictedSpmnLabel ?? '').trim().toUpperCase() == 'RIPOSO'
-        ? 'RIP'
-        : null);
+            final effectiveAbsenceBadge = day.absenceBadge ??
+                ((day.predictedSpmnLabel ?? '').trim().toUpperCase() == 'RIP' ||
+                        (day.predictedSpmnLabel ?? '').trim().toUpperCase() ==
+                            'RIPOSO'
+                    ? 'RIP'
+                    : null);
 
-final normalizedBadge = _normalizedAbsenceLabel(effectiveAbsenceBadge);
-final badgeStyle = _badgeStyle(effectiveAbsenceBadge);
+            final normalizedBadge =
+                _normalizedAbsenceLabel(effectiveAbsenceBadge);
+            final badgeStyle = _badgeStyle(effectiveAbsenceBadge);
             final predictedLabel =
                 _normalizedPredictedLabel(day.predictedSpmnLabel);
             final predictedStyle = _predictedBadgeStyle(day.predictedSpmnLabel);
@@ -518,7 +523,8 @@ final badgeStyle = _badgeStyle(effectiveAbsenceBadge);
                   boxShadow: day.isSelected
                       ? [
                           BoxShadow(
-                            color: const Color(0xFF5CE1A8).withValues(alpha: 0.18),
+                            color:
+                                const Color(0xFF5CE1A8).withValues(alpha: 0.18),
                             blurRadius: 14,
                             offset: const Offset(0, 5),
                           ),
@@ -603,52 +609,55 @@ final badgeStyle = _badgeStyle(effectiveAbsenceBadge);
                         ),
                       )
                     else ...[
-  if (day.hasTicket || day.hasConforto || day.hasConfortoCdg)
-    Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        if (day.hasTicket)
-          Container(
-            width: 6,
-            height: 6,
-            decoration: const BoxDecoration(
-              color: Color(0xFF67B7FF),
-              shape: BoxShape.circle,
-            ),
-          ),
-        if (day.hasConforto || day.hasConfortoCdg) ...[
-          const SizedBox(width: 4),
-          Container(
-            width: 7,
-            height: 7,
-            decoration: const BoxDecoration(
-              color: Color(0xFFFFC14D),
-              shape: BoxShape.circle,
-            ),
-          ),
-        ],
-      ],
-    ),
-  const SizedBox(height: 4),
-  if (day.hasAmount || day.hasWorkedShift)
-    Container(
-      width: 26,
-      height: 6,
-      decoration: BoxDecoration(
-        color: const Color(0xFF5CE1A8),
-        borderRadius: BorderRadius.circular(999),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF5CE1A8).withValues(alpha: 0.28),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-    )
-  else
-    const SizedBox(height: 6),
-],
+                      if (day.hasTicket ||
+                          day.hasConforto ||
+                          day.hasConfortoCdg)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            if (day.hasTicket)
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF67B7FF),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            if (day.hasConforto || day.hasConfortoCdg) ...[
+                              const SizedBox(width: 4),
+                              Container(
+                                width: 7,
+                                height: 7,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFFFC14D),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      const SizedBox(height: 4),
+                      if (day.hasAmount || day.hasWorkedShift)
+                        Container(
+                          width: 26,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF5CE1A8),
+                            borderRadius: BorderRadius.circular(999),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF5CE1A8)
+                                    .withValues(alpha: 0.28),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                        )
+                      else
+                        const SizedBox(height: 6),
+                    ],
                   ],
                 ),
               ),

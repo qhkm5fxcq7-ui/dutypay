@@ -36,7 +36,8 @@ void main() {
     List<Map<String, dynamic>> breakdown,
     String category,
   ) {
-    final matches = breakdown.where((item) => item['category'] == category).toList();
+    final matches =
+        breakdown.where((item) => item['category'] == category).toList();
     expect(matches.length, 1, reason: 'Expected exactly one $category entry');
     return matches.first;
   }
@@ -60,9 +61,7 @@ void main() {
   }
 
   double sumNonBenefitAmounts(List<Map<String, dynamic>> breakdown) {
-    return breakdown
-        .where((item) => item['isBenefit'] != true)
-        .fold<double>(
+    return breakdown.where((item) => item['isBenefit'] != true).fold<double>(
           0.0,
           (sum, item) => sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
         );
@@ -76,20 +75,19 @@ void main() {
   }
 
   double sumNonOvertimeNonBasketAmounts(List<Map<String, dynamic>> breakdown) {
-    return breakdown
-        .where((item) {
-          final category = item['category'] as String?;
-          final isBasket = item['isBasketItem'] == true;
-          return !isOvertimeCategory(category) && !isBasket;
-        })
-        .fold<double>(
-          0.0,
-          (sum, item) => sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
-        );
+    return breakdown.where((item) {
+      final category = item['category'] as String?;
+      final isBasket = item['isBasketItem'] == true;
+      return !isOvertimeCategory(category) && !isBasket;
+    }).fold<double>(
+      0.0,
+      (sum, item) => sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
+    );
   }
 
   group('Benefit alignment', () {
-    test('RM preview and saved detail keep benefits visible but non-economic', () {
+    test('RM preview and saved detail keep benefits visible but non-economic',
+        () {
       final shift = buildScenarioShift();
 
       final preview = previewUseCase.execute(
@@ -183,7 +181,8 @@ void main() {
       );
 
       final previewOrderPublicAmount =
-          ((singleByCategory(preview.breakdown, 'order_public')['amount'] as num?)
+          ((singleByCategory(preview.breakdown, 'order_public')['amount']
+                      as num?)
                   ?.toDouble() ??
               0.0);
 

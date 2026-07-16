@@ -59,7 +59,8 @@ void main() {
       expect(hasNightAllowance, isTrue);
     });
 
-    test('Notte standard NON genera straordinario ma genera quota notturna', () {
+    test('Notte standard NON genera straordinario ma genera quota notturna',
+        () {
       final shift = CanonicalShiftScenarios.polferStandardNight(
         serviceDate: DateTime(2026, 4, 2),
       );

@@ -28,12 +28,10 @@ void main() {
       'type': 'recovered',
       'hours': 2.0,
       'note': 'Recupero compensativo',
-      'createdAt':
-          DateTime(2026, 5, 3, 9, 0).toIso8601String(),
+      'createdAt': DateTime(2026, 5, 3, 9, 0).toIso8601String(),
     };
 
-    final movement =
-        CompensativeBasketMovement.fromJson(json);
+    final movement = CompensativeBasketMovement.fromJson(json);
 
     expect(movement.id, 'movement_2');
     expect(
@@ -51,12 +49,10 @@ void main() {
       'type': 'invalid_type',
       'hours': 1.0,
       'note': '',
-      'createdAt':
-          DateTime(2026, 5, 3).toIso8601String(),
+      'createdAt': DateTime(2026, 5, 3).toIso8601String(),
     };
 
-    final movement =
-        CompensativeBasketMovement.fromJson(json);
+    final movement = CompensativeBasketMovement.fromJson(json);
 
     expect(
       movement.type,

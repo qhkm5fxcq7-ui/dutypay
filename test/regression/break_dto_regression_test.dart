@@ -165,7 +165,8 @@ void main() {
       expect(participant.avatarSeed, 'avatar_1');
     });
 
-    test('BreakParticipant fromFirestore uses safe defaults for missing fields', () {
+    test('BreakParticipant fromFirestore uses safe defaults for missing fields',
+        () {
       final dto = BreakParticipantDto.fromFirestore(const {}, id: 'p1');
       final participant = dto.toDomain();
 

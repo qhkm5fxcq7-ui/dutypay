@@ -1,7 +1,6 @@
 import '../../features/shifts/presentation/models/shift.dart';
 import '../../features/shifts/presentation/models/user_pay_profile.dart';
 
-
 enum PrecisionLevel {
   low,
   medium,
@@ -62,8 +61,6 @@ class BasketPayment {
   });
 }
 
-
-
 class RfiBasketOpenEntry {
   final DateTime sourceMonth;
   final double grossAmount;
@@ -79,7 +76,6 @@ class RfiBasketPaidEntry {
   final DateTime paidInMonth;
   final double grossAmount;
   final String note;
-
 
   const RfiBasketPaidEntry({
     required this.sourceMonth,
@@ -364,7 +360,8 @@ class PayslipProjectionService {
             totalGross: 0,
           )
         : monthlySummaries
-                .where((item) => _isSameMonth(item.month, accessoryReferenceMonth))
+                .where(
+                    (item) => _isSameMonth(item.month, accessoryReferenceMonth))
                 .cast<MonthlyAccessorySummary?>()
                 .firstWhere(
                   (item) => item != null,
@@ -383,7 +380,8 @@ class PayslipProjectionService {
     final previousMonths = accessoryReferenceMonth == null
         ? <MonthlyAccessorySummary>[]
         : monthlySummaries
-            .where((item) => _isBeforeMonth(item.month, accessoryReferenceMonth))
+            .where(
+                (item) => _isBeforeMonth(item.month, accessoryReferenceMonth))
             .toList();
 
     double remainingCapacityHours = overtimeHoursLimit;
@@ -506,8 +504,9 @@ class PayslipProjectionService {
         if (remainingHoursToApply <= 0) break;
         if (entry.hoursRemaining <= 0 || entry.grossRemaining <= 0) continue;
 
-        final grossPerHour =
-            entry.hoursRemaining > 0 ? entry.grossRemaining / entry.hoursRemaining : 0.0;
+        final grossPerHour = entry.hoursRemaining > 0
+            ? entry.grossRemaining / entry.hoursRemaining
+            : 0.0;
 
         if (grossPerHour <= 0) continue;
 
@@ -524,7 +523,8 @@ class PayslipProjectionService {
       }
 
       if (_isSameMonth(payment.paymentMonth, normalizedPayslipMonth)) {
-        manualBasketPaidHoursForMonth += payment.hoursPaid - remainingHoursToApply;
+        manualBasketPaidHoursForMonth +=
+            payment.hoursPaid - remainingHoursToApply;
         manualBasketPaidGrossForMonth += grossAppliedForThisPayment;
       }
     }
@@ -534,7 +534,8 @@ class PayslipProjectionService {
       (sum, item) => sum + _sanitizeNonNegative(item.hoursRemaining),
     );
 
-    final currentBasketResidualGrossEstimate = workingBasketEntries.fold<double>(
+    final currentBasketResidualGrossEstimate =
+        workingBasketEntries.fold<double>(
       0.0,
       (sum, item) => sum + _sanitizeMoney(item.grossRemaining),
     );
@@ -551,13 +552,14 @@ class PayslipProjectionService {
     for (final monthSummary in monthlySummaries) {
       if (monthSummary.rfiBasketGross <= 0) continue;
 
-      final matchingPayment = rfiBasketPayments.cast<RfiBasketPayment?>().firstWhere(
-        (item) =>
-            item != null &&
-            _isSameMonth(item.sourceMonth, monthSummary.month) &&
-            !_isAfterMonth(item.paidInMonth, normalizedPayslipMonth),
-        orElse: () => null,
-      );
+      final matchingPayment =
+          rfiBasketPayments.cast<RfiBasketPayment?>().firstWhere(
+                (item) =>
+                    item != null &&
+                    _isSameMonth(item.sourceMonth, monthSummary.month) &&
+                    !_isAfterMonth(item.paidInMonth, normalizedPayslipMonth),
+                orElse: () => null,
+              );
 
       if (matchingPayment == null) {
         openRfiBasketEntries.add(
@@ -581,8 +583,10 @@ class PayslipProjectionService {
       }
     }
 
-    final currentRfiBasketResidualHours = openRfiBasketEntries.length.toDouble();
-    final currentRfiBasketResidualGrossEstimate = openRfiBasketEntries.fold<double>(
+    final currentRfiBasketResidualHours =
+        openRfiBasketEntries.length.toDouble();
+    final currentRfiBasketResidualGrossEstimate =
+        openRfiBasketEntries.fold<double>(
       0.0,
       (sum, item) => sum + item.grossAmount,
     );
@@ -606,11 +610,11 @@ class PayslipProjectionService {
 
     final hasManualHistoricalOverride =
         payProfile.historicalAccessoryAvg != null &&
-        payProfile.historicalAccessoryAvg! > 0;
+            payProfile.historicalAccessoryAvg! > 0;
 
     final isUsingHistoricalAccessories =
         referenceSummary.shiftCount < _historicalAccessoriesThreshold ||
-        hasManualHistoricalOverride;
+            hasManualHistoricalOverride;
 
     double historicalGrossFromNet = 0.0;
 
@@ -668,7 +672,9 @@ class PayslipProjectionService {
         _sanitizeMoney(payProfile.recurringDeductionsTotal);
 
     final estimatedPayslipTotal = _sanitizeMoney(
-      fixedBaseNetEstimated + accessoriesNetEstimated - recurringDeductionsApplied,
+      fixedBaseNetEstimated +
+          accessoriesNetEstimated -
+          recurringDeductionsApplied,
     );
 
     final totalGrossProjected = _sanitizeMoney(
@@ -749,7 +755,8 @@ class PayslipProjectionService {
           .toList(),
       openRfiBasketEntries: openRfiBasketEntries,
       paidRfiBasketEntries: paidRfiBasketEntries,
-      currentBasketResidualHours: _sanitizeNonNegative(currentBasketResidualHours),
+      currentBasketResidualHours:
+          _sanitizeNonNegative(currentBasketResidualHours),
       currentBasketResidualGrossEstimate:
           _sanitizeMoney(currentBasketResidualGrossEstimate),
       manualBasketPaidHoursForMonth:
@@ -895,9 +902,8 @@ class PayslipProjectionService {
   _HistoricalCalibrationSnapshot _buildHistoricalCalibrationSnapshot(
     List<PayslipParsedData> payslips,
   ) {
-    final valid = payslips
-        .where((payslip) => !payslip.isSupplementaryPayslip)
-        .toList();
+    final valid =
+        payslips.where((payslip) => !payslip.isSupplementaryPayslip).toList();
 
     if (valid.isEmpty) {
       return const _HistoricalCalibrationSnapshot(
@@ -1015,13 +1021,10 @@ class PayslipProjectionService {
       );
     }
 
-    final previd =
-        historical.averagePrevidenziali / totalHistoricalDeductions;
+    final previd = historical.averagePrevidenziali / totalHistoricalDeductions;
     final fiscal = historical.averageFiscali / totalHistoricalDeductions;
-    final other =
-        historical.averageOtherDeductions / totalHistoricalDeductions;
-    final conguagli =
-        historical.averageConguagli / totalHistoricalDeductions;
+    final other = historical.averageOtherDeductions / totalHistoricalDeductions;
+    final conguagli = historical.averageConguagli / totalHistoricalDeductions;
 
     final sum = previd + fiscal + other + conguagli;
 

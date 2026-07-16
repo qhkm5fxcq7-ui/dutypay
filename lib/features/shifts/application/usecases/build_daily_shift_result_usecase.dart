@@ -29,7 +29,8 @@ class BuildDailyShiftResultUseCase {
     required UserPayProfile profile,
     required Department department,
   }) {
-    final sortedShifts = [...shifts]..sort((a, b) => a.start.compareTo(b.start));
+    final sortedShifts = [...shifts]
+      ..sort((a, b) => a.start.compareTo(b.start));
 
     final computations = <Shift, DailyShiftComputation>{};
     double totalAmount = 0.0;
@@ -38,7 +39,7 @@ class BuildDailyShiftResultUseCase {
     double consumedPayableOvertimeHours = 0.0;
     double rfiBasketAmount = 0.0;
     double compensativeHours = 0.0;
-double compensativeGrossEstimate = 0.0;
+    double compensativeGrossEstimate = 0.0;
     final Map<String, double> breakdownTotals = {};
 
     final overtimeMonthlyLimit = _sanitizeHours(
@@ -60,8 +61,7 @@ double compensativeGrossEstimate = 0.0;
       );
 
       final isCompensative =
-    shift.overtimeDestination ==
-    OvertimeDestination.compensative;
+          shift.overtimeDestination == OvertimeDestination.compensative;
 
       computations[shift] = computation;
       totalOvertimeHours += computation.overtimeHours;
@@ -75,80 +75,74 @@ double compensativeGrossEstimate = 0.0;
       );
       consumedPayableOvertimeHours += payableOvertimeHoursForShift;
 
-      
+      final programmedHours = _calculateProgrammedOvertimeHours(
+        shift: shift,
+        normalizedEnd: ShiftTimeHelper.normalizedEnd(
+          shift.start,
+          shift.end,
+        ),
+      );
 
-final programmedHours = _calculateProgrammedOvertimeHours(
-  shift: shift,
-  normalizedEnd: ShiftTimeHelper.normalizedEnd(
-    shift.start,
-    shift.end,
-  ),
-);
+      final requestedCompensativeHours = isCompensative
+          ? _sanitizeHours(shift.compensativeOvertimeHours)
+          : 0.0;
 
-final requestedCompensativeHours = isCompensative
-    ? _sanitizeHours(shift.compensativeOvertimeHours)
-    : 0.0;
+      final automaticCompensativeHours =
+          programmedHours > 0 ? programmedHours : payableOvertimeHoursForShift;
 
-final automaticCompensativeHours =
-    programmedHours > 0
-        ? programmedHours
-        : payableOvertimeHoursForShift;
+      final effectiveCompensativeHours = isCompensative
+          ? (requestedCompensativeHours > 0
+              ? requestedCompensativeHours.clamp(
+                  0.0,
+                  computation.overtimeHours,
+                )
+              : automaticCompensativeHours.clamp(
+                  0.0,
+                  computation.overtimeHours,
+                ))
+          : 0.0;
 
-final effectiveCompensativeHours = isCompensative
-    ? (requestedCompensativeHours > 0
-        ? requestedCompensativeHours.clamp(
-            0.0,
-            computation.overtimeHours,
+      final compensativeRatio = computation.overtimeHours > 0
+          ? (effectiveCompensativeHours / computation.overtimeHours)
+              .clamp(0.0, 1.0)
+          : 0.0;
+
+      final compensativeOvertimeGross = _sanitizeMoney(
+        effectiveCompensativeHours * profile.overtimeDayRate,
+      );
+
+      final normalAmount = isCompensative && compensativeRatio >= 0.999
+          ? computation.breakdown
+              .where(
+                (item) =>
+                    item['isBasketItem'] != true &&
+                    !_isOvertimeCategory(item['category']),
+              )
+              .fold<double>(
+                0.0,
+                (sum, item) =>
+                    sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
+              )
+          : _sanitizeMoney(
+              (computation.overtimeHours - effectiveCompensativeHours) *
+                  profile.overtimeDayRate,
+            );
+
+      totalAmount += _sanitizeMoney(normalAmount);
+
+      if (effectiveCompensativeHours > 0) {
+        compensativeHours += effectiveCompensativeHours;
+        compensativeGrossEstimate += compensativeOvertimeGross;
+      }
+      final shiftRfiBasketAmount = computation.breakdown
+          .where(
+            (item) =>
+                item['isBasketItem'] == true && item['basketKey'] == 'rfi',
           )
-        : automaticCompensativeHours.clamp(
+          .fold<double>(
             0.0,
-            computation.overtimeHours,
-          ))
-    : 0.0;
-
-final compensativeRatio = computation.overtimeHours > 0
-    ? (effectiveCompensativeHours / computation.overtimeHours).clamp(0.0, 1.0)
-    : 0.0;
-
-final compensativeOvertimeGross =
-    _sanitizeMoney(
-  effectiveCompensativeHours * profile.overtimeDayRate,
-);
-
-
-
-final normalAmount = isCompensative && compensativeRatio >= 0.999
-    ? computation.breakdown
-        .where(
-          (item) =>
-              item['isBasketItem'] != true &&
-              !_isOvertimeCategory(item['category']),
-        )
-        .fold<double>(
-          0.0,
-          (sum, item) =>
-              sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
-        )
-    : _sanitizeMoney(
-    (computation.overtimeHours - effectiveCompensativeHours) *
-        profile.overtimeDayRate,
-  );
-
-totalAmount += _sanitizeMoney(normalAmount);
-
-if (effectiveCompensativeHours > 0) {
-  compensativeHours += effectiveCompensativeHours;
-  compensativeGrossEstimate += compensativeOvertimeGross;
-}
-final shiftRfiBasketAmount = computation.breakdown
-    .where(
-      (item) =>
-          item['isBasketItem'] == true && item['basketKey'] == 'rfi',
-    )
-    .fold<double>(
-      0.0,
-      (sum, item) => sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
-    );
+            (sum, item) => sum + ((item['amount'] as num?)?.toDouble() ?? 0.0),
+          );
       rfiBasketAmount += shiftRfiBasketAmount;
 
       for (final item in computation.breakdown) {
@@ -183,7 +177,7 @@ final shiftRfiBasketAmount = computation.breakdown
       mergedBreakdown: mergedBreakdown,
       rfiBasketAmount: rfiBasketAmount,
       compensativeHours: compensativeHours,
-compensativeGrossEstimate: compensativeGrossEstimate,
+      compensativeGrossEstimate: compensativeGrossEstimate,
     );
   }
 
@@ -203,91 +197,76 @@ compensativeGrossEstimate: compensativeGrossEstimate,
     }
 
     if (department == Department.questura) {
-  final computation = _buildShiftComputationUseCase.execute(
-    shift: shift,
-    profile: profile,
-    department: department,
-  );
+      final computation = _buildShiftComputationUseCase.execute(
+        shift: shift,
+        profile: profile,
+        department: department,
+      );
 
-  return DailyShiftComputation(
-    overtimeHours: computation.overtimeHours,
-    totalAmount: computation.totalAmount,
-    extraAmount: computation.extraAmount,
-    breakdown: computation.breakdown,
-  );
-}
-
-    
+      return DailyShiftComputation(
+        overtimeHours: computation.overtimeHours,
+        totalAmount: computation.totalAmount,
+        extraAmount: computation.extraAmount,
+        breakdown: computation.breakdown,
+      );
+    }
 
     final normalizedEnd = ShiftTimeHelper.normalizedEnd(shift.start, shift.end);
-final shiftWorkedHours = shift.workedHours;
+    final shiftWorkedHours = shift.workedHours;
 
-final ordinaryLimit = shift.ordinaryHoursOverrideEnabled &&
-        shift.ordinaryHoursOverride > 0
-    ? shift.ordinaryHoursOverride
-    : _dailyOrdinaryHoursLimit;
+    final ordinaryLimit =
+        shift.ordinaryHoursOverrideEnabled && shift.ordinaryHoursOverride > 0
+            ? shift.ordinaryHoursOverride
+            : _dailyOrdinaryHoursLimit;
 
-late final double ordinaryHoursForShift;
-late final double overtimeHoursForShift;
+    late final double ordinaryHoursForShift;
+    late final double overtimeHoursForShift;
 
-final programmedOvertimeHours = _calculateProgrammedOvertimeHours(
-  shift: shift,
-  normalizedEnd: normalizedEnd,
-);
+    final programmedOvertimeHours = _calculateProgrammedOvertimeHours(
+      shift: shift,
+      normalizedEnd: normalizedEnd,
+    );
 
-final nonProgrammedWorkedHours =
-    (shiftWorkedHours - programmedOvertimeHours).clamp(
-  0.0,
-  shiftWorkedHours,
-);
+    final nonProgrammedWorkedHours =
+        (shiftWorkedHours - programmedOvertimeHours).clamp(
+      0.0,
+      shiftWorkedHours,
+    );
 
-if (programmedOvertimeHours > 0) {
-  final remainingOrdinaryHours =
-      (ordinaryLimit - ordinaryHoursAlreadyConsumed)
-          .clamp(0.0, ordinaryLimit);
+    if (programmedOvertimeHours > 0) {
+      final remainingOrdinaryHours =
+          (ordinaryLimit - ordinaryHoursAlreadyConsumed)
+              .clamp(0.0, ordinaryLimit);
 
-  ordinaryHoursForShift =
-      nonProgrammedWorkedHours <= remainingOrdinaryHours
+      ordinaryHoursForShift = nonProgrammedWorkedHours <= remainingOrdinaryHours
           ? nonProgrammedWorkedHours
           : remainingOrdinaryHours;
 
-  overtimeHoursForShift =
-      programmedOvertimeHours +
-      (nonProgrammedWorkedHours - ordinaryHoursForShift).clamp(
-        0.0,
-        nonProgrammedWorkedHours,
-      );
-} else if (
-    (
-      department == Department.polfer &&
-      shift.spmnPresetCode.trim().toLowerCase() != 'aggiornamento' &&
-      shift.description.trim().toLowerCase() != 'aggiornamento'
-    ) ||
-    (
-      (
-  department == Department.questura ||
-  department == Department.polstrada
-) &&
-      shift.questuraMode == QuesturaMode.volanti &&
-      shift.questuraPreset != QuesturaPreset.none &&
-      shift.questuraPreset != QuesturaPreset.aggiornamento &&
-      shift.description.trim().toLowerCase() != 'aggiornamento'
-    )
-) {
-
-    
-      final scheduledEnd =
-    department == Department.polfer
-        ? _resolvePolferScheduledEnd(shift)
-        : _resolveQuesturaScheduledEnd(
-            shift: shift,
-            department: department,
+      overtimeHoursForShift = programmedOvertimeHours +
+          (nonProgrammedWorkedHours - ordinaryHoursForShift).clamp(
+            0.0,
+            nonProgrammedWorkedHours,
           );
+    } else if ((department == Department.polfer &&
+            shift.spmnPresetCode.trim().toLowerCase() != 'aggiornamento' &&
+            shift.description.trim().toLowerCase() != 'aggiornamento') ||
+        ((department == Department.questura ||
+                department == Department.polstrada) &&
+            shift.questuraMode == QuesturaMode.volanti &&
+            shift.questuraPreset != QuesturaPreset.none &&
+            shift.questuraPreset != QuesturaPreset.aggiornamento &&
+            shift.description.trim().toLowerCase() != 'aggiornamento')) {
+      final scheduledEnd = department == Department.polfer
+          ? _resolvePolferScheduledEnd(shift)
+          : _resolveQuesturaScheduledEnd(
+              shift: shift,
+              department: department,
+            );
 
       if (scheduledEnd == null) {
         final remainingOrdinaryHours =
-    (ordinaryLimit - ordinaryHoursAlreadyConsumed)
-        .clamp(0.0, ordinaryLimit);
+            (ordinaryLimit - ordinaryHoursAlreadyConsumed)
+                .clamp(0.0, ordinaryLimit);
 
         ordinaryHoursForShift = shiftWorkedHours <= remainingOrdinaryHours
             ? shiftWorkedHours
@@ -299,45 +278,45 @@ if (programmedOvertimeHours > 0) {
           shiftWorkedHours,
         );
       } else {
-  if (shift.ordinaryHoursOverrideEnabled &&
-      shift.ordinaryHoursOverride > 0) {
-    ordinaryHoursForShift =
-        shift.ordinaryHoursOverride.clamp(0.0, shiftWorkedHours);
+        if (shift.ordinaryHoursOverrideEnabled &&
+            shift.ordinaryHoursOverride > 0) {
+          ordinaryHoursForShift =
+              shift.ordinaryHoursOverride.clamp(0.0, shiftWorkedHours);
 
-    overtimeHoursForShift =
-        (shiftWorkedHours - ordinaryHoursForShift).clamp(
-      0.0,
-      shiftWorkedHours,
-    );
-  } else {
-    final ordinaryEnd =
-        scheduledEnd.isBefore(normalizedEnd) ? scheduledEnd : normalizedEnd;
+          overtimeHoursForShift =
+              (shiftWorkedHours - ordinaryHoursForShift).clamp(
+            0.0,
+            shiftWorkedHours,
+          );
+        } else {
+          final ordinaryEnd = scheduledEnd.isBefore(normalizedEnd)
+              ? scheduledEnd
+              : normalizedEnd;
 
-    final ordinaryMinutes = ordinaryEnd.isAfter(shift.start)
-        ? ordinaryEnd.difference(shift.start).inMinutes
-        : 0;
+          final ordinaryMinutes = ordinaryEnd.isAfter(shift.start)
+              ? ordinaryEnd.difference(shift.start).inMinutes
+              : 0;
 
-    ordinaryHoursForShift =
-        (ordinaryMinutes / 60.0).clamp(0.0, shiftWorkedHours);
+          ordinaryHoursForShift =
+              (ordinaryMinutes / 60.0).clamp(0.0, shiftWorkedHours);
 
-    overtimeHoursForShift =
-        (shiftWorkedHours - ordinaryHoursForShift).clamp(
-      0.0,
-      shiftWorkedHours,
-    );
-  }
-}
+          overtimeHoursForShift =
+              (shiftWorkedHours - ordinaryHoursForShift).clamp(
+            0.0,
+            shiftWorkedHours,
+          );
+        }
+      }
     } else {
       final remainingOrdinaryHours =
-    (ordinaryLimit - ordinaryHoursAlreadyConsumed)
-        .clamp(0.0, ordinaryLimit);
+          (ordinaryLimit - ordinaryHoursAlreadyConsumed)
+              .clamp(0.0, ordinaryLimit);
 
       ordinaryHoursForShift = shiftWorkedHours <= remainingOrdinaryHours
           ? shiftWorkedHours
           : remainingOrdinaryHours;
 
-      overtimeHoursForShift =
-          (shiftWorkedHours - ordinaryHoursForShift).clamp(
+      overtimeHoursForShift = (shiftWorkedHours - ordinaryHoursForShift).clamp(
         0.0,
         shiftWorkedHours,
       );
@@ -345,33 +324,29 @@ if (programmedOvertimeHours > 0) {
 
     DateTime overtimeStart;
 
-final polferScheduledEnd =
-    department == Department.polfer
+    final polferScheduledEnd = department == Department.polfer
         ? _resolvePolferScheduledEnd(shift)
         : null;
 
-final questuraScheduledEnd =
-    (
-      department == Department.questura ||
-      department == Department.polstrada
-    )
+    final questuraScheduledEnd = (department == Department.questura ||
+            department == Department.polstrada)
         ? _resolveQuesturaScheduledEnd(
-  shift: shift,
-  department: department,
-)
+            shift: shift,
+            department: department,
+          )
         : null;
 
-if (department == Department.polfer && polferScheduledEnd != null) {
-  overtimeStart = polferScheduledEnd;
-} else if (questuraScheduledEnd != null) {
-  overtimeStart = questuraScheduledEnd;
-} else {
-  overtimeStart = shift.start.add(
-    Duration(
-      minutes: (ordinaryHoursForShift * 60).round(),
-    ),
-  );
-}
+    if (department == Department.polfer && polferScheduledEnd != null) {
+      overtimeStart = polferScheduledEnd;
+    } else if (questuraScheduledEnd != null) {
+      overtimeStart = questuraScheduledEnd;
+    } else {
+      overtimeStart = shift.start.add(
+        Duration(
+          minutes: (ordinaryHoursForShift * 60).round(),
+        ),
+      );
+    }
 
     final ordinaryNightHours = ordinaryHoursForShift > 0
         ? TimeBandHelper.calculateNightOnlyHours(shift.start, overtimeStart)
@@ -379,114 +354,114 @@ if (department == Department.polfer && polferScheduledEnd != null) {
 
     final overtimeSegments = <_OvertimeSegment>[];
 
-void appendSegments(DateTime from, DateTime to) {
-  if (!to.isAfter(from)) return;
+    void appendSegments(DateTime from, DateTime to) {
+      if (!to.isAfter(from)) return;
 
-  overtimeSegments.addAll(
-    _buildOvertimeSegments(from, to),
-  );
-}
-
-final programmedStart = shift.programmedOvertimeStart;
-final programmedEnd = shift.programmedOvertimeEnd;
-
-if (shift.programmedOvertimeEnabled &&
-    programmedStart != null &&
-    programmedEnd != null &&
-    programmedEnd.isAfter(programmedStart)) {
-  appendSegments(programmedStart, programmedEnd);
-}
-
-if (polferScheduledEnd != null) {
-  final preset = _resolveOperationalPresetCode(shift);
-
-  DateTime scheduledStart;
-
-  switch (preset) {
-    case 'mattina':
-      scheduledStart = DateTime(
-        shift.start.year,
-        shift.start.month,
-        shift.start.day,
-        6,
-        55,
+      overtimeSegments.addAll(
+        _buildOvertimeSegments(from, to),
       );
-      break;
+    }
 
-    case 'pomeriggio':
-      scheduledStart = DateTime(
-        shift.start.year,
-        shift.start.month,
-        shift.start.day,
-        12,
-        55,
+    final programmedStart = shift.programmedOvertimeStart;
+    final programmedEnd = shift.programmedOvertimeEnd;
+
+    if (shift.programmedOvertimeEnabled &&
+        programmedStart != null &&
+        programmedEnd != null &&
+        programmedEnd.isAfter(programmedStart)) {
+      appendSegments(programmedStart, programmedEnd);
+    }
+
+    if (polferScheduledEnd != null) {
+      final preset = _resolveOperationalPresetCode(shift);
+
+      DateTime scheduledStart;
+
+      switch (preset) {
+        case 'mattina':
+          scheduledStart = DateTime(
+            shift.start.year,
+            shift.start.month,
+            shift.start.day,
+            6,
+            55,
+          );
+          break;
+
+        case 'pomeriggio':
+          scheduledStart = DateTime(
+            shift.start.year,
+            shift.start.month,
+            shift.start.day,
+            12,
+            55,
+          );
+          break;
+
+        case 'sera':
+          scheduledStart = DateTime(
+            shift.start.year,
+            shift.start.month,
+            shift.start.day,
+            18,
+            55,
+          );
+          break;
+
+        case 'notte':
+          scheduledStart = DateTime(
+            shift.start.year,
+            shift.start.month,
+            shift.start.day,
+            23,
+            55,
+          );
+          break;
+
+        default:
+          scheduledStart = shift.start;
+      }
+
+      if (shift.start.isBefore(scheduledStart)) {
+        appendSegments(
+          shift.start,
+          scheduledStart,
+        );
+      }
+
+      if (normalizedEnd.isAfter(polferScheduledEnd)) {
+        appendSegments(
+          polferScheduledEnd,
+          normalizedEnd,
+        );
+      }
+    } else if (!shift.programmedOvertimeEnabled) {
+      overtimeSegments.addAll(
+        overtimeHoursForShift > 0
+            ? _buildOvertimeSegments(
+                overtimeStart,
+                normalizedEnd,
+              )
+            : const <_OvertimeSegment>[],
       );
-      break;
-
-    case 'sera':
-      scheduledStart = DateTime(
-        shift.start.year,
-        shift.start.month,
-        shift.start.day,
-        18,
-        55,
-      );
-      break;
-
-    case 'notte':
-      scheduledStart = DateTime(
-        shift.start.year,
-        shift.start.month,
-        shift.start.day,
-        23,
-        55,
-      );
-      break;
-
-    default:
-      scheduledStart = shift.start;
-  }
-
-  if (shift.start.isBefore(scheduledStart)) {
-    appendSegments(
-      shift.start,
-      scheduledStart,
-    );
-  }
-
-  if (normalizedEnd.isAfter(polferScheduledEnd)) {
-    appendSegments(
-      polferScheduledEnd,
-      normalizedEnd,
-    );
-  }
-} else if (!shift.programmedOvertimeEnabled) {
-  overtimeSegments.addAll(
-    overtimeHoursForShift > 0
-        ? _buildOvertimeSegments(
-            overtimeStart,
+    }
+    if (shift.ordinaryHoursOverrideEnabled &&
+        shift.ordinaryHoursOverride > 0 &&
+        !shift.programmedOvertimeEnabled &&
+        overtimeHoursForShift > 0) {
+      overtimeSegments
+        ..clear()
+        ..addAll(
+          _buildOvertimeSegments(
+            normalizedEnd.subtract(
+              Duration(
+                minutes: (overtimeHoursForShift * 60).round(),
+              ),
+            ),
             normalizedEnd,
-          )
-        : const <_OvertimeSegment>[],
-  );
-}
-if (shift.ordinaryHoursOverrideEnabled &&
-    shift.ordinaryHoursOverride > 0 &&
-    !shift.programmedOvertimeEnabled &&
-    overtimeHoursForShift > 0) {
-  overtimeSegments
-    ..clear()
-    ..addAll(
-      _buildOvertimeSegments(
-        normalizedEnd.subtract(
-          Duration(
-            minutes: (overtimeHoursForShift * 60).round(),
           ),
-        ),
-        normalizedEnd,
-      ),
-    );
-}
+        );
+    }
 
     double overtimeDayHours = 0.0;
     double overtimeNightHours = 0.0;
@@ -505,10 +480,9 @@ if (shift.ordinaryHoursOverrideEnabled &&
       }
     }
 
-    final overtimeAmountMultiplier =
-        department == Department.repartoMobile
-            ? 1.0
-            : _resolvedOvertimeNetMultiplier(profile);
+    final overtimeAmountMultiplier = department == Department.repartoMobile
+        ? 1.0
+        : _resolvedOvertimeNetMultiplier(profile);
 
     final overtimeDayRate = profile.overtimeDayRate * overtimeAmountMultiplier;
     final overtimeNightOrHolidayRate =
@@ -522,7 +496,8 @@ if (shift.ordinaryHoursOverrideEnabled &&
         overtimeHolidayDayHours * overtimeNightOrHolidayRate;
     final overtimeNightHolidayAmount =
         overtimeNightHolidayHours * overtimeNightHolidayRate;
-    final ordinaryNightRate = department == Department.questura ? 2.32 : _nightAllowanceRate;
+    final ordinaryNightRate =
+        department == Department.questura ? 2.32 : _nightAllowanceRate;
     final ordinaryNightAmount = ordinaryNightHours * ordinaryNightRate;
 
     final breakdown = <Map<String, dynamic>>[];
@@ -641,12 +616,14 @@ if (shift.ordinaryHoursOverrideEnabled &&
         continue;
       }
 
-      final itemHours = _sanitizeHours((item['hours'] as num?)?.toDouble() ?? 0);
+      final itemHours =
+          _sanitizeHours((item['hours'] as num?)?.toDouble() ?? 0);
       final itemAmount =
           _sanitizeMoney((item['amount'] as num?)?.toDouble() ?? 0.0);
       final hourlyRate = itemHours > 0
           ? _sanitizeMoney(
-              (item['hourlyRate'] as num?)?.toDouble() ?? (itemAmount / itemHours),
+              (item['hourlyRate'] as num?)?.toDouble() ??
+                  (itemAmount / itemHours),
             )
           : 0.0;
 
@@ -693,8 +670,8 @@ if (shift.ordinaryHoursOverrideEnabled &&
         });
       }
 
-      remainingPayableHours =
-          (remainingPayableHours - payableHours).clamp(0.0, monthlyOvertimeLimit);
+      remainingPayableHours = (remainingPayableHours - payableHours)
+          .clamp(0.0, monthlyOvertimeLimit);
     }
 
     final totalAmount = adjustedBreakdown
@@ -782,34 +759,34 @@ if (shift.ordinaryHoursOverrideEnabled &&
   }
 
   double _calculateProgrammedOvertimeHours({
-  required Shift shift,
-  required DateTime normalizedEnd,
-}) {
-  if (!shift.programmedOvertimeEnabled) return 0.0;
+    required Shift shift,
+    required DateTime normalizedEnd,
+  }) {
+    if (!shift.programmedOvertimeEnabled) return 0.0;
 
-  final start = shift.programmedOvertimeStart;
-  final end = shift.programmedOvertimeEnd;
+    final start = shift.programmedOvertimeStart;
+    final end = shift.programmedOvertimeEnd;
 
-  if (start == null || end == null) return 0.0;
-  if (!end.isAfter(start)) return 0.0;
+    if (start == null || end == null) return 0.0;
+    if (!end.isAfter(start)) return 0.0;
 
-  final minutes = end.difference(start).inMinutes;
-  if (minutes <= 0) return 0.0;
+    final minutes = end.difference(start).inMinutes;
+    if (minutes <= 0) return 0.0;
 
-  return minutes / 60.0;
-}
+    return minutes / 60.0;
+  }
 
-double _calculateProgrammedNightHours(Shift shift) {
-  if (!shift.programmedOvertimeEnabled) return 0.0;
+  double _calculateProgrammedNightHours(Shift shift) {
+    if (!shift.programmedOvertimeEnabled) return 0.0;
 
-  final start = shift.programmedOvertimeStart;
-  final end = shift.programmedOvertimeEnd;
+    final start = shift.programmedOvertimeStart;
+    final end = shift.programmedOvertimeEnd;
 
-  if (start == null || end == null) return 0.0;
-  if (!end.isAfter(start)) return 0.0;
+    if (start == null || end == null) return 0.0;
+    if (!end.isAfter(start)) return 0.0;
 
-  return TimeBandHelper.calculateNightOnlyHours(start, end);
-}
+    return TimeBandHelper.calculateNightOnlyHours(start, end);
+  }
 
   void _appendTransitionalAccessoryItems({
     required List<Map<String, dynamic>> breakdown,
@@ -821,7 +798,8 @@ double _calculateProgrammedNightHours(Shift shift) {
     final externalServiceAmount = shift.getExternalServiceAmount(profile);
     final festiveAmount = shift.getFestiveAmount(profile);
     final specialHolidayAmount = shift.getSpecialHolidayAmount(profile);
-    final territoryControlAmount = shift.getPolferTerritoryControlAmount(profile);
+    final territoryControlAmount =
+        shift.getPolferTerritoryControlAmount(profile);
     final comfortCdgAmount = shift.getGenereDiConfortoCdgAmount(profile);
     final comfortAmount = shift.getGenereDiConfortoAmount(profile);
     final mealAmount = shift.getTicketPastoAmount(profile);
@@ -833,7 +811,6 @@ double _calculateProgrammedNightHours(Shift shift) {
     );
 
     final autostradaAmount = _calculateAutostradaAmount(shift);
-    
 
     if (orderPublicAmount > 0) {
       breakdown.add({
@@ -844,12 +821,12 @@ double _calculateProgrammedNightHours(Shift shift) {
     }
 
     if (autostradaAmount > 0) {
-  breakdown.add({
-    'label': 'Indennità autostradale',
-    'amount': autostradaAmount,
-    'category': 'autostrada_service',
-  });
-}
+      breakdown.add({
+        'label': 'Indennità autostradale',
+        'amount': autostradaAmount,
+        'category': 'autostrada_service',
+      });
+    }
 
     if (externalServiceAmount > 0) {
       breakdown.add({
@@ -973,131 +950,134 @@ double _calculateProgrammedNightHours(Shift shift) {
     if (value.isNaN || !value.isFinite) return 0.0;
     return value;
   }
+
   String _resolveOperationalPresetCode(Shift shift) {
-  final spmnCode = shift.spmnPresetCode.trim().toLowerCase();
+    final spmnCode = shift.spmnPresetCode.trim().toLowerCase();
 
-  if (spmnCode.isNotEmpty && spmnCode != 'none') {
-    return spmnCode;
+    if (spmnCode.isNotEmpty && spmnCode != 'none') {
+      return spmnCode;
+    }
+
+    if (shift.questuraPreset != QuesturaPreset.none) {
+      return shift.questuraPreset.name.toLowerCase();
+    }
+
+    return '';
   }
 
-  if (shift.questuraPreset != QuesturaPreset.none) {
-    return shift.questuraPreset.name.toLowerCase();
+  DateTime? _resolvePolferScheduledEnd(Shift shift) {
+    final preset = _resolveOperationalPresetCode(shift);
+    final start = shift.start;
+
+    switch (preset) {
+      case 'mattina':
+        return DateTime(start.year, start.month, start.day, 13, 8);
+      case 'pomeriggio':
+        return DateTime(start.year, start.month, start.day, 19, 8);
+      case 'sera':
+        return DateTime(start.year, start.month, start.day, 0, 8)
+            .add(const Duration(days: 1));
+      case 'notte':
+        return DateTime(start.year, start.month, start.day, 7, 8)
+            .add(const Duration(days: 1));
+      case 'aggiornamento':
+        return DateTime(start.year, start.month, start.day, 14, 0);
+      default:
+        break;
+    }
+
+    final startMinutes = start.hour * 60 + start.minute;
+
+    if (startMinutes >= 360 && startMinutes <= 539) {
+      return DateTime(start.year, start.month, start.day, 13, 8);
+    }
+
+    if (startMinutes >= 720 && startMinutes <= 899) {
+      return DateTime(start.year, start.month, start.day, 19, 8);
+    }
+
+    if (startMinutes >= 1080 && startMinutes <= 1259) {
+      return DateTime(start.year, start.month, start.day, 0, 8)
+          .add(const Duration(days: 1));
+    }
+
+    if (startMinutes >= 1320 || startMinutes <= 179) {
+      return DateTime(start.year, start.month, start.day, 7, 8)
+          .add(const Duration(days: 1));
+    }
+
+    return null;
   }
 
-  return '';
-}
-DateTime? _resolvePolferScheduledEnd(Shift shift) {
-  final preset = _resolveOperationalPresetCode(shift);
-  final start = shift.start;
-
-  switch (preset) {
-  case 'mattina':
-    return DateTime(start.year, start.month, start.day, 13, 8);
-  case 'pomeriggio':
-    return DateTime(start.year, start.month, start.day, 19, 8);
-  case 'sera':
-    return DateTime(start.year, start.month, start.day, 0, 8)
-        .add(const Duration(days: 1));
-  case 'notte':
-    return DateTime(start.year, start.month, start.day, 7, 8)
-        .add(const Duration(days: 1));
-  case 'aggiornamento':
-    return DateTime(start.year, start.month, start.day, 14, 0);
-  default:
-    break;
-}
-
-  final startMinutes = start.hour * 60 + start.minute;
-
-  if (startMinutes >= 360 && startMinutes <= 539) {
-    return DateTime(start.year, start.month, start.day, 13, 8);
+  DateTime? _resolveQuesturaScheduledEnd({
+    required Shift shift,
+    required Department department,
+  }) {
+    switch (shift.questuraPreset) {
+      case QuesturaPreset.mattina:
+        return DateTime(
+            shift.start.year, shift.start.month, shift.start.day, 13, 8);
+      case QuesturaPreset.pomeriggio:
+        return DateTime(
+            shift.start.year, shift.start.month, shift.start.day, 19, 8);
+      case QuesturaPreset.sera:
+        return DateTime(
+          shift.start.year,
+          shift.start.month,
+          shift.start.day + 1,
+          department == Department.polstrada ? 1 : 0,
+          8,
+        );
+      case QuesturaPreset.notte:
+        return DateTime(
+          shift.start.year,
+          shift.start.month,
+          shift.start.day + (department == Department.polstrada ? 0 : 1),
+          7,
+          8,
+        );
+      case QuesturaPreset.none:
+      case QuesturaPreset.smontante:
+      case QuesturaPreset.riposo:
+      case QuesturaPreset.aggiornamento:
+        return null;
+    }
   }
 
-  if (startMinutes >= 720 && startMinutes <= 899) {
-    return DateTime(start.year, start.month, start.day, 19, 8);
+  double _calculateAutostradaAmount(Shift shift) {
+    if (!shift.hasAutostradaService) return 0.0;
+
+    final presetCode = shift.spmnPresetCode.trim().toLowerCase();
+
+    switch (shift.questuraPreset) {
+      case QuesturaPreset.mattina:
+        return 9.50;
+      case QuesturaPreset.pomeriggio:
+        return 9.50;
+      case QuesturaPreset.sera:
+        return 12.00;
+      case QuesturaPreset.notte:
+        return 14.50;
+      case QuesturaPreset.none:
+      case QuesturaPreset.smontante:
+      case QuesturaPreset.riposo:
+      case QuesturaPreset.aggiornamento:
+        break;
+    }
+
+    switch (presetCode) {
+      case 'mattina':
+        return 9.50;
+      case 'pomeriggio':
+        return 9.50;
+      case 'sera':
+        return 12.00;
+      case 'notte':
+        return 14.50;
+      default:
+        return 0.0;
+    }
   }
-
-  if (startMinutes >= 1080 && startMinutes <= 1259) {
-    return DateTime(start.year, start.month, start.day, 0, 8)
-        .add(const Duration(days: 1));
-  }
-
-  if (startMinutes >= 1320 || startMinutes <= 179) {
-    return DateTime(start.year, start.month, start.day, 7, 8)
-        .add(const Duration(days: 1));
-  }
-
-  return null;
-}
-
-DateTime? _resolveQuesturaScheduledEnd({
-  required Shift shift,
-  required Department department,
-}) {
-  switch (shift.questuraPreset) {
-    case QuesturaPreset.mattina:
-      return DateTime(shift.start.year, shift.start.month, shift.start.day, 13, 8);
-    case QuesturaPreset.pomeriggio:
-      return DateTime(shift.start.year, shift.start.month, shift.start.day, 19, 8);
-    case QuesturaPreset.sera:
-  return DateTime(
-    shift.start.year,
-    shift.start.month,
-    shift.start.day + 1,
-    department == Department.polstrada ? 1 : 0,
-    8,
-  );
-    case QuesturaPreset.notte:
-  return DateTime(
-    shift.start.year,
-    shift.start.month,
-    shift.start.day + (department == Department.polstrada ? 0 : 1),
-    7,
-    8,
-  );
-    case QuesturaPreset.none:
-    case QuesturaPreset.smontante:
-    case QuesturaPreset.riposo:
-    case QuesturaPreset.aggiornamento:
-      return null;
-  }
-}
-
-double _calculateAutostradaAmount(Shift shift) {
-  if (!shift.hasAutostradaService) return 0.0;
-
-  final presetCode = shift.spmnPresetCode.trim().toLowerCase();
-
-  switch (shift.questuraPreset) {
-    case QuesturaPreset.mattina:
-      return 9.50;
-    case QuesturaPreset.pomeriggio:
-      return 9.50;
-    case QuesturaPreset.sera:
-      return 12.00;
-    case QuesturaPreset.notte:
-      return 14.50;
-    case QuesturaPreset.none:
-    case QuesturaPreset.smontante:
-    case QuesturaPreset.riposo:
-    case QuesturaPreset.aggiornamento:
-      break;
-  }
-
-
-  switch (presetCode) {
-    case 'mattina':
-      return 9.50;
-    case 'pomeriggio':
-      return 9.50;
-    case 'sera':
-      return 12.00;
-    case 'notte':
-      return 14.50;
-    default:
-      return 0.0;
-  }
-}
 
   double _calculatePolferScaloAmount({
     required Shift shift,
@@ -1106,21 +1086,21 @@ double _calculateAutostradaAmount(Shift shift) {
     if (shift.polferScaloMode == PolferScaloMode.none) return 0.0;
 
     final workedNightHours = TimeBandHelper.calculateNightOnlyHours(
-  shift.start,
-  normalizedEnd,
-);
+      shift.start,
+      normalizedEnd,
+    );
 
-final programmedHours = _calculateProgrammedOvertimeHours(
-  shift: shift,
-  normalizedEnd: normalizedEnd,
-);
+    final programmedHours = _calculateProgrammedOvertimeHours(
+      shift: shift,
+      normalizedEnd: normalizedEnd,
+    );
 
-final programmedNightHours = _calculateProgrammedNightHours(shift);
+    final programmedNightHours = _calculateProgrammedNightHours(shift);
 
-final totalWorkedHours = shift.workedHours + programmedHours;
-final totalNightHours = workedNightHours + programmedNightHours;
-final totalDayHours =
-    (totalWorkedHours - totalNightHours).clamp(0.0, totalWorkedHours);
+    final totalWorkedHours = shift.workedHours + programmedHours;
+    final totalNightHours = workedNightHours + programmedNightHours;
+    final totalDayHours =
+        (totalWorkedHours - totalNightHours).clamp(0.0, totalWorkedHours);
 
     final reducedDayHours = shift.polferScaloManualOverride
         ? shift.polferScaloReducedDayHours

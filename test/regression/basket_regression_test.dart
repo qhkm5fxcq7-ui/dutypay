@@ -279,6 +279,87 @@ void main() {
       expect(result.manualBasketPaidHoursForMonth, greaterThanOrEqualTo(0));
     });
 
+    test(
+      'current month overtime above personal limit enters basket immediately',
+      () {
+        final profile = CanonicalShiftScenarios.defaultProfile().copyWith(
+          monthlyOvertimePayableHoursLimit: 55,
+        );
+
+        final augustShift = CanonicalShiftScenarios.rmStandardMorning(
+          serviceDate: DateTime(2026, 8, 10),
+        ).copyWith(
+          straordinarioDiurnoHours: 60,
+          straordinarioNotturnoFestivoHours: 0,
+        );
+
+        final result = service.projectPayslip(
+          payslipMonth: DateTime(2026, 8),
+          allShifts: [augustShift],
+          payProfile: profile,
+          department: Department.repartoMobile,
+        );
+
+        expect(
+          result.currentBasketResidualHours,
+          closeTo(5, 0.01),
+        );
+
+        // Il basket matura subito, ma il cedolino continua a rispettare
+        // il ritardo delle competenze accessorie.
+        expect(
+          result.overtimeHoursFromReferenceMonth,
+          closeTo(0, 0.01),
+        );
+        expect(
+          result.liquidatedOvertimeHours,
+          closeTo(0, 0.01),
+        );
+        expect(
+          result.overtimeInBasketHours,
+          closeTo(0, 0.01),
+        );
+
+        expect(
+          result.openBasketEntries.any(
+            (entry) =>
+                entry.sourceMonth.year == 2026 &&
+                entry.sourceMonth.month == 8 &&
+                (entry.overtimeHoursRemaining - 5).abs() < 0.01,
+          ),
+          isTrue,
+        );
+      },
+    );
+
+    test(
+      'current basket uses the overtime limit configured by the user',
+      () {
+        final profile = CanonicalShiftScenarios.defaultProfile().copyWith(
+          monthlyOvertimePayableHoursLimit: 40,
+        );
+
+        final augustShift = CanonicalShiftScenarios.rmStandardMorning(
+          serviceDate: DateTime(2026, 8, 12),
+        ).copyWith(
+          straordinarioDiurnoHours: 46,
+          straordinarioNotturnoFestivoHours: 0,
+        );
+
+        final result = service.projectPayslip(
+          payslipMonth: DateTime(2026, 8),
+          allShifts: [augustShift],
+          payProfile: profile,
+          department: Department.repartoMobile,
+        );
+
+        expect(
+          result.currentBasketResidualHours,
+          closeTo(6, 0.01),
+        );
+      },
+    );
+
     test('basket payment serialization preserves hours and month', () {
       final payment = BasketPayment(
         paymentMonth: DateTime(2026, 5),
