@@ -77,7 +77,7 @@ void main() {
     });
 
     test(
-      'same-day additional services do not become basket overtime',
+      'same-day services share one daily ordinary-hours quota',
       () {
         final serviceDay = DateTime(2026, 7, 4);
 
@@ -122,7 +122,7 @@ void main() {
         expect(lunch.overtimeHours, closeTo(0, 0.01));
         expect(dinner.overtimeHours, closeTo(0, 0.01));
         expect(summary.shiftCount, 3);
-        expect(summary.overtimeHours, closeTo(8, 0.01));
+        expect(summary.overtimeHours, closeTo(12, 0.01));
       },
     );
 

@@ -618,3 +618,54 @@ Test:
 Stato:
 
 RISOLTO
+
+---
+
+## Basket straordinari — doppi/tripli servizi e contesto giornaliero
+
+**Risolto:** luglio 2026  
+**Fix successivo alla release 1.0.15 build 45**
+
+### Problema
+
+Nel riepilogo mensile e nella ricostruzione del basket, i doppi o tripli servizi associati alla stessa `serviceDate` potevano perdere parte delle ore di straordinario.
+
+Il calcolo giornaliero context-aware risultava corretto, ma `BuildMonthlyAccessorySummaryUseCase` poteva utilizzare il valore individuale del turno anziché lo straordinario risultante dal calcolo giornaliero condiviso.
+
+Caso reale diagnosticato sul backup di un tester:
+
+- basket prima del fix: 187.00 h
+- basket dopo il fix: 201.00 h
+- ore recuperate: 14.00 h
+
+### Causa
+
+Il riepilogo mensile non preservava integralmente il risultato context-aware prodotto da `BuildDailyShiftResultUseCase` per i servizi appartenenti alla stessa `serviceDate`.
+
+### Correzione
+
+Il riepilogo mensile utilizza ora lo straordinario derivato dalla `DailyShiftComputation`, mantenendo il contesto giornaliero condiviso.
+
+Pipeline:
+
+`BuildDailyShiftResultUseCase`
+→ `BuildMonthlyAccessorySummaryUseCase`
+→ `PayslipProjectionService`
+→ Basket
+
+Regola consolidata:
+
+**stessa `serviceDate` → una sola quota ordinaria giornaliera → calcolo context-aware condiviso**
+
+### Protezione regressioni
+
+Aggiunto regression test:
+
+`test/regression/monthly_summary_daily_context_regression_test.dart`
+
+Aggiornati inoltre i precedenti test che codificavano il comportamento non più coerente con il motore context-aware.
+
+Validazione finale:
+
+- `flutter analyze`: No issues found
+- `flutter test`: 165/165 PASS

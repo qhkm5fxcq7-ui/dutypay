@@ -63,7 +63,7 @@ void main() {
     });
 
     test(
-        'monthly basket does not invent overtime across separate same-day services',
+        'monthly basket preserves daily-context overtime across same serviceDate',
         () {
       final profile = CanonicalShiftScenarios.defaultProfile().copyWith(
         monthlyOvertimePayableHoursLimit: 5,
@@ -99,9 +99,9 @@ void main() {
         department: Department.repartoMobile,
       );
 
-      expect(result.overtimeHoursFromReferenceMonth, closeTo(0, 0.01));
-      expect(result.overtimeInBasketHours, closeTo(0, 0.01));
-      expect(result.currentBasketResidualHours, closeTo(0, 0.01));
+      expect(result.overtimeHoursFromReferenceMonth, closeTo(6, 0.01));
+      expect(result.overtimeInBasketHours, closeTo(1, 0.01));
+      expect(result.currentBasketResidualHours, closeTo(1, 0.01));
     });
 
     test(

@@ -463,3 +463,36 @@ Ultime correzioni:
 - ripristino toggle Servizio esterno Reparto Mobile.
 
 Entrambe protette da regression test dedicati.
+
+---
+
+## AGGIORNAMENTO — FIX BASKET DOPPI/TRIPLI SERVIZI
+
+Dopo la release 1.0.15 build 45 è stato diagnosticato un problema nel calcolo mensile del basket per servizi multipli appartenenti alla stessa `serviceDate`.
+
+Il motore giornaliero context-aware calcolava correttamente lo straordinario, ma il riepilogo mensile non preservava completamente quel risultato nella ricostruzione del basket.
+
+Il problema è stato riprodotto tramite backup reale di un tester.
+
+Risultato diagnostico:
+
+- basket precedente: 187.00 h
+- basket corretto: 201.00 h
+- differenza recuperata: 14.00 h
+
+È stato corretto `BuildMonthlyAccessorySummaryUseCase` affinché utilizzi il risultato context-aware della `DailyShiftComputation`.
+
+La regola architetturale da preservare è:
+
+**stessa serviceDate → una sola quota ordinaria giornaliera → Daily Engine → Monthly Summary → Basket**
+
+È stato aggiunto:
+
+`test/regression/monthly_summary_daily_context_regression_test.dart`
+
+Validazione completa successiva al fix:
+
+- Flutter Analyze: PASS — No issues found
+- Flutter Test: PASS — 165/165
+
+Questo fix deve essere considerato candidato per la release 1.0.16.

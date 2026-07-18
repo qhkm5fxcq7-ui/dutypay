@@ -93,7 +93,7 @@ class BuildMonthlyAccessorySummaryUseCase {
 
         final effectiveOvertimeHours = shiftPaymentOvertimeHours > 0
             ? shiftPaymentOvertimeHours
-            : shift.overtimeHours;
+            : computation.overtimeHours;
 
         final overtimeRatio = computation.overtimeHours > 0
             ? (effectiveOvertimeHours / computation.overtimeHours)
